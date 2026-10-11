@@ -6,6 +6,8 @@ import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "
 import { relativeTime } from "@/lib/format";
 import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
+import { Button } from "@/components/ui/primitives";
+import { IconGear } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
 import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
@@ -77,7 +79,7 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
 
 /** Expanded custom widget: full content plus publish history. */
 export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
-  const { data, nowMs, run } = useDashboard();
+  const { data, nowMs, run, openWidgetSettings } = useDashboard();
   const [history, setHistory] = useState<Snapshot[] | null>(null);
   const [viewing, setViewing] = useState<Snapshot | null>(null);
 
@@ -107,6 +109,11 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
           </span>
         }
         title={widget.title}
+        aside={
+          <Button size="sm" variant="soft" onClick={() => openWidgetSettings(widget.id)}>
+            <IconGear size={15} /> Settings
+          </Button>
+        }
       />
       {viewing && (
         <div className="mb-5 flex items-center justify-between gap-3 rounded-[14px] bg-accent-soft px-4 py-2.5 text-[13.5px] text-accent-hover">

@@ -3,12 +3,29 @@
 import { useState } from "react";
 import type { WidgetRow } from "@/lib/dashboard-types";
 import { isCustomKind, type WidgetSize } from "@/lib/widgets";
-import { removeWidgetAction } from "@/app/actions/widgets";
-import { Button, Segmented, Sheet } from "@/components/ui/primitives";
-import { IconPlus } from "@/components/ui/icons";
+import { scheduleInWords } from "@/lib/cron-words";
+import { removeWidgetAction, updateWidgetAction } from "@/app/actions/widgets";
+import { Button, Segmented, Sheet, fieldClass } from "@/components/ui/primitives";
+import { IconChevronRight, IconPlus } from "@/components/ui/icons";
+import { BotAvatar } from "@/components/ui/bot-avatar";
+import { selectClass, selectStyle } from "@/components/teammates/form";
 import { useDashboard } from "./context";
 
-/** Per-widget settings in edit mode: size, page, and remove (custom only). */
+const STALE_OPTIONS = [
+  { hours: 1, label: "1 hour" },
+  { hours: 3, label: "3 hours" },
+  { hours: 6, label: "6 hours" },
+  { hours: 12, label: "12 hours" },
+  { hours: 24, label: "1 day" },
+  { hours: 48, label: "2 days" },
+  { hours: 168, label: "1 week" },
+];
+
+/**
+ * Per-widget settings, from edit mode or an expanded widget: title, size,
+ * page, and for bot widgets the staleness window, owner bot, linked routines
+ * and remove.
+ */
 export function WidgetSheet({
   widget,
   pageCount,
@@ -53,13 +70,94 @@ function SheetBody({
   onMove: (page: number) => void;
   onRemoved: (id: string) => void;
 }) {
-  const { run } = useDashboard();
+  const { data, run, openTeammates } = useDashboard();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const custom = isCustomKind(widget.kind);
+  const [title, setTitle] = useState(widget.title);
+  const [stale, setStale] = useState(widget.stale_after_hours ? String(widget.stale_after_hours) : "");
+  const [owner, setOwner] = useState(widget.owner_bot_id ?? "");
+  const routines = data.routines.filter((r) => r.widget_id === widget.id);
+  const staleOptions =
+    widget.stale_after_hours && !STALE_OPTIONS.some((o) => o.hours === widget.stale_after_hours)
+      ? [...STALE_OPTIONS, { hours: widget.stale_after_hours, label: `${widget.stale_after_hours} hours` }]
+      : STALE_OPTIONS;
+
+  const patch: Parameters<typeof updateWidgetAction>[1] = {};
+  if (title.trim() && title.trim() !== widget.title) patch.title = title;
+  if (custom && (stale ? Number(stale) : null) !== widget.stale_after_hours) patch.stale_after_hours = stale ? Number(stale) : null;
+  if (custom && (owner || null) !== widget.owner_bot_id) patch.owner_bot_id = owner || null;
+  const dirty = Object.keys(patch).length > 0;
+
+  const save = async () => {
+    setBusy(true);
+    await run(updateWidgetAction(widget.id, patch), { success: "Widget saved" });
+    setBusy(false);
+  };
 
   return (
     <div className="flex flex-col gap-6 pb-2">
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (dirty && !busy) void save();
+        }}
+      >
+        <Row label="Title">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            className={`${fieldClass} w-full`}
+            aria-label="Title"
+          />
+        </Row>
+        {custom && (
+          <>
+            <Row label="Made by">
+              <select
+                value={owner}
+                onChange={(e) => setOwner(e.target.value)}
+                className={selectClass}
+                style={selectStyle}
+                aria-label="Owner bot"
+              >
+                <option value="">No owner</option>
+                {widget.owner && !data.bots.some((b) => b.id === widget.owner!.id) && (
+                  <option value={widget.owner.id}>{widget.owner.name} (archived)</option>
+                )}
+                {data.bots.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label="Greys out when not updated for">
+              <select
+                value={stale}
+                onChange={(e) => setStale(e.target.value)}
+                className={selectClass}
+                style={selectStyle}
+                aria-label="Staleness window"
+              >
+                <option value="">Never</option>
+                {staleOptions.map((o) => (
+                  <option key={o.hours} value={o.hours}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          </>
+        )}
+        {dirty && (
+          <Button type="submit" variant="dark" className="self-end" disabled={busy}>
+            {busy ? "Saving…" : "Save changes"}
+          </Button>
+        )}
+      </form>
       <Row label="Size">
         <Segmented<WidgetSize>
           value={widget.size}
@@ -94,6 +192,39 @@ function SheetBody({
           </button>
         </div>
       </Row>
+      {custom && (
+        <Row label="Routines that publish here">
+          {routines.length === 0 ? (
+            <p className="text-[13px] leading-snug text-ink-3">
+              None registered. A bot links its routine when it registers it, or link one from Teammates.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-150">
+              {routines.map((r) => {
+                const bot = data.bots.find((b) => b.id === r.bot_id) ?? r.bot;
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => openTeammates({ routineId: r.id })}
+                      className="flex w-full items-center gap-2.5 py-2 text-left transition hover:text-ink"
+                    >
+                      {bot && <BotAvatar bot={bot} size={20} />}
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate text-[14px] font-medium ${r.enabled ? "" : "text-ink-3"}`}>{r.name}</span>
+                        <span className="block truncate text-[12.5px] text-gray-500">
+                          {r.enabled ? scheduleInWords(r.schedule) : "Paused"}
+                        </span>
+                      </span>
+                      <IconChevronRight size={15} className="shrink-0 text-gray-400" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Row>
+      )}
       {custom ? (
         confirm ? (
           <div className="rounded-[16px] bg-gray-100 p-4">
