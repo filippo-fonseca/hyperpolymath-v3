@@ -122,3 +122,38 @@ export function timedTaskEvents(tasks: Task[], from: string, to: string, tz: str
       };
     });
 }
+
+/* ---------- time grid ---------- */
+
+/** Minutes since local midnight for an instant. */
+export function minutesInDay(iso: string, tz: string): number {
+  const hhmm = fmt(timeFmt, tz, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, "en-GB").format(new Date(iso));
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+export type Segment = { e: CalendarEvent; start: number; end: number };
+
+/** The part of each timed event that falls on `day`, in minutes from midnight. */
+export function daySegments(events: CalendarEvent[], day: string, tz: string): Segment[] {
+  const out: Segment[] = [];
+  for (const e of events) {
+    if (e.all_day) continue;
+    const { first, last } = eventSpan(e, tz);
+    if (day < first || day > last) continue;
+    const start = day === first ? minutesInDay(e.start, tz) : 0;
+    const endDay = eventDate({ ...e, start: e.end }, tz);
+    const end = day === endDay ? minutesInDay(e.end, tz) : 24 * 60;
+    out.push({ e, start, end: Math.max(end, start) });
+  }
+  return out;
+}
+
+/** All-day events that cover `day`. */
+export function allDayOn(events: CalendarEvent[], day: string, tz: string): CalendarEvent[] {
+  return events.filter((e) => {
+    if (!e.all_day) return false;
+    const { first, last } = eventSpan(e, tz);
+    return first <= day && day <= last;
+  });
+}

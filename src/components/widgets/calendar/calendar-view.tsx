@@ -22,6 +22,7 @@ import {
   timedTaskEvents,
   weekStart,
 } from "./calendar-utils";
+import { WeekGrid } from "./week-grid";
 
 type View = "agenda" | "week" | "month";
 type Draft = { date: string; time?: string };
@@ -174,6 +175,8 @@ function CalendarViewInner() {
 
       {empty ? (
         <div className="skeleton h-32 rounded-[18px]" />
+      ) : view === "week" ? (
+        <WeekGrid from={from} events={events} tz={data.tz} today={data.today} />
       ) : (
         <AgendaList events={events} tz={data.tz} today={data.today} onHide={hide} onUnhide={unhide} />
       )}
