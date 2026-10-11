@@ -15,6 +15,7 @@ import { createWidget, publishWidget, widgetHistory } from "./widgets";
 import { getOverview } from "./overview";
 import { runTick } from "./tick";
 import { mintToken } from "./tokens";
+import { createArea, createProject, listAreas, updateProject } from "./projects";
 import { finishRun, listRoutines, registerRoutine, startRun, updateRoutine } from "./routines";
 import { zonedToUtc } from "@/lib/time";
 
@@ -163,6 +164,19 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     const [after] = await listRoutines(bot);
     expect(after.run_count).toBe(1);
     expect(after.last_status).toBe("skipped");
+  });
+
+  it("areas group projects, and tasks file under them", async () => {
+    const ctx = ctxAt(NOON);
+    await createArea(ctx, { name: "School", emoji: "🎓" });
+    await createProject(ctx, { name: "Machine Elements", area: "school", is_class: true, course_code: "MENG 2050" });
+    const t = await createTask(ctx, { title: "Waterjet photos", project: "machine elements" });
+    expect(t.project_id).toBeTruthy();
+    expect((await listTasks(ctx, { area: "School", scope: "open" })).map((x) => x.id)).toContain(t.id);
+    await updateProject(ctx, "Machine Elements", { status: "done" });
+    const { areas } = await listAreas(ctx);
+    const school = areas.find((a) => a.name === "School")!;
+    expect(school.projects[0]).toMatchObject({ status: "done", open_tasks: 1 });
   });
 
   it("overview grounds a bot in one call", async () => {
