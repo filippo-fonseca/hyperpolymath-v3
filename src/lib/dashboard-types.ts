@@ -9,6 +9,7 @@ import type { listReminders } from "@/server/reminders";
 import type { widgetHistory } from "@/server/widgets";
 import type { listRoutines, listRuns } from "@/server/routines";
 import type { CalendarEvent } from "@/server/google/calendar";
+import type { listAreas } from "@/server/projects";
 
 export type { CalendarEvent };
 
@@ -25,6 +26,10 @@ export type RoutineRow = Awaited<ReturnType<typeof listRoutines>>[number];
 export type RoutineRun = Awaited<ReturnType<typeof listRuns>>[number];
 export type Snapshot = Awaited<ReturnType<typeof widgetHistory>>[number];
 export type TaskStatus = "todo" | "doing" | "done";
+export type AreasData = Awaited<ReturnType<typeof listAreas>>;
+export type AreaWithProjects = AreasData["areas"][number];
+export type ProjectWithCounts = AreaWithProjects["projects"][number];
+export type ProjectStatus = "active" | "paused" | "done";
 
 export type DashboardData = {
   userId: string;
@@ -41,6 +46,8 @@ export type DashboardData = {
   actions: ActionRow[];
   reminders: ReminderRow[];
   routines: RoutineRow[];
+  /** Areas (archived included) with their projects, plus projects with no area. */
+  areas: AreasData;
   realtime: { url: string; key: string } | null;
 };
 

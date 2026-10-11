@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-const TABLES = ["tasks", "habit_logs", "habits", "captures", "widgets", "bots", "actions", "reminders", "routines", "routine_runs"] as const;
+const TABLES = ["tasks", "habit_logs", "habits", "captures", "widgets", "bots", "actions", "reminders", "routines", "routine_runs", "areas", "projects"] as const;
 const DEBOUNCE_MS = 250;
 
 /**
