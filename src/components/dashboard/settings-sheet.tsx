@@ -5,9 +5,9 @@ import type { CalendarAccount, CalendarData } from "@/lib/dashboard-types";
 import type { CalendarInfo } from "@/server/google/calendar";
 import { relativeTime } from "@/lib/format";
 import { listTokensAction, mintTokenAction, revokeTokenAction, setTimezoneAction } from "@/app/actions/settings";
-import { disconnectGoogleAction, listCalendarsAction, setCalendarsAction } from "@/app/actions/calendar";
+import { disconnectGoogleAction, listCalendarsAction, setCalendarsAction, setDefaultCalendarAction } from "@/app/actions/calendar";
 import { signOut } from "@/app/actions/auth";
-import { Button, Sheet, fieldClass } from "@/components/ui/primitives";
+import { Button, Sheet, Switch, fieldClass } from "@/components/ui/primitives";
 import { IconCheck, IconCopy, IconPlus, IconSignOut } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
 import { useDashboard } from "./context";
@@ -210,6 +210,7 @@ function GoogleSection() {
   const { calendar, run } = useDashboard();
   const cal: CalendarData = use(calendar);
   const [calendars, setCalendars] = useState<CalendarInfo[] | null>(null);
+  const [defaultKey, setDefaultKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!cal.accounts.length) return;
@@ -230,11 +231,47 @@ function GoogleSection() {
     );
   }
 
+  const keyOf = (c: CalendarInfo) => `${c.account_id}|${c.id}`;
+  const current = defaultKey ?? (calendars?.find((c) => c.is_default) ? keyOf(calendars.find((c) => c.is_default)!) : "");
+
   return (
-    <Section title="Google Calendar" hint="Choose which calendars show on the dashboard and where new events go.">
+    <Section title="Google Calendar" hint="Connect as many accounts as you like. Switch an account off to hide it without disconnecting.">
       <div className="flex flex-col gap-4">
+        {cal.accounts.length > 0 && calendars && calendars.length > 0 && (
+          <label className="flex flex-col gap-1.5 text-[13px] text-ink-2">
+            New events go to
+            <select
+              value={current}
+              onChange={async (e) => {
+                const v = e.target.value;
+                const [accountId, calendarId] = [v.slice(0, v.indexOf("|")), v.slice(v.indexOf("|") + 1)];
+                setDefaultKey(v);
+                const ok = await run(setDefaultCalendarAction(accountId, calendarId), { success: "Default calendar updated" });
+                if (!ok) setDefaultKey(null);
+              }}
+              className="h-10 w-full appearance-none rounded-[12px] bg-white px-3 text-[14px] text-ink shadow-ring outline-none"
+            >
+              {cal.accounts.map((a) => (
+                <optgroup key={a.id} label={a.email}>
+                  {calendars
+                    .filter((c) => c.account_id === a.id)
+                    .map((c) => (
+                      <option key={keyOf(c)} value={keyOf(c)}>
+                        {c.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        )}
         {cal.accounts.map((a) => (
-          <AccountCard key={a.id} account={a} calendars={calendars?.filter((c) => c.account_id === a.id) ?? null} />
+          <AccountCard
+            key={a.id}
+            account={a}
+            isDefault={current ? current.startsWith(`${a.id}|`) : a.is_default}
+            calendars={calendars?.filter((c) => c.account_id === a.id) ?? null}
+          />
         ))}
         <a
           href="/api/google/connect"
@@ -247,19 +284,27 @@ function GoogleSection() {
   );
 }
 
-function AccountCard({ account, calendars }: { account: CalendarAccount; calendars: CalendarInfo[] | null }) {
+function AccountCard({
+  account,
+  isDefault,
+  calendars,
+}: {
+  account: CalendarAccount;
+  isDefault: boolean;
+  calendars: CalendarInfo[] | null;
+}) {
   const { run } = useDashboard();
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const [shown, setShown] = useState<string[] | null>(null);
-  const [def, setDef] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const on = enabled ?? account.enabled;
   const shownIds = shown ?? calendars?.filter((c) => c.shown).map((c) => c.id) ?? [];
-  const defaultId = def ?? calendars?.find((c) => c.is_default)?.id ?? "";
 
   const toggle = async (id: string) => {
     const next = shownIds.includes(id) ? shownIds.filter((x) => x !== id) : [...shownIds, id];
     if (!next.length) {
-      toast.error("Keep at least one calendar visible.");
+      toast.error("Keep at least one calendar visible, or switch the account off.");
       return;
     }
     setShown(next);
@@ -267,10 +312,26 @@ function AccountCard({ account, calendars }: { account: CalendarAccount; calenda
     if (!ok) setShown(null);
   };
 
+  const setAccountOn = async (next: boolean) => {
+    if (!next && isDefault) {
+      toast.error("New events go to this account. Pick another default first.");
+      return;
+    }
+    setEnabled(next);
+    const ok = await run(setCalendarsAction(account.id, { enabled: next }), {
+      success: next ? "Account shown" : "Account hidden",
+    });
+    if (!ok) setEnabled(null);
+  };
+
   return (
     <div className="rounded-[16px] bg-gray-50 p-3.5 shadow-ring">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{account.email}</span>
+      <div className="flex items-center gap-2.5">
+        <Switch checked={on} onChange={setAccountOn} label={`Show ${account.email}`} />
+        <span className={`min-w-0 flex-1 truncate text-[14px] font-medium ${on ? "" : "text-ink-3"}`}>{account.email}</span>
+        {isDefault && (
+          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11.5px] font-medium text-accent">Default</span>
+        )}
         {confirm ? (
           <>
             <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>
@@ -291,47 +352,29 @@ function AccountCard({ account, calendars }: { account: CalendarAccount; calenda
       ) : calendars.length === 0 ? (
         <p className="mt-2 text-[13px] text-ink-3">Couldn&apos;t load calendars for this account.</p>
       ) : (
-        <>
-          <ul className="mt-2">
-            {calendars.map((c) => {
-              const on = shownIds.includes(c.id);
-              return (
-                <li key={c.id}>
-                  <label className="flex cursor-pointer items-center gap-2.5 py-1.5">
-                    <input type="checkbox" checked={on} onChange={() => toggle(c.id)} className="sr-only" />
-                    <span
-                      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-white transition"
-                      style={{ background: on ? (c.color ?? "var(--accent)") : "transparent", boxShadow: on ? undefined : "inset 0 0 0 1.5px var(--gray-400)" }}
-                    >
-                      {on && <IconCheck size={12} strokeWidth={3} />}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[14px]">{c.name}</span>
-                    {c.primary && <span className="text-[11.5px] text-ink-3">primary</span>}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-          <label className="mt-2 flex items-center gap-2 text-[13px] text-ink-2">
-            New events go to
-            <select
-              value={defaultId}
-              onChange={async (e) => {
-                const v = e.target.value;
-                setDef(v);
-                const ok = await run(setCalendarsAction(account.id, { default_calendar_id: v }));
-                if (!ok) setDef(null);
-              }}
-              className="h-8 min-w-0 flex-1 appearance-none rounded-[10px] bg-white px-2.5 text-[13px] text-ink shadow-ring outline-none"
-            >
-              {calendars.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </>
+        <ul className={`mt-2 transition-opacity ${on ? "" : "pointer-events-none opacity-40"}`}>
+          {calendars.map((c) => {
+            const shownOn = shownIds.includes(c.id);
+            return (
+              <li key={c.id}>
+                <label className="flex cursor-pointer items-center gap-2.5 py-1.5">
+                  <input type="checkbox" checked={shownOn} onChange={() => toggle(c.id)} className="sr-only" />
+                  <span
+                    className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-white transition"
+                    style={{
+                      background: shownOn ? (c.color ?? "var(--accent)") : "transparent",
+                      boxShadow: shownOn ? undefined : "inset 0 0 0 1.5px var(--gray-400)",
+                    }}
+                  >
+                    {shownOn && <IconCheck size={12} strokeWidth={3} />}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[14px]">{c.name}</span>
+                  {c.primary && <span className="text-[11.5px] text-ink-3">primary</span>}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
