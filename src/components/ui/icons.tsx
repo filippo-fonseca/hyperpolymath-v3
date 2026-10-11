@@ -190,3 +190,13 @@ export const IconGlobe = (p: P) => (
     <path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" />
   </svg>
 );
+export const IconFolder = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3.5 7.5A2.5 2.5 0 016 5h3.6l2 2.2H18a2.5 2.5 0 012.5 2.5v7.8A2.5 2.5 0 0118 20H6a2.5 2.5 0 01-2.5-2.5z" />
+  </svg>
+);
+export const IconDots = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M6 12h.01M12 12h.01M18 12h.01" strokeWidth={2.8} />
+  </svg>
+);

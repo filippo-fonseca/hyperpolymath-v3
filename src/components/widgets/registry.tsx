@@ -14,6 +14,7 @@ import { ActivityView } from "./kiwi/activity-view";
 import { CustomWidget, CustomWidgetView } from "./custom/custom-widget";
 import { CalendarWidget } from "./calendar/calendar-widget";
 import { CalendarView } from "./calendar/calendar-view";
+import { ProjectsWidget } from "./projects/projects-widget";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -29,6 +30,8 @@ export function WidgetBody({ widget, size }: { widget: WidgetRow; size: WidgetSi
       return <KiwiWidget size={size} />;
     case "calendar":
       return <CalendarWidget size={size} />;
+    case "projects":
+      return <ProjectsWidget size={size} widgetId={widget.id} />;
     default:
       return isCustomKind(widget.kind) ? <CustomWidget widget={widget} size={size} /> : null;
   }
