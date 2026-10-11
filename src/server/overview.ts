@@ -6,6 +6,7 @@ import { listCaptures, resurfacingCaptures } from "./captures";
 import { listReminders } from "./reminders";
 import { listWidgets } from "./widgets";
 import { upcomingForOverview } from "./google/calendar";
+import { listAreas } from "./projects";
 import { localDate, zonedParts } from "@/lib/time";
 
 /**
@@ -13,7 +14,7 @@ import { localDate, zonedParts } from "@/lib/time";
  * purpose: ids and the fields a bot needs to act, nothing else.
  */
 export async function getOverview(ctx: Ctx) {
-  const [today, inbox, habits, captures, resurfacing, reminders, widgets, calendar] = await Promise.all([
+  const [today, inbox, habits, captures, resurfacing, reminders, widgets, calendar, areas] = await Promise.all([
     listTasks(ctx, { scope: "today", limit: 50 }),
     listTasks(ctx, { scope: "inbox", limit: 20 }),
     listHabits(ctx),
@@ -22,7 +23,11 @@ export async function getOverview(ctx: Ctx) {
     listReminders(ctx),
     listWidgets(ctx),
     upcomingForOverview(ctx),
+    listAreas(ctx),
   ]);
+  const projectName = new Map(
+    [...areas.areas.flatMap((a) => a.projects), ...areas.unsorted].map((p) => [p.id, p.name]),
+  );
   const date = localDate(ctx.now, ctx.tz);
   const now = zonedParts(ctx.now, ctx.tz);
   const task = (t: (typeof today)[number]) => ({
@@ -32,13 +37,19 @@ export async function getOverview(ctx: Ctx) {
     priority: t.priority,
     due: t.due_date ? `${t.due_date}${t.due_time ? " " + t.due_time.slice(0, 5) : ""}` : null,
     overdue: !!t.due_date && t.due_date < date,
-    list: t.list,
+    project: t.project_id ? (projectName.get(t.project_id) ?? null) : t.list,
     recurring: !!t.recurrence,
   });
   return {
     now: `${now.date} ${now.time}`,
     timezone: ctx.tz,
     calendar_today_and_tomorrow: calendar,
+    areas_and_active_projects: areas.areas.map((a) => ({
+      area: `${a.emoji ? a.emoji + " " : ""}${a.name}`,
+      projects: a.projects
+        .filter((p) => p.status === "active")
+        .map((p) => ({ id: p.id, name: p.name, open_tasks: p.open_tasks })),
+    })),
     tasks_due_today_or_overdue: today.map(task),
     inbox_tasks_without_date: inbox.map(task),
     habits_today: habits
