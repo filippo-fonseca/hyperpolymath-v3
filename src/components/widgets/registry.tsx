@@ -6,6 +6,8 @@ import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { Eyebrow } from "@/components/ui/primitives";
 import { TasksWidget } from "./tasks/tasks-widget";
 import { TasksView } from "./tasks/tasks-view";
+import { HabitsWidget } from "./habits/habits-widget";
+import { HabitsView } from "./habits/habits-view";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -13,6 +15,8 @@ export function WidgetBody({ widget, size }: { widget: WidgetRow; size: WidgetSi
   switch (widget.kind) {
     case "tasks":
       return <TasksWidget size={size} />;
+    case "habits":
+      return <HabitsWidget size={size} />;
     default:
       return <Fallback widget={widget} size={size} />;
   }
@@ -22,6 +26,8 @@ export function WidgetExpanded({ widget }: { widget: WidgetRow }) {
   switch (widget.kind) {
     case "tasks":
       return <TasksView />;
+    case "habits":
+      return <HabitsView />;
     default:
       return <ExpandedHeader eyebrow={widget.kind} title={widget.title} />;
   }
