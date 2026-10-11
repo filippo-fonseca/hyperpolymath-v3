@@ -7,9 +7,11 @@ export function requestNewProject() {
   pending = true;
 }
 
-/** Read and clear the request. */
-export function takeNewProjectRequest() {
-  const was = pending;
+/** Read without clearing (safe in a state initializer that may run twice). */
+export function peekNewProjectRequest() {
+  return pending;
+}
+
+export function clearNewProjectRequest() {
   pending = false;
-  return was;
 }

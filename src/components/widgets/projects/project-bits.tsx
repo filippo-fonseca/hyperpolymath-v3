@@ -13,14 +13,15 @@ const noSubscribe = () => () => {};
 /**
  * Renders a sheet into document.body, so a transformed ancestor (the
  * expanded view's morph) can't trap its fixed positioning. React events
- * still bubble through portals, so taps inside are stopped here and never
- * toggle the row, open the widget, or start a drag they were opened from.
+ * still bubble through portals, so taps and submits inside are stopped here
+ * and never toggle the row, open the widget, start a drag, or submit a form
+ * they were opened from.
  */
 export function Layer({ children }: { children: ReactNode }) {
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   if (!mounted) return null;
   return createPortal(
-    <div className="contents" onClick={stop} onPointerDown={stop} onMouseDown={stop} onTouchStart={stop}>
+    <div className="contents" onClick={stop} onPointerDown={stop} onMouseDown={stop} onTouchStart={stop} onSubmit={stop}>
       {children}
     </div>,
     document.body,
