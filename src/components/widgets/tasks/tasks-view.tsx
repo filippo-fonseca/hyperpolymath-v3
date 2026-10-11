@@ -21,6 +21,8 @@ import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { DueMeta, PriorityDot, QuickAdd } from "./task-bits";
 import { InlineTitle, TaskEditor } from "./task-editor";
 import { sortToday, useTasks } from "./use-tasks";
+import { groupTasks } from "@/lib/projects";
+import { useDashboard } from "@/components/dashboard/context";
 import { ProjectChip, ProjectField } from "../projects/project-bits";
 
 type View = "list" | "board" | "table";
@@ -78,14 +80,21 @@ export function TasksView() {
 
 /* ---------------- List ---------------- */
 
+type GroupBy = "date" | "project" | "area";
+
 function ListView({ ops }: { ops: Ops }) {
   const { open, done, today } = ops;
-  const groups: { title: string; tasks: Task[]; tone?: "danger" }[] = [
-    { title: "Overdue", tasks: sortToday(open.filter((t) => t.due_date && t.due_date < today)), tone: "danger" },
-    { title: "Today", tasks: sortToday(open.filter((t) => t.due_date === today)) },
-    { title: "Upcoming", tasks: sortToday(open.filter((t) => t.due_date && t.due_date > today)) },
-    { title: "No date", tasks: open.filter((t) => !t.due_date).sort((a, b) => b.priority - a.priority) },
-    { title: "Done", tasks: done },
+  const { data } = useDashboard();
+  const [groupBy, setGroupBy] = useState<GroupBy>("date");
+  const byDate: { key: string; title: string; emoji?: string | null; tasks: Task[]; tone?: "danger" }[] = [
+    { key: "overdue", title: "Overdue", tasks: sortToday(open.filter((t) => t.due_date && t.due_date < today)), tone: "danger" },
+    { key: "today", title: "Today", tasks: sortToday(open.filter((t) => t.due_date === today)) },
+    { key: "upcoming", title: "Upcoming", tasks: sortToday(open.filter((t) => t.due_date && t.due_date > today)) },
+    { key: "nodate", title: "No date", tasks: open.filter((t) => !t.due_date).sort((a, b) => b.priority - a.priority) },
+  ];
+  const groups = [
+    ...(groupBy === "date" ? byDate : groupTasks(sortToday(open), data.areas, groupBy)),
+    { key: "done", title: "Done", tasks: done },
   ];
   const [openId, setOpenId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -93,19 +102,33 @@ function ListView({ ops }: { ops: Ops }) {
 
   return (
     <div className="flex flex-col gap-7">
+      <div className="-mb-3 flex items-center justify-end gap-2">
+        <span className="text-[12.5px] font-medium text-gray-500">Group by</span>
+        <Segmented<GroupBy>
+          size="sm"
+          value={groupBy}
+          onChange={setGroupBy}
+          options={[
+            { value: "date", label: "Date" },
+            { value: "project", label: "Project" },
+            { value: "area", label: "Area" },
+          ]}
+        />
+      </div>
       {empty && <div className="py-10 text-center text-[15px] text-ink-3">No open tasks. Add one above.</div>}
       {groups.map((g) => {
         if (!g.tasks.length) return null;
-        const isDone = g.title === "Done";
+        const isDone = g.key === "done";
         return (
-          <section key={g.title}>
+          <section key={g.key}>
             <button
               type="button"
               disabled={!isDone}
               onClick={() => setShowDone((v) => !v)}
-              className="mb-1 flex items-center gap-2 text-[13px] font-semibold"
+              className="mb-1 flex min-w-0 max-w-full items-center gap-2 text-[13px] font-semibold"
             >
-              <span className={g.tone === "danger" ? "text-danger" : "text-gray-500"}>{g.title}</span>
+              {"emoji" in g && g.emoji && <span className="text-[13px] leading-none">{g.emoji}</span>}
+              <span className={`truncate ${"tone" in g && g.tone === "danger" ? "text-danger" : "text-gray-500"}`}>{g.title}</span>
               <span className="font-medium tabular-nums text-ink-3">{g.tasks.length}</span>
               {isDone && (
                 <IconChevronDown size={14} className={`text-ink-3 transition-transform ${showDone ? "rotate-180" : ""}`} />
@@ -119,6 +142,7 @@ function ListView({ ops }: { ops: Ops }) {
                       key={t.id}
                       task={t}
                       ops={ops}
+                      hideProject={groupBy === "project" && !isDone}
                       expanded={openId === t.id}
                       onToggleOpen={() => setOpenId((id) => (id === t.id ? null : t.id))}
                     />
