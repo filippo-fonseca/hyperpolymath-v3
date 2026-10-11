@@ -6,7 +6,7 @@ import { sendMagicLink, type MagicLinkState } from "@/app/actions/auth";
 import { IconArrowRight, IconMail } from "@/components/ui/icons";
 
 const ERRORS: Record<string, string> = {
-  not_allowed: "That account isn't allowed here. This dashboard has a single owner.",
+  not_allowed: "That account can't sign in here.",
   link_invalid: "That sign-in link expired or was already used. Request a fresh one.",
 };
 
@@ -22,19 +22,16 @@ export function LoginForm() {
           <IconMail size={22} />
         </div>
         <h2 className="mt-4 text-[17px] font-semibold">Check your inbox</h2>
-        <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">
-          We sent a sign-in link to <span className="font-medium text-ink">{state.message}</span>. It opens your
-          dashboard in this browser.
-        </p>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{state.message}</p>
       </div>
     );
   }
 
   const notice =
-    state.status === "refused" || state.status === "error"
-      ? { tone: state.status, text: state.message ?? "" }
+    state.status === "error"
+      ? { text: state.message ?? "" }
       : queryError
-        ? { tone: "error" as const, text: ERRORS[queryError] ?? "Something went wrong. Try again." }
+        ? { text: ERRORS[queryError] ?? "Something went wrong. Try again." }
         : null;
 
   return (
@@ -55,9 +52,7 @@ export function LoginForm() {
       {notice && (
         <p
           role="status"
-          className={`rounded-[12px] px-3.5 py-2.5 text-[13.5px] leading-snug ${
-            notice.tone === "refused" ? "bg-gray-100 text-ink-2" : "bg-danger-soft text-[#c4182b]"
-          }`}
+          className="rounded-[12px] bg-danger-soft px-3.5 py-2.5 text-[13.5px] leading-snug text-[#c4182b]"
         >
           {notice.text}
         </p>
