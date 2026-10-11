@@ -4,7 +4,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import type { CalendarEvent } from "@/lib/dashboard-types";
 import { addDays } from "@/lib/time";
 import { dayOfMonth, timeLabel, WEEKDAYS_SHORT } from "@/lib/format";
-import { allDayOn, daySegments, eventTime, layoutDay, type Placed, type Segment } from "./calendar-utils";
+import { allDayOn, daySegments, eventTime, layoutDay, minutesInDay, type Placed, type Segment } from "./calendar-utils";
 
 // Apple / Notion Calendar style time grid: sticky day header with an
 // all-day row, hour gutter on the left, events as tinted rounded blocks.
@@ -16,17 +16,36 @@ const MIN_BLOCK = 20;
 /** Shortest visual length in minutes (task pills are 22px tall). */
 const MIN_SPAN = Math.ceil((24 / HOUR) * 60);
 
-export function WeekGrid({ from, events, tz, today }: { from: string; events: CalendarEvent[]; tz: string; today: string }) {
+export function WeekGrid({
+  from,
+  events,
+  tz,
+  today,
+  nowMs,
+}: {
+  from: string;
+  events: CalendarEvent[];
+  tz: string;
+  today: string;
+  nowMs: number;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const allDay = days.map((d) => allDayOn(events, d, tz));
   const allDayRows = Math.max(0, ...allDay.map((l) => l.length));
+  const nowMin = minutesInDay(new Date(nowMs).toISOString(), tz);
+  const showsToday = days.includes(today);
 
-  // Open on the working day: 7am at the top.
+  // Open on the working day (7am at the top), or on now if it's later than that view reaches.
+  const opened = useRef(false);
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = 7 * HOUR - 6;
-  }, []);
+    if (!el || opened.current) return;
+    opened.current = true;
+    const nowY = (nowMin / 60) * HOUR;
+    const sevenAm = 7 * HOUR - 6;
+    el.scrollTop = showsToday && nowY > sevenAm + el.clientHeight * 0.75 ? nowY - el.clientHeight / 3 : sevenAm;
+  }, [nowMin, showsToday]);
 
   return (
     <div
@@ -71,15 +90,25 @@ export function WeekGrid({ from, events, tz, today }: { from: string; events: Ca
             {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
               <span
                 key={h}
-                className="absolute right-2 -translate-y-1/2 text-[10.5px] font-medium tabular-nums text-gray-500"
+                className={`absolute right-2 -translate-y-1/2 text-[10.5px] font-medium tabular-nums text-gray-500 ${
+                  showsToday && Math.abs(h * 60 - nowMin) < 12 ? "opacity-0" : ""
+                }`}
                 style={{ top: h * HOUR }}
               >
                 {timeLabel(`${String(h).padStart(2, "0")}:00`)}
               </span>
             ))}
+            {showsToday && (
+              <span
+                className="absolute right-1 -translate-y-1/2 rounded-full bg-danger px-1.5 py-px text-[10px] font-semibold tabular-nums text-white"
+                style={{ top: (nowMin / 60) * HOUR }}
+              >
+                {eventTime(new Date(nowMs).toISOString(), tz)}
+              </span>
+            )}
           </div>
           {days.map((d) => (
-            <DayColumn key={d} today={d === today} segments={daySegments(events, d, tz)} tz={tz} />
+            <DayColumn key={d} today={d === today} nowMin={nowMin} segments={daySegments(events, d, tz)} tz={tz} />
           ))}
         </div>
       </div>
@@ -87,7 +116,7 @@ export function WeekGrid({ from, events, tz, today }: { from: string; events: Ca
   );
 }
 
-function DayColumn({ today, segments, tz }: { today: boolean; segments: Segment[]; tz: string }) {
+function DayColumn({ today, nowMin, segments, tz }: { today: boolean; nowMin: number; segments: Segment[]; tz: string }) {
   return (
     <div
       className={`relative w-[var(--col)] shrink-0 border-l border-gray-150 ${today ? "bg-[rgb(16_132_254/0.03)]" : ""}`}
@@ -99,6 +128,13 @@ function DayColumn({ today, segments, tz }: { today: boolean; segments: Segment[
       {layoutDay(segments, MIN_SPAN).map((p) => (
         <EventBlock key={p.e.id} s={p} tz={tz} />
       ))}
+      {today && (
+        <div className="pointer-events-none absolute inset-x-0 z-[5] -translate-y-1/2" style={{ top: (nowMin / 60) * HOUR }} aria-hidden>
+          <div className="relative h-[2px] bg-danger">
+            <span className="absolute -left-[5px] top-1/2 h-[9px] w-[9px] -translate-y-1/2 rounded-full bg-danger" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -58,7 +58,7 @@ export function CalendarView() {
 }
 
 function CalendarViewInner() {
-  const { data, calendar, run } = useDashboard();
+  const { data, calendar, run, nowMs } = useDashboard();
   const cal: CalendarData = use(calendar);
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(data.today);
@@ -90,6 +90,19 @@ function CalendarViewInner() {
       setCache((c) => (c.cal === cal ? { cal, ranges: { ...c.ranges, [key]: events } } : { cal, ranges: { [key]: events } }));
     });
   }, [covered, from, to, key, cal, run]);
+
+  // Keyboard: left / right step through ranges, T jumps to today.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (e.key === "ArrowLeft") setAnchor((a) => step(view, a, -1));
+      else if (e.key === "ArrowRight") setAnchor((a) => step(view, a, 1));
+      else if (e.key === "t" || e.key === "T") setAnchor(data.today);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view, data.today]);
 
   // Everything known so far, newest fetch winning. Shown while another range loads.
   const known = useMemo(() => {
@@ -176,7 +189,7 @@ function CalendarViewInner() {
       {empty ? (
         <div className="skeleton h-32 rounded-[18px]" />
       ) : view === "week" ? (
-        <WeekGrid from={from} events={events} tz={data.tz} today={data.today} />
+        <WeekGrid from={from} events={events} tz={data.tz} today={data.today} nowMs={nowMs} />
       ) : (
         <AgendaList events={events} tz={data.tz} today={data.today} onHide={hide} onUnhide={unhide} />
       )}
