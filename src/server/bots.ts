@@ -13,7 +13,9 @@ function pick<T>(arr: T[], seed: string): T {
 
 /**
  * Resolve a bot by name for MCP attribution, registering it on first sight.
- * The first bot ever seen becomes the coordinator unless one exists.
+ * A bot named Kiwi becomes the coordinator (if there isn't one yet); every
+ * other new bot is filed under the coordinator. Archived bots come back when
+ * they act again.
  */
 export async function resolveBotActor(db: DB, userId: string, rawName: string): Promise<Actor> {
   const name = rawName.trim().slice(0, 60);
@@ -25,7 +27,7 @@ export async function resolveBotActor(db: DB, userId: string, rawName: string): 
     .ilike("name", name.replace(/[%_]/g, "\\$&"))
     .maybeSingle();
   if (existing) {
-    await db.from("bots").update({ last_seen_at: new Date().toISOString() }).eq("id", existing.id);
+    await db.from("bots").update({ last_seen_at: new Date().toISOString(), archived_at: null }).eq("id", existing.id);
     return { kind: "bot", name: existing.name, botId: existing.id };
   }
   const { count } = await db
@@ -33,7 +35,7 @@ export async function resolveBotActor(db: DB, userId: string, rawName: string): 
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("is_coordinator", true);
-  const coordinator = !count;
+  const coordinator = !count && /^kiwi$/i.test(name);
   const { data: kiwi } = coordinator
     ? { data: null }
     : await db.from("bots").select("id").eq("user_id", userId).eq("is_coordinator", true).limit(1).maybeSingle();
@@ -58,7 +60,13 @@ export async function resolveBotActor(db: DB, userId: string, rawName: string): 
 
 export async function listBots(ctx: Ctx) {
   return must(
-    await ctx.db.from("bots").select().eq("user_id", ctx.userId).order("is_coordinator", { ascending: false }).order("name"),
+    await ctx.db
+      .from("bots")
+      .select()
+      .eq("user_id", ctx.userId)
+      .is("archived_at", null)
+      .order("is_coordinator", { ascending: false })
+      .order("name"),
     "list bots",
   );
 }
@@ -107,4 +115,26 @@ export async function updateBot(
     summary: `Updated teammate ${after.name}`,
   });
   return after;
+}
+
+/** Retire a bot from the teammates view. Its history stays; acting again restores it. */
+export async function archiveBot(ctx: Ctx, name: string) {
+  const before = must(
+    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", name).is("archived_at", null).maybeSingle(),
+    `bot "${name}"`,
+  );
+  if (before.is_coordinator) throw new AppError("The coordinator can't be archived.");
+  const after = must(
+    await ctx.db.from("bots").update({ archived_at: ctx.now.toISOString() }).eq("id", before.id).select().single(),
+    "archive bot",
+  );
+  await logAction(ctx, {
+    tool: "archive_bot",
+    entityType: "bot",
+    entityId: before.id,
+    before,
+    after,
+    summary: `Archived teammate ${before.name}`,
+  });
+  return { archived: before.name };
 }

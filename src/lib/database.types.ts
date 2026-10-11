@@ -79,6 +79,7 @@ export type Database = {
       }
       bots: {
         Row: {
+          archived_at: string | null
           avatar_color: string
           avatar_shape: string
           created_at: string
@@ -93,6 +94,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           avatar_color?: string
           avatar_shape?: string
           created_at?: string
@@ -107,6 +109,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           avatar_color?: string
           avatar_shape?: string
           created_at?: string
