@@ -11,6 +11,7 @@ import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from
 import { createWidget, listWidgets, publishWidget, removeWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
+import { createArea, createProject, deleteProject, getProject, listAreas, updateArea, updateProject } from "./projects";
 import { finishRun, listRoutines, registerRoutine, removeRoutine, startRun, updateRoutine } from "./routines";
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
@@ -28,6 +29,7 @@ Rules:
 - Grok Bot routines are for WORK a bot does on a schedule (scan Slack, write a digest, check a website, draft emails). They stay in Grok Bot and may read or write Hyperpolymath through these tools. If a routine only exists to remind the owner of something, migrate it to set_reminder and offer to delete the routine.
 - Register every routine you run with register_routine (name, schedule in words, what it does, its widget if it publishes one) so it shows in the app. At the START of every run call start_routine_run: if it returns enabled=false the owner paused it in the app, so stop immediately. At the END call finish_routine_run with status and a one-line summary. When you change or delete a routine in Grok Bot, mirror it with update_routine / remove_routine.
 - Quick thoughts, links and ideas without a clear action go to create_capture, not tasks.
+- Organise work by life area and project (list_areas). File tasks and captures under the right project when it is obvious; ask when it is not. Keep project status current as things move on.
 - Dates: use the "now" and timezone from get_overview, never your own clock. After creating or moving something, tell the owner the date in words ("for tomorrow, Mon Oct 12") so a wrong guess is caught. If they gave no date, leave due_date empty (it lands in the inbox) rather than guessing.
 - Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
 - Widgets: only create or publish a widget when the owner asked for that routine to appear on the dashboard. Publish the full current content each run (it replaces the previous version, history is kept).
@@ -43,7 +45,7 @@ const taskFields = {
   notes: z.string().max(10000).nullable().optional(),
   status: z.enum(["todo", "doing", "done"]).optional(),
   priority: z.number().int().min(0).max(3).optional().describe("0 none, 1 low, 2 medium, 3 high"),
-  list: z.string().max(80).nullable().optional().describe("Project or list label, e.g. School"),
+  project: z.string().max(120).nullable().optional().describe("Project name or id (see list_areas); null clears"),
   due_date: date.nullable().optional(),
   due_time: time.nullable().optional(),
   recurrence: recurrenceSchema.nullable().optional().describe("Repeat rule. Completing rolls the due date forward."),
@@ -127,7 +129,8 @@ export function buildMcpServer(userId: string) {
     "List tasks. scope: today (due today or overdue), overdue, upcoming (next 14 days), inbox (no date), open, done, all.",
     {
       scope: z.enum(["today", "overdue", "upcoming", "inbox", "open", "done", "all"]).optional(),
-      list: z.string().optional(),
+      project: z.string().max(120).optional().describe("Project name or id"),
+      area: z.string().max(80).optional().describe("Area name or id: tasks in any of its projects"),
       query: z.string().max(200).optional().describe("Case-insensitive title search"),
       limit: z.number().int().min(1).max(200).optional(),
     },
@@ -188,13 +191,13 @@ export function buildMcpServer(userId: string) {
   tool(
     "create_habit",
     "Create a habit.",
-    { name: z.string().min(1).max(120), icon: z.string().max(8).optional().describe("An emoji"), days_of_week: z.array(z.number().int().min(0).max(6)).min(1).optional().describe("0 = Sunday") },
+    { name: z.string().min(1).max(120), icon: z.string().max(8).optional().describe("An emoji"), days_of_week: z.array(z.number().int().min(0).max(6)).min(1).optional().describe("0 = Sunday"), area: z.string().max(80).optional() },
     (ctx, a) => createHabit(ctx, a),
   );
   tool(
     "update_habit",
     "Rename, reschedule or archive a habit.",
-    { habit: z.string(), name: z.string().max(120).optional(), icon: z.string().max(8).nullable().optional(), days_of_week: z.array(z.number().int().min(0).max(6)).min(1).optional(), archived: z.boolean().optional() },
+    { habit: z.string(), name: z.string().max(120).optional(), icon: z.string().max(8).nullable().optional(), days_of_week: z.array(z.number().int().min(0).max(6)).min(1).optional(), archived: z.boolean().optional(), area: z.string().max(80).nullable().optional() },
     (ctx, { habit, ...patch }) => updateHabit(ctx, habit, patch),
   );
 
@@ -202,7 +205,7 @@ export function buildMcpServer(userId: string) {
   tool(
     "create_capture",
     "Save a quick thought, link or idea. resurface_at brings it back on a date.",
-    { content: z.string().min(1).max(20000), resurface_at: date.optional() },
+    { content: z.string().min(1).max(20000), resurface_at: date.optional(), project: z.string().max(120).optional() },
     (ctx, a) => createCapture(ctx, a),
   );
   tool(
@@ -215,15 +218,61 @@ export function buildMcpServer(userId: string) {
   tool(
     "update_capture",
     "Edit, archive or reschedule resurfacing of a capture.",
-    { id: uuid, content: z.string().min(1).max(20000).optional(), resurface_at: date.nullable().optional(), archived: z.boolean().optional() },
+    { id: uuid, content: z.string().min(1).max(20000).optional(), resurface_at: date.nullable().optional(), archived: z.boolean().optional(), project: z.string().max(120).nullable().optional() },
     (ctx, { id, ...patch }) => updateCapture(ctx, id, patch),
   );
   tool(
     "convert_capture_to_task",
     "Turn a capture into a task (archives the capture).",
-    { id: uuid, title: z.string().max(500).optional(), due_date: date.optional(), priority: z.number().int().min(0).max(3).optional(), list: z.string().max(80).optional() },
+    { id: uuid, title: z.string().max(500).optional(), due_date: date.optional(), priority: z.number().int().min(0).max(3).optional(), project: z.string().max(120).optional() },
     (ctx, { id, ...task }) => convertCaptureToTask(ctx, id, task),
   );
+
+  // Areas and projects -------------------------------------------------------
+  const projectFields = {
+    area: z.string().max(80).nullable().optional().describe("Area name or id"),
+    description: z.string().max(4000).nullable().optional(),
+    emoji: z.string().max(8).nullable().optional(),
+    status: z.enum(["active", "paused", "done"]).optional(),
+    start_date: date.nullable().optional(),
+    end_date: date.nullable().optional(),
+    is_class: z.boolean().optional(),
+    course_code: z.string().max(40).nullable().optional(),
+    term: z.string().max(40).nullable().optional().describe('e.g. "Fall 2026"'),
+  };
+  tool(
+    "list_areas",
+    "Life areas with their projects (status, open and done task counts). Use the names or ids with the task and capture tools.",
+    { include_archived: z.boolean().optional() },
+    (ctx, a) => listAreas(ctx, { includeArchived: a.include_archived }),
+    { readOnly: true },
+  );
+  tool(
+    "create_area",
+    "Create a life area (e.g. School, Health, Work, Relationships).",
+    { name: z.string().min(1).max(80), emoji: z.string().max(8).optional(), color: z.string().max(20).optional() },
+    (ctx, a) => createArea(ctx, a),
+  );
+  tool(
+    "update_area",
+    "Rename, re-emoji or archive an area.",
+    { area: z.string().min(1).max(80), name: z.string().max(80).optional(), emoji: z.string().max(8).nullable().optional(), color: z.string().max(20).nullable().optional(), archived: z.boolean().optional() },
+    (ctx, { area, ...patch }) => updateArea(ctx, area, patch),
+  );
+  tool("get_project", "A project with its tasks and recent captures.", { project: z.string().min(1).max(120) }, (ctx, a) => getProject(ctx, a.project), { readOnly: true });
+  tool(
+    "create_project",
+    "Create a project inside an area. Classes are projects with is_class, course_code and term.",
+    { name: z.string().min(1).max(120), ...projectFields },
+    (ctx, a) => createProject(ctx, a),
+  );
+  tool(
+    "update_project",
+    "Edit a project: status (active, paused, done), dates, area, description, or archive it. When a project moves on, update its status.",
+    { project: z.string().min(1).max(120), name: z.string().max(120).optional(), archived: z.boolean().optional(), ...projectFields },
+    (ctx, { project, ...patch }) => updateProject(ctx, project, patch),
+  );
+  tool("delete_project", "Delete a project (tasks stay, unlinked). Ask first; prefer archiving.", { project: z.string().min(1).max(120) }, (ctx, a) => deleteProject(ctx, a.project), { destructive: true });
 
   // Calendar -----------------------------------------------------------------
   const eventFields = {
