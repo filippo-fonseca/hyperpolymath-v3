@@ -9,7 +9,7 @@ How to run your life through Grok Bot with Hyperpolymath as the source of truth.
 | **Tasks, reminders, habits, captures, calendar** | Hyperpolymath | The data. One database, shown on the dashboard, edited by you or any bot. |
 | **Kiwi** | Grok Bot | Your coordinator. Talks to you, reads and writes Hyperpolymath, creates and manages other bots. |
 | **Sub-bots** (Slack Roundup, School, Social, ...) | Grok Bot | Specialists Kiwi creates. They use the same Hyperpolymath tools and report under Kiwi. |
-| **Routines** | Grok Bot | Scheduled *work* a bot does: scan Slack nightly, check Canvas, write a digest, log into a site. |
+| **Routines** | Run in Grok Bot, registered in Hyperpolymath | Scheduled *work* a bot does: scan Slack nightly, check Canvas, write a digest, log into a site. Every routine is listed on the Teammates page with an on/off switch. |
 | **Widgets** | Hyperpolymath | Optional display surfaces. A routine publishes to one only if you asked for it on the dashboard. |
 | **Activity log** | Hyperpolymath | Every change any bot makes, with a Revert button. |
 
@@ -23,6 +23,12 @@ How to run your life through Grok Bot with Hyperpolymath as the source of truth.
 Why: reminders in the app are visible, editable and revertible, survive bot memory loss, and stop automatically when a task is done. A Grok Bot routine that only exists to remind you is invisible to the dashboard and keeps nagging after you've finished the thing.
 
 The only reminder-shaped routine in Grok Bot is **Reminder relay** (the webhook one). Kiwi should not create others.
+
+## Routines are visible and switchable in the app
+
+Grok Bot has no API for listing routines, so bots register them with Hyperpolymath themselves (`register_routine`: name, schedule in words, what it does, which widget it feeds). Every run starts with `start_routine_run` and ends with `finish_routine_run`, so the Teammates page shows each bot, its routines, when they last ran and how it went.
+
+The switch next to a routine in the app really pauses it: at the start of each run the bot checks in, sees it's off, and stops without doing the work. Flip it back on and the next run goes ahead. Deleting a routine for good still happens in Grok Bot (ask Kiwi), and Kiwi mirrors it with `remove_routine`.
 
 ## How you talk to it
 
@@ -49,7 +55,7 @@ You can always do the same things by hand in the app. Kiwi always reads fresh st
 
 Once the MCP is connected and the Reminder relay is set up, send Kiwi something like:
 
-> Let's move everything into Hyperpolymath. (1) Go through what you and the other bots are tracking for me and backlog every pending to-do as a task in Hyperpolymath with the right due date, time, priority and list. (2) For every reminder you or the other bots set up as a Grok Bot routine, recreate it with set_reminder (attached to its task where there is one, keeping the same schedule and end condition), then list those routines and ask me before deleting them. (3) Leave routines that do actual work running, but call update_bot for every bot so they all show up in Hyperpolymath under you with a role, and tell me which routines could be widgets. (4) Tell me anything the system wouldn't let you do.
+> Let's move everything into Hyperpolymath. (1) Go through what you and the other bots are tracking for me and backlog every pending to-do as a task in Hyperpolymath with the right due date, time, priority and list. (2) For every reminder you or the other bots set up as a Grok Bot routine, recreate it with set_reminder (attached to its task where there is one, keeping the same schedule and end condition), then list those routines and ask me before deleting them. (3) Leave routines that do actual work running, but call update_bot for every bot so they all show up in Hyperpolymath under you with a role, register every remaining routine with register_routine (and tell each bot to call start_routine_run / finish_routine_run in its routines from now on), and tell me which routines could be widgets. (4) Tell me anything the system wouldn't let you do.
 
 Kiwi will ask before deleting anything. Check the Activity view afterwards; anything wrong is one Revert away.
 
