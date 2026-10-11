@@ -7,6 +7,7 @@ How to run your life through Grok Bot with Hyperpolymath as the source of truth.
 | Piece | Lives in | What it is |
 |---|---|---|
 | **Tasks, reminders, habits, captures, calendar** | Hyperpolymath | The data. One database, shown on the dashboard, edited by you or any bot. |
+| **Life areas and projects** | Hyperpolymath | How the data is organised, like v2: areas (School, Health, Work...) hold projects (and classes); tasks and captures belong to a project, habits to an area. |
 | **Kiwi** | Grok Bot | Your coordinator. Talks to you, reads and writes Hyperpolymath, creates and manages other bots. |
 | **Sub-bots** (Slack Roundup, School, Social, ...) | Grok Bot | Specialists Kiwi creates. They use the same Hyperpolymath tools and report under Kiwi. |
 | **Routines** | Run in Grok Bot, registered in Hyperpolymath | Scheduled *work* a bot does: scan Slack nightly, check Canvas, write a digest, log into a site. Every routine is listed on the Teammates page with an on/off switch. |
@@ -42,6 +43,8 @@ Just talk normally to Kiwi. Some patterns:
 | "Press me every day at 10am until the resume is done" | A task plus a daily 10:00 reminder, until done. |
 | "Remind me Oct 21 to 26 at 10:30 to work on the cardio tool" | A task plus a daily 10:30 reminder, until Oct 26. |
 | "Idea: heart tissue video hook" | A capture (quick thought), not a task. |
+| "Start a project 'Rover outreach' under Rover, due end of Nov" | A project in that area with an end date. Tasks you mention for it get filed there. |
+| "Machine Elements is done for the semester" | The project's status becomes done; it moves to the quiet section. |
 | "What's my day look like?" | Kiwi calls `get_overview`: calendar, due tasks, habits, reminders. |
 | "Move my 3pm to 4" / "Add dentist Tue 2pm" | Calendar changes through Hyperpolymath, so they're logged and revertible. |
 | "Did my reading today" | Logs the habit. |
@@ -55,7 +58,7 @@ You can always do the same things by hand in the app. Kiwi always reads fresh st
 
 Once the MCP is connected and the Reminder relay is set up, send Kiwi something like:
 
-> Let's move everything into Hyperpolymath. (1) Go through what you and the other bots are tracking for me and backlog every pending to-do as a task in Hyperpolymath with the right due date, time, priority and list. (2) For every reminder you or the other bots set up as a Grok Bot routine, recreate it with set_reminder (attached to its task where there is one, keeping the same schedule and end condition), then list those routines and ask me before deleting them. (3) Leave routines that do actual work running, but call update_bot for every bot so they all show up in Hyperpolymath under you with a role, register every remaining routine with register_routine (and tell each bot to call start_routine_run / finish_routine_run in its routines from now on), and tell me which routines could be widgets. (4) Tell me anything the system wouldn't let you do.
+> Let's move everything into Hyperpolymath. (1) Set up my life areas and current projects (including classes) in Hyperpolymath, then go through what you and the other bots are tracking for me and backlog every pending to-do as a task with the right due date, time, priority and project. (2) For every reminder you or the other bots set up as a Grok Bot routine, recreate it with set_reminder (attached to its task where there is one, keeping the same schedule and end condition), then list those routines and ask me before deleting them. (3) Leave routines that do actual work running, but call update_bot for every bot so they all show up in Hyperpolymath under you with a role, register every remaining routine with register_routine (and tell each bot to call start_routine_run / finish_routine_run in its routines from now on), and tell me which routines could be widgets. (4) Tell me anything the system wouldn't let you do.
 
 Kiwi will ask before deleting anything. Check the Activity view afterwards; anything wrong is one Revert away.
 
