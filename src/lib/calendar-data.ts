@@ -27,6 +27,8 @@ async function loadGoogle(ctx: Ctx, from: string, to: string): Promise<Omit<Cale
       email: a.email,
       calendar_ids: a.calendar_ids,
       default_calendar_id: a.default_calendar_id,
+      enabled: a.enabled,
+      is_default: a.is_default,
     }));
     if (!accounts.length) return { configured, accounts: [], events: [], error: null };
     try {

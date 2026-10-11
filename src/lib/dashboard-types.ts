@@ -40,7 +40,14 @@ export type DashboardData = {
   realtime: { url: string; key: string } | null;
 };
 
-export type CalendarAccount = { id: string; email: string; calendar_ids: string[]; default_calendar_id: string };
+export type CalendarAccount = {
+  id: string;
+  email: string;
+  calendar_ids: string[];
+  default_calendar_id: string;
+  enabled: boolean;
+  is_default: boolean;
+};
 
 export type CalendarData = {
   configured: boolean;
