@@ -11,16 +11,20 @@ type DueRow = Row<"reminders"> & { task: { title: string; status: string; delete
 
 export type TickResult = { users: number; sent: number; skipped: number; failed: number; errors: string[] };
 
-export async function runTick(now = new Date(), deliver = deliverToKiwi): Promise<TickResult> {
+export async function runTick(
+  now = new Date(),
+  deliver = deliverToKiwi,
+  opts: { userId?: string } = {},
+): Promise<TickResult> {
   const db = adminDb();
   const result: TickResult = { users: 0, sent: 0, skipped: 0, failed: 0, errors: [] };
-  const { data, error } = await db
+  let q = db
     .from("reminders")
     .select("*, task:tasks(title, status, deleted_at)")
     .eq("active", true)
-    .lte("next_fire_at", now.toISOString())
-    .order("next_fire_at")
-    .limit(200);
+    .lte("next_fire_at", now.toISOString());
+  if (opts.userId) q = q.eq("user_id", opts.userId);
+  const { data, error } = await q.order("next_fire_at").limit(200);
   if (error) throw new Error(`tick query: ${error.message}`);
   const due = (data ?? []) as DueRow[];
 
