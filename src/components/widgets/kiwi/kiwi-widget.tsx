@@ -4,7 +4,7 @@ import type { WidgetSize } from "@/lib/widgets";
 import { localDate } from "@/lib/time";
 import { relativeTime } from "@/lib/format";
 import { useFitCount } from "@/components/ui/primitives";
-import { KiwiMark } from "@/components/ui/brand";
+import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { useDashboard } from "@/components/dashboard/context";
 import { ActorAvatar, botStatus, coordinatorOf, StatusDot } from "./actors";
 
@@ -22,7 +22,7 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
 
   const header = (
     <div className="flex items-center gap-3">
-      <KiwiMark size={size === "s" ? 34 : 30} className="shrink-0 text-ink" />
+      <KiwiBlob size={size === "s" ? 38 : 34} boinkKey={data.actions[0]?.id} />
       <div className="min-w-0">
         <div className="truncate text-[15px] font-semibold leading-tight">{name}</div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-gray-500">

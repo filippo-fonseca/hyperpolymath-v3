@@ -1,7 +1,7 @@
-import { KiwiMark } from "./brand";
+import { KiwiBlob } from "./kiwi-blob";
 
 // Shape avatars with two dot eyes, in the spirit of Grok Bot's bot faces.
-// Kiwi (the coordinator) always uses the kiwi bird mark instead.
+// Kiwi (the coordinator) is the kiwi blob instead.
 
 export const AVATAR_COLORS: Record<string, string> = {
   blue: "#1084fe",
@@ -49,17 +49,7 @@ export function isKiwi(bot: BotLike | null | undefined) {
 }
 
 export function BotAvatar({ bot, size = 24, className = "" }: { bot: BotLike; size?: number; className?: string }) {
-  if (isKiwi(bot)) {
-    return (
-      <span
-        className={`inline-flex shrink-0 items-center justify-center text-ink ${className}`}
-        style={{ width: size, height: size }}
-        title={bot.name}
-      >
-        <KiwiMark size={Math.round(size * 0.92)} />
-      </span>
-    );
-  }
+  if (isKiwi(bot)) return <KiwiBlob size={size} className={className} title={bot.name} interactive={false} />;
   const shape = SHAPES[bot.avatar_shape ?? ""] ?? SHAPES.blob;
   const color = AVATAR_COLORS[bot.avatar_color ?? ""] ?? AVATAR_COLORS.blue;
   const [lx, rx, ey] = shape.eyes;
