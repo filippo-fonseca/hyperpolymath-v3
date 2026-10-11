@@ -189,6 +189,7 @@ function ProjectPage({ entry, onClose }: { entry: ProjectEntry; onClose: () => v
                   key={t.id}
                   task={t}
                   ops={ops}
+                  hideProject
                   expanded={openId === t.id}
                   onToggleOpen={() => setOpenId((id) => (id === t.id ? null : t.id))}
                 />
@@ -212,7 +213,8 @@ function ProjectPage({ entry, onClose }: { entry: ProjectEntry; onClose: () => v
                     key={t.id}
                     task={t}
                     ops={ops}
-                      expanded={openId === t.id}
+                    hideProject
+                    expanded={openId === t.id}
                     onToggleOpen={() => setOpenId((id) => (id === t.id ? null : t.id))}
                   />
                 ))}

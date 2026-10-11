@@ -21,6 +21,7 @@ import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { DueMeta, PriorityDot, QuickAdd } from "./task-bits";
 import { InlineTitle, TaskEditor } from "./task-editor";
 import { sortToday, useTasks } from "./use-tasks";
+import { ProjectChip, ProjectField } from "../projects/project-bits";
 
 type View = "list" | "board" | "table";
 type Ops = ReturnType<typeof useTasks>;
@@ -132,7 +133,20 @@ function ListView({ ops }: { ops: Ops }) {
   );
 }
 
-export function ListRow({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops; expanded: boolean; onToggleOpen: () => void }) {
+export function ListRow({
+  task,
+  ops,
+  expanded,
+  onToggleOpen,
+  hideProject = false,
+}: {
+  task: Task;
+  ops: Ops;
+  expanded: boolean;
+  onToggleOpen: () => void;
+  /** On a project page every row is that project's, so skip the chip. */
+  hideProject?: boolean;
+}) {
   const done = ops.isDone(task);
   return (
     <motion.li
@@ -146,7 +160,7 @@ export function ListRow({ task, ops, expanded, onToggleOpen }: { task: Task; ops
         <Checkbox checked={done} onToggle={() => ops.toggle(task)} label={`Complete ${task.title}`} />
         <InlineTitle task={task} ops={ops} done={done} />
         <PriorityDot p={task.priority} />
-        {task.list && <span className="hidden shrink-0 text-[12.5px] text-gray-500 sm:inline">{task.list}</span>}
+        {!hideProject && <ProjectChip projectId={task.project_id} compact />}
         <DueMeta task={task} today={ops.today} />
         <IconButton
           label={expanded ? "Collapse" : "Details"}
@@ -263,10 +277,10 @@ function BoardCard({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops
       <div className={`text-[14px] font-medium leading-snug ${task.status === "done" ? "text-ink-3 line-through" : ""}`}>
         {task.title}
       </div>
-      {(task.due_date || task.priority > 0 || task.list) && (
-        <div className="mt-1.5 flex items-center gap-2">
+      {(task.due_date || task.priority > 0 || task.project_id) && (
+        <div className="mt-1.5 flex min-w-0 items-center gap-2">
           <PriorityDot p={task.priority} />
-          {task.list && <span className="text-[12px] text-gray-500">{task.list}</span>}
+          <ProjectChip projectId={task.project_id} />
           <span className="ml-auto">
             <DueMeta task={task} today={ops.today} showToday />
           </span>
@@ -288,14 +302,14 @@ function TableView({ ops }: { ops: Ops }) {
   const cell = "h-9 rounded-[8px] bg-transparent px-2 text-[14px] outline-none transition hover:bg-gray-100 focus:bg-gray-100";
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left">
+      <table className="w-full min-w-[690px] border-separate border-spacing-0 text-left">
         <thead>
           <tr className="text-[12px] font-semibold text-gray-500">
             <th className="w-8 pb-2" />
             <th className="pb-2 pl-2 font-semibold">Title</th>
             <th className="w-[150px] pb-2 pl-2 font-semibold">Due</th>
             <th className="w-[110px] pb-2 pl-2 font-semibold">Priority</th>
-            <th className="w-[120px] pb-2 pl-2 font-semibold">List</th>
+            <th className="w-[170px] pb-2 pl-2 font-semibold">Project</th>
             <th className="w-[100px] pb-2 pl-2 font-semibold">Status</th>
             <th className="w-9 pb-2" />
           </tr>
@@ -335,7 +349,12 @@ function TableView({ ops }: { ops: Ops }) {
                 </select>
               </td>
               <td className="py-1">
-                <ListCell task={t} ops={ops} className={`${cell} w-full`} />
+                <ProjectField
+                  value={t.project_id}
+                  placeholder="None"
+                  onChange={(project) => ops.update(t, { project })}
+                  className={`${cell} flex w-full items-center`}
+                />
               </td>
               <td className="py-1">
                 <select
@@ -360,25 +379,5 @@ function TableView({ ops }: { ops: Ops }) {
       </table>
       {rows.length === 0 && <div className="py-10 text-center text-[15px] text-ink-3">No tasks yet.</div>}
     </div>
-  );
-}
-
-function ListCell({ task, ops, className }: { task: Task; ops: Ops; className: string }) {
-  const [v, setV] = useState(task.list ?? "");
-  const [prev, setPrev] = useState(task.list);
-  if (prev !== task.list) {
-    setPrev(task.list);
-    setV(task.list ?? "");
-  }
-  return (
-    <input
-      value={v}
-      placeholder="None"
-      aria-label="List"
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => v !== (task.list ?? "") && ops.update(task, { list: v || null })}
-      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className={`${className} placeholder:text-ink-3`}
-    />
   );
 }

@@ -59,7 +59,10 @@ export function useTasks() {
 
   const update = useCallback(
     async (t: Task, input: TaskInput) => {
-      setPatches((p) => ({ ...p, [t.id]: { ...p[t.id], ...(input as Partial<Task>) } }));
+      // `project` is an id in the UI; show it as the row's project_id right away.
+      const { project, ...rest } = input;
+      const patch: Partial<Task> = { ...(rest as Partial<Task>), ...(project !== undefined ? { project_id: project } : {}) };
+      setPatches((p) => ({ ...p, [t.id]: { ...p[t.id], ...patch } }));
       const res = await run(updateTaskAction(t.id, input));
       if (!res) {
         setPatches((p) => {

@@ -6,14 +6,14 @@ import { PRIORITY_LABELS } from "@/lib/format";
 import { Button, Segmented, fieldClass } from "@/components/ui/primitives";
 import { IconBell, IconTrash } from "@/components/ui/icons";
 import { ReminderForm, TaskReminders } from "./reminder-form";
+import { ProjectField } from "../projects/project-bits";
 import type { useTasks } from "./use-tasks";
 
 type Ops = ReturnType<typeof useTasks>;
 
-/** Inline editor: notes, due date and time, priority, list, reminders, delete. */
+/** Inline editor: notes, due date and time, project, priority, reminders, delete. */
 export function TaskEditor({ task, ops }: { task: Task; ops: Ops }) {
   const [notes, setNotes] = useState(task.notes ?? "");
-  const [list, setList] = useState(task.list ?? "");
   const [reminding, setReminding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -42,13 +42,10 @@ export function TaskEditor({ task, ops }: { task: Task; ops: Ops }) {
           onChange={(e) => ops.update(task, { due_time: e.target.value || null })}
           className={`${fieldClass} h-9 w-[112px]`}
         />
-        <input
-          value={list}
-          onChange={(e) => setList(e.target.value)}
-          onBlur={() => list !== (task.list ?? "") && ops.update(task, { list: list || null })}
-          placeholder="List"
-          aria-label="List"
-          className={`${fieldClass} h-9 w-[130px] max-sm:w-full`}
+        <ProjectField
+          value={task.project_id}
+          onChange={(project) => ops.update(task, { project })}
+          className={`${fieldClass} h-9 w-[180px] max-sm:w-full`}
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
