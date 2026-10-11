@@ -76,7 +76,7 @@ export async function connectAccount(db: DB, userId: string, code: string, redir
   const refresh = t.refresh_token ? encrypt(t.refresh_token) : existing?.refresh_token_enc;
   if (!refresh) throw new AppError("Google didn't return a refresh token. Remove the app's access in your Google account and connect again.");
 
-  return must(
+  const saved = must(
     await db
       .from("google_accounts")
       .upsert(
@@ -93,6 +93,14 @@ export async function connectAccount(db: DB, userId: string, code: string, redir
       .single(),
     "save google account",
   );
+  // The first connected account becomes where new events go.
+  const { count } = await db
+    .from("google_accounts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_default", true);
+  if (!count) await db.from("google_accounts").update({ is_default: true }).eq("id", saved.id);
+  return saved;
 }
 
 /** A valid access token for the account, refreshing it if needed. */
@@ -125,7 +133,15 @@ export async function accessToken(db: DB, account: GoogleAccount): Promise<strin
 }
 
 export async function listAccounts(db: DB, userId: string): Promise<GoogleAccount[]> {
-  return must(await db.from("google_accounts").select().eq("user_id", userId).order("created_at"), "google accounts");
+  return must(
+    await db
+      .from("google_accounts")
+      .select()
+      .eq("user_id", userId)
+      .order("is_default", { ascending: false })
+      .order("created_at"),
+    "google accounts",
+  );
 }
 
 export async function disconnectAccount(db: DB, userId: string, accountId: string) {
@@ -138,13 +154,42 @@ export async function disconnectAccount(db: DB, userId: string, accountId: strin
     });
   } catch {}
   await db.from("google_accounts").delete().eq("id", accountId);
+  if (data.is_default) {
+    // Hand the default to the next account, if any.
+    const { data: next } = await db
+      .from("google_accounts")
+      .select("id")
+      .eq("user_id", userId)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    if (next) await db.from("google_accounts").update({ is_default: true }).eq("id", next.id);
+  }
 }
 
 export async function setCalendars(
   db: DB,
   userId: string,
   accountId: string,
-  patch: { calendar_ids?: string[]; default_calendar_id?: string },
+  patch: { calendar_ids?: string[]; default_calendar_id?: string; enabled?: boolean },
 ) {
   await db.from("google_accounts").update(patch).eq("id", accountId).eq("user_id", userId);
+}
+
+/** Make one account's calendar the place new events go (across all accounts). */
+export async function setDefaultTarget(db: DB, userId: string, accountId: string, calendarId: string) {
+  const { data: acct } = await db
+    .from("google_accounts")
+    .select("id")
+    .eq("id", accountId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!acct) throw new AppError("That Google account isn't connected.", "not_found");
+  // Clear first: a partial unique index allows one default per user.
+  await db.from("google_accounts").update({ is_default: false }).eq("user_id", userId).neq("id", accountId);
+  await db
+    .from("google_accounts")
+    .update({ is_default: true, enabled: true, default_calendar_id: calendarId })
+    .eq("id", accountId)
+    .eq("user_id", userId);
 }

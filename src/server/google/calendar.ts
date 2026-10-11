@@ -46,7 +46,10 @@ export type CalendarInfo = {
   name: string;
   primary: boolean;
   shown: boolean;
+  /** Where new events go: the default account's default calendar. */
   is_default: boolean;
+  account_enabled: boolean;
+  account_is_default: boolean;
   color: string | null;
 };
 
@@ -132,7 +135,10 @@ export async function listCalendars(ctx: Ctx): Promise<CalendarInfo[]> {
           name: c.summary,
           primary: !!c.primary,
           shown: shown.includes(c.id) || (!!c.primary && shown.includes("primary")),
-          is_default: a.default_calendar_id === c.id || (!!c.primary && a.default_calendar_id === "primary"),
+          is_default:
+            a.is_default && (a.default_calendar_id === c.id || (!!c.primary && a.default_calendar_id === "primary")),
+          account_enabled: a.enabled,
+          account_is_default: a.is_default,
           color: c.backgroundColor ?? null,
         });
       }
@@ -151,7 +157,7 @@ export async function listEvents(
   const to = opts.to && isLocalDate(opts.to) ? opts.to : addDays(from, 6);
   const timeMin = zonedToUtc(from, "00:00", ctx.tz).toISOString();
   const timeMax = zonedToUtc(addDays(to, 1), "00:00", ctx.tz).toISOString();
-  const accounts = await listAccounts(ctx.db, ctx.userId);
+  const accounts = (await listAccounts(ctx.db, ctx.userId)).filter((a) => a.enabled);
   const events: CalendarEvent[] = [];
   const errors: string[] = [];
   await Promise.all(
@@ -228,7 +234,10 @@ function toGoogleTimes(ctx: Ctx, input: EventInput) {
 async function targetCalendar(ctx: Ctx, calendar?: string) {
   const accounts = await listAccounts(ctx.db, ctx.userId);
   if (!accounts.length) throw new AppError("No Google Calendar connected. Connect one in Settings.", "not_found");
-  if (!calendar) return { account: accounts[0], calendarId: accounts[0].default_calendar_id };
+  if (!calendar) {
+    const def = accounts.find((a) => a.is_default) ?? accounts.find((a) => a.enabled) ?? accounts[0];
+    return { account: def, calendarId: def.default_calendar_id };
+  }
   const byEmail = accounts.find((a) => a.email === calendar.toLowerCase());
   if (byEmail) return { account: byEmail, calendarId: byEmail.default_calendar_id };
   const cals = await listCalendars(ctx);
