@@ -42,6 +42,8 @@ const SHAPES: Record<string, { d: string; eyes: [number, number, number] }> = {
   },
 };
 
+export const AVATAR_SHAPES = Object.keys(SHAPES);
+
 type BotLike = { name: string; avatar_shape?: string | null; avatar_color?: string | null; is_coordinator?: boolean | null };
 
 export function isKiwi(bot: BotLike | null | undefined) {

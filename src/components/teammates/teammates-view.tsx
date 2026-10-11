@@ -8,12 +8,13 @@ import { scheduleInWords } from "@/lib/cron-words";
 import { updateRoutineAction } from "@/app/actions/teammates";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
-import { Button, CloseButton, Switch, useEscape, useMediaQuery, useScrollLock } from "@/components/ui/primitives";
+import { Button, CloseButton, Sheet, Switch, useEscape, useMediaQuery, useScrollLock } from "@/components/ui/primitives";
 import { IconPlus } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard, type TeammatesFocus } from "@/components/dashboard/context";
 import { botStatus, coordinatorOf, StatusDot } from "@/components/widgets/kiwi/actors";
 import { RunDot, runState, WidgetChip } from "./routine-utils";
+import { BotEditor } from "./bot-sheet";
 
 export type TeamSheet =
   | { kind: "bot"; id: string }
@@ -82,7 +83,37 @@ export function TeammatesView({ focus, onClose }: { focus: TeammatesFocus; onClo
           </div>
         </div>
       </motion.div>
+      <TeamSheets
+        sheet={sheet?.value ?? null}
+        open={!!sheet?.open}
+        onClose={() => setSheet((s) => (s ? { ...s, open: false } : s))}
+      />
     </div>
+  );
+}
+
+/* ---------------- Sheets ---------------- */
+
+function TeamSheets({ sheet, open, onClose }: { sheet: TeamSheet | null; open: boolean; onClose: () => void }) {
+  const { data } = useDashboard();
+  let title: ReactNode = "";
+  let body: ReactNode = null;
+  if (sheet?.kind === "bot") {
+    const bot = data.bots.find((b) => b.id === sheet.id);
+    title = bot ? (
+      <span className="flex items-center gap-2.5">
+        <BotAvatar bot={bot} size={26} />
+        {bot.name}
+      </span>
+    ) : (
+      "Teammate"
+    );
+    body = <BotEditor key={sheet.id} botId={sheet.id} onDone={onClose} />;
+  }
+  return (
+    <Sheet open={open && !!body} onClose={onClose} title={title} width={480}>
+      {body}
+    </Sheet>
   );
 }
 
