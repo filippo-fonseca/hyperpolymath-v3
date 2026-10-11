@@ -14,8 +14,8 @@ import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard, type TeammatesFocus } from "@/components/dashboard/context";
 import { botStatus, coordinatorOf, StatusDot } from "@/components/widgets/kiwi/actors";
 import { RunDot, runState, WidgetChip } from "./routine-utils";
-import { BotEditor } from "./bot-sheet";
-import { RoutineEditor } from "./routine-sheet";
+import { AddTeammate, BotEditor } from "./bot-sheet";
+import { NewRoutine, RoutineEditor } from "./routine-sheet";
 
 export type TeamSheet =
   | { kind: "bot"; id: string }
@@ -88,6 +88,7 @@ export function TeammatesView({ focus, onClose }: { focus: TeammatesFocus; onClo
         sheet={sheet?.value ?? null}
         open={!!sheet?.open}
         onClose={() => setSheet((s) => (s ? { ...s, open: false } : s))}
+        onSwitch={openSheet}
       />
     </div>
   );
@@ -95,7 +96,17 @@ export function TeammatesView({ focus, onClose }: { focus: TeammatesFocus; onClo
 
 /* ---------------- Sheets ---------------- */
 
-function TeamSheets({ sheet, open, onClose }: { sheet: TeamSheet | null; open: boolean; onClose: () => void }) {
+function TeamSheets({
+  sheet,
+  open,
+  onClose,
+  onSwitch,
+}: {
+  sheet: TeamSheet | null;
+  open: boolean;
+  onClose: () => void;
+  onSwitch: (s: TeamSheet) => void;
+}) {
   const { data } = useDashboard();
   let title: ReactNode = "";
   let body: ReactNode = null;
@@ -113,6 +124,13 @@ function TeamSheets({ sheet, open, onClose }: { sheet: TeamSheet | null; open: b
   } else if (sheet?.kind === "routine") {
     title = data.routines.find((r) => r.id === sheet.id)?.name ?? "Routine";
     body = <RoutineEditor key={sheet.id} routineId={sheet.id} onDone={onClose} />;
+  } else if (sheet?.kind === "new-routine") {
+    const bot = data.bots.find((b) => b.id === sheet.botId);
+    title = bot ? `New routine for ${bot.name}` : "New routine";
+    body = <NewRoutine key={sheet.botId} botId={sheet.botId} onDone={onClose} />;
+  } else if (sheet?.kind === "add-teammate") {
+    title = "Add teammate";
+    body = <AddTeammate onAdded={(id) => onSwitch({ kind: "bot", id })} />;
   }
   return (
     <Sheet open={open && !!body} onClose={onClose} title={title} width={480}>

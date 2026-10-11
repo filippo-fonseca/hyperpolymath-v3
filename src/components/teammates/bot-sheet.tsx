@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ActionRow, Bot } from "@/lib/dashboard-types";
 import { relativeTime } from "@/lib/format";
 import { archiveBotAction, loadActionsAction, revertActionAction } from "@/app/actions/activity";
-import { updateBotAction } from "@/app/actions/teammates";
+import { addTeammateAction, updateBotAction } from "@/app/actions/teammates";
 import { AVATAR_COLORS, AVATAR_SHAPES, BotAvatar } from "@/components/ui/bot-avatar";
 import { Button, EmptyNote, fieldClass } from "@/components/ui/primitives";
 import { IconChevronRight, IconUndo } from "@/components/ui/icons";
@@ -17,6 +17,57 @@ export function BotEditor({ botId, onDone }: { botId: string; onDone: () => void
   const bot = data.bots.find((b) => b.id === botId);
   if (!bot) return <EmptyNote>This teammate was archived or removed.</EmptyNote>;
   return <BotForm key={bot.id} bot={bot} onDone={onDone} />;
+}
+
+/** Register a bot by hand, the same way its first MCP call would. */
+export function AddTeammate({ onAdded }: { onAdded: (botId: string) => void }) {
+  const { run } = useDashboard();
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="flex flex-col gap-4 pb-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!name.trim() || busy) return;
+        setBusy(true);
+        const bot = await run(addTeammateAction({ name, role }), { success: `Added ${name.trim()}` });
+        setBusy(false);
+        if (bot) onAdded(bot.id);
+      }}
+    >
+      <p className="text-[13px] leading-snug text-ink-3">
+        Use the bot&apos;s exact name in Grok Bot, so its MCP calls land on this teammate. It reports to Kiwi until you
+        change that.
+      </p>
+      <Field label="Name">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Slack Roundup"
+          maxLength={60}
+          required
+          autoFocus
+          className={`${fieldClass} w-full`}
+        />
+      </Field>
+      <Field label="Role">
+        <input
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          placeholder="e.g. Reads Slack every night"
+          maxLength={120}
+          className={`${fieldClass} w-full`}
+        />
+      </Field>
+      <div className="flex justify-end">
+        <Button type="submit" variant="dark" disabled={!name.trim() || busy}>
+          {busy ? "Adding…" : "Add teammate"}
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 /** Ids of a bot and everything under it, so it can't report to its own sub-bot. */
