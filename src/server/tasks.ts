@@ -12,7 +12,6 @@ export type TaskInput = {
   notes?: string | null;
   status?: "todo" | "doing" | "done";
   priority?: number;
-  list?: string | null;
   /** Project name or id; null clears. */
   project?: string | null;
   due_date?: string | null;
@@ -31,7 +30,7 @@ export async function getTask(ctx: Ctx, id: string): Promise<Task> {
 
 export async function listTasks(
   ctx: Ctx,
-  opts: { scope?: TaskScope; list?: string; project?: string; area?: string; query?: string; limit?: number } = {},
+  opts: { scope?: TaskScope; project?: string; area?: string; query?: string; limit?: number } = {},
 ): Promise<Task[]> {
   const today = localDate(ctx.now, ctx.tz);
   let q = ctx.db.from("tasks").select().eq("user_id", ctx.userId).is("deleted_at", null);
@@ -55,7 +54,6 @@ export async function listTasks(
       q = q.eq("status", "done");
       break;
   }
-  if (opts.list) q = q.ilike("list", escapeLike(opts.list));
   if (opts.project) q = q.eq("project_id", (await projectIdFor(ctx, opts.project))!);
   if (opts.area) {
     const { findArea } = await import("./projects");
@@ -83,7 +81,6 @@ function clean(input: TaskInput): Update<"tasks"> {
   if (input.notes !== undefined) out.notes = input.notes;
   if (input.status !== undefined) out.status = input.status;
   if (input.priority !== undefined) out.priority = Math.max(0, Math.min(3, Math.round(input.priority)));
-  if (input.list !== undefined) out.list = input.list?.trim() || null;
   if (input.due_date !== undefined) out.due_date = input.due_date;
   if (input.due_time !== undefined) out.due_time = input.due_time;
   if (input.recurrence !== undefined) {

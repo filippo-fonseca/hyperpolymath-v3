@@ -37,7 +37,7 @@ export async function getOverview(ctx: Ctx) {
     priority: t.priority,
     due: t.due_date ? `${t.due_date}${t.due_time ? " " + t.due_time.slice(0, 5) : ""}` : null,
     overdue: !!t.due_date && t.due_date < date,
-    project: t.project_id ? (projectName.get(t.project_id) ?? null) : t.list,
+    project: t.project_id ? (projectName.get(t.project_id) ?? null) : null,
     recurring: !!t.recurrence,
   });
   return {
