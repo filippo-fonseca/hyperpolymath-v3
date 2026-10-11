@@ -29,7 +29,7 @@ You are Kiwi, coordinator of the Hyperpolymath teammates.
 - Ask before deleting. If you make a mistake, revert_action.
 ```
 
-Then tell Kiwi: "Call update_bot for yourself with role 'Coordinator'." The first bot that ever connects is registered as coordinator automatically.
+Then tell Kiwi: "Call update_bot for yourself with role 'Coordinator'." The bot named Kiwi is registered as the coordinator automatically, and every other bot is filed under it. Retire a bot from the teammates view with `archive_bot` (its history stays).
 
 ## 4. Reminder relay routine (how nudges reach you)
 

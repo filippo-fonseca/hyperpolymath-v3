@@ -66,5 +66,6 @@ const list = await call("list_tasks", { query: "Smoke test: do the laundry", sco
 step(`reverted completion: status=${list[0]?.status}`);
 
 await call("delete_task", { id: created.task.id });
-step("cleaned up (task deleted)");
+await call("archive_bot", { name: "Smoke Test" });
+step("cleaned up (task deleted, Smoke Test bot archived)");
 console.log("Smoke test passed.");
