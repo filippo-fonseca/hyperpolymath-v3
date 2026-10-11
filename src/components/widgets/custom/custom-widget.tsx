@@ -11,6 +11,7 @@ import { IconGear } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
 import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
+import { WidgetIcon } from "@/components/ui/widget-icon";
 import { DigestView, ListView, MarkdownView, StatView, TableView, TimelineView } from "./renderers";
 
 function isStale(w: WidgetRow, nowMs: number) {
@@ -53,6 +54,7 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
   return (
     <div className={`flex h-full flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
       <div className="flex min-w-0 items-center gap-2">
+        <WidgetIcon icon={widget.icon} size={16} />
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-gray-500">{widget.title}</span>
         {owner ? (
           <OwnerPill bot={owner} meta={when} compact={size === "s"} />
@@ -103,6 +105,7 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
       <ExpandedHeader
         eyebrow={
           <span className="flex flex-wrap items-center gap-2">
+            <WidgetIcon icon={widget.icon} size={18} />
             {owner ? <OwnerPill bot={owner} /> : <span>No owner</span>}
             {widget.published_at && <span className="font-medium text-ink-3">· updated {relativeTime(widget.published_at, nowMs)}</span>}
             {stale && <span className="rounded-full bg-gray-150 px-2 py-px text-[11.5px] text-gray-600">Stale</span>}

@@ -6,6 +6,7 @@ import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { scheduleInWords } from "@/lib/cron-words";
 import { removeWidgetAction, updateWidgetAction } from "@/app/actions/widgets";
 import { Button, Segmented, Sheet, fieldClass } from "@/components/ui/primitives";
+import { WidgetIcon } from "@/components/ui/widget-icon";
 import { IconChevronRight, IconPlus } from "@/components/ui/icons";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { selectClass, selectStyle } from "@/components/teammates/form";
@@ -77,6 +78,7 @@ function SheetBody({
   const [title, setTitle] = useState(widget.title);
   const [stale, setStale] = useState(widget.stale_after_hours ? String(widget.stale_after_hours) : "");
   const [owner, setOwner] = useState(widget.owner_bot_id ?? "");
+  const [icon, setIcon] = useState(widget.icon ?? "");
   const routines = data.routines.filter((r) => r.widget_id === widget.id);
   const staleOptions =
     widget.stale_after_hours && !STALE_OPTIONS.some((o) => o.hours === widget.stale_after_hours)
@@ -87,6 +89,7 @@ function SheetBody({
   if (title.trim() && title.trim() !== widget.title) patch.title = title;
   if (custom && (stale ? Number(stale) : null) !== widget.stale_after_hours) patch.stale_after_hours = stale ? Number(stale) : null;
   if (custom && (owner || null) !== widget.owner_bot_id) patch.owner_bot_id = owner || null;
+  if (custom && (icon.trim() || null) !== (widget.icon ?? null)) patch.icon = icon.trim() || null;
   const dirty = Object.keys(patch).length > 0;
 
   const save = async () => {
@@ -115,6 +118,25 @@ function SheetBody({
         </Row>
         {custom && (
           <>
+            <Row label="Icon">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-gray-100 shadow-ring">
+                  {/^https:\/\//i.test(icon.trim()) || (icon.trim() && [...icon.trim()].length <= 4) ? (
+                    <WidgetIcon icon={icon.trim()} size={22} />
+                  ) : (
+                    <span className="text-[11px] text-ink-3">{icon.trim() ? "site" : "none"}</span>
+                  )}
+                </span>
+                <input
+                  value={icon}
+                  onChange={(e) => setIcon(e.target.value)}
+                  maxLength={500}
+                  placeholder="slack.com, an emoji, or an image URL"
+                  className={`${fieldClass} min-w-0 flex-1`}
+                  aria-label="Icon"
+                />
+              </div>
+            </Row>
             <Row label="Made by">
               <select
                 value={owner}
