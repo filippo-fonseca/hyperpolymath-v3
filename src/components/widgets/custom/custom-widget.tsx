@@ -8,6 +8,7 @@ import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
+import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
 import { DigestView, ListView, MarkdownView, StatView, TableView, TimelineView } from "./renderers";
 
 function isStale(w: WidgetRow, nowMs: number) {
@@ -44,15 +45,17 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
   const { data, nowMs } = useDashboard();
   if (!isCustomKind(widget.kind)) return null;
   const stale = isStale(widget, nowMs);
-  const owner = widget.owner ? data.bots.find((b) => b.id === widget.owner!.id) ?? { ...widget.owner, is_coordinator: false } : null;
+  const owner = widgetOwner(widget, data.bots);
+  const when = widget.published_at && size !== "s" ? relativeTime(widget.published_at, nowMs) : null;
 
   return (
     <div className={`flex h-full flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
-      <div className="flex items-center gap-2">
-        {owner && <BotAvatar bot={owner} size={16} />}
+      <div className="flex min-w-0 items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-gray-500">{widget.title}</span>
-        {widget.published_at && size !== "s" && (
-          <span className="shrink-0 text-[11.5px] text-ink-3">{relativeTime(widget.published_at, nowMs)}</span>
+        {owner ? (
+          <OwnerPill bot={owner} meta={when} compact={size === "s"} />
+        ) : (
+          when && <span className="shrink-0 text-[11.5px] text-ink-3">{when}</span>
         )}
       </div>
       <div className="mt-2 min-h-0 flex-1 overflow-hidden">
@@ -90,16 +93,15 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
 
   if (!isCustomKind(widget.kind)) return null;
   const stale = isStale(widget, nowMs);
-  const owner = widget.owner ? data.bots.find((b) => b.id === widget.owner!.id) ?? { ...widget.owner, is_coordinator: false } : null;
+  const owner = widgetOwner(widget, data.bots);
   const payload = viewing ? viewing.payload : widget.payload;
 
   return (
     <div>
       <ExpandedHeader
         eyebrow={
-          <span className="flex items-center gap-2">
-            {owner && <BotAvatar bot={owner} size={18} />}
-            {ownerName(widget)}
+          <span className="flex flex-wrap items-center gap-2">
+            {owner ? <OwnerPill bot={owner} /> : <span>No owner</span>}
             {widget.published_at && <span className="font-medium text-ink-3">· updated {relativeTime(widget.published_at, nowMs)}</span>}
             {stale && <span className="rounded-full bg-gray-150 px-2 py-px text-[11.5px] text-gray-600">Stale</span>}
           </span>
