@@ -15,6 +15,7 @@ const taskInput = z
     status: z.enum(["todo", "doing", "done"]),
     priority: z.number().int().min(0).max(3),
     list: z.string().max(120).nullable(),
+    project: id.nullable(),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
     due_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable(),
     recurrence: recurrenceSchema.nullable(),

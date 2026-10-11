@@ -16,16 +16,23 @@ export async function logHabitAction(habitId: string, progress: number, date?: s
   );
 }
 
-export async function createHabitAction(input: { name: string; days_of_week: number[] }) {
+export async function createHabitAction(input: { name: string; days_of_week: number[]; area?: string | null }) {
   return asUser((ctx) =>
-    createHabit(ctx, { name: z.string().max(120).parse(input.name), days_of_week: days.parse(input.days_of_week) }),
+    createHabit(ctx, {
+      name: z.string().max(120).parse(input.name),
+      days_of_week: days.parse(input.days_of_week),
+      area: id.nullable().optional().parse(input.area),
+    }),
   );
 }
 
-export async function updateHabitAction(habitId: string, patch: { name?: string; days_of_week?: number[]; archived?: boolean }) {
+export async function updateHabitAction(
+  habitId: string,
+  patch: { name?: string; days_of_week?: number[]; archived?: boolean; area?: string | null },
+) {
   return asUser((ctx) => {
     const p = z
-      .object({ name: z.string().min(1).max(120), days_of_week: days, archived: z.boolean() })
+      .object({ name: z.string().min(1).max(120), days_of_week: days, archived: z.boolean(), area: id.nullable() })
       .partial()
       .parse(patch);
     return updateHabit(ctx, id.parse(habitId), p);

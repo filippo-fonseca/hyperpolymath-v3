@@ -13,10 +13,19 @@ import { asUser, readAsUser } from "./run";
 const id = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export async function createCaptureAction(content: string, resurfaceAt?: string | null) {
+export async function createCaptureAction(content: string, resurfaceAt?: string | null, projectId?: string | null) {
   return asUser((ctx) =>
-    createCapture(ctx, { content: z.string().max(20000).parse(content), resurface_at: date.nullable().optional().parse(resurfaceAt) }),
+    createCapture(ctx, {
+      content: z.string().max(20000).parse(content),
+      resurface_at: date.nullable().optional().parse(resurfaceAt),
+      project: id.nullable().optional().parse(projectId),
+    }),
   );
+}
+
+/** File a capture under a project, or clear it with null. */
+export async function setCaptureProjectAction(captureId: string, projectId: string | null) {
+  return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { project: id.nullable().parse(projectId) }));
 }
 
 export async function searchCapturesAction(query: string, includeArchived: boolean) {
