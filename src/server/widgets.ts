@@ -133,6 +133,7 @@ export async function publishWidget(ctx: Ctx, idOrTitle: string, payload: unknow
 
 export async function removeWidget(ctx: Ctx, idOrTitle: string) {
   const before = await findWidget(ctx, idOrTitle);
+  if (!isCustomKind(before.kind)) throw new AppError(`"${before.title}" is a fixed widget and can't be removed.`);
   const after = must(
     await ctx.db.from("widgets").update({ deleted_at: ctx.now.toISOString() }).eq("id", before.id).select().single(),
     "remove widget",

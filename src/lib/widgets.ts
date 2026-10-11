@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// Bot-supplied links: http(s) only, so a payload can never smuggle javascript: URLs.
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), "only http(s) links");
+
 // Widget kinds. Fixed kinds render live app data; custom kinds render a
 // payload that a bot publishes. Shared by server validation and the UI.
 
@@ -12,7 +18,7 @@ export type WidgetSize = "s" | "m" | "l";
 
 const item = z.object({
   text: z.string().max(500),
-  url: z.string().url().optional(),
+  url: httpUrl.optional(),
   meta: z.string().max(120).optional().describe("small trailing label, e.g. a time, count or channel"),
   done: z.boolean().optional(),
 });
@@ -33,7 +39,7 @@ export const payloadSchemas = {
   }),
   timeline: z.object({
     events: z
-      .array(z.object({ time: z.string().max(40), text: z.string().max(300), url: z.string().url().optional() }))
+      .array(z.object({ time: z.string().max(40), text: z.string().max(300), url: httpUrl.optional() }))
       .max(50),
   }),
   markdown: z.object({ markdown: z.string().max(8000) }),
