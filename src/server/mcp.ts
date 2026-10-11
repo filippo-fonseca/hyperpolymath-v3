@@ -11,6 +11,7 @@ import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from
 import { createWidget, listWidgets, publishWidget, removeWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
+import { finishRun, listRoutines, registerRoutine, removeRoutine, startRun, updateRoutine } from "./routines";
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
@@ -25,6 +26,7 @@ Rules:
 - When the owner says something is done ("finished laundry"), find the task (get_overview or list_tasks with query) and call complete_task. If nothing matches, ask before creating one.
 - Reminders live HERE, not in Grok Bot routines. Anything of the form "remind me / nudge me / press me ... at X / every Y / until Z" becomes a task (if there is a thing to do) plus set_reminder. Hyperpolymath delivers due reminders to the coordinator through one "Reminder relay" webhook routine, so never create a separate Grok Bot routine just to remind the owner. Translate their words into the structured schedule: "until I say it's done" = until "done" on a task (stops when the task completes); "until Friday" = until "date"; "three times" = until "count". Times are local to their timezone (see get_overview), 24h HH:MM.
 - Grok Bot routines are for WORK a bot does on a schedule (scan Slack, write a digest, check a website, draft emails). They stay in Grok Bot and may read or write Hyperpolymath through these tools. If a routine only exists to remind the owner of something, migrate it to set_reminder and offer to delete the routine.
+- Register every routine you run with register_routine (name, schedule in words, what it does, its widget if it publishes one) so it shows in the app. At the START of every run call start_routine_run: if it returns enabled=false the owner paused it in the app, so stop immediately. At the END call finish_routine_run with status and a one-line summary. When you change or delete a routine in Grok Bot, mirror it with update_routine / remove_routine.
 - Quick thoughts, links and ideas without a clear action go to create_capture, not tasks.
 - Dates: use the "now" and timezone from get_overview, never your own clock. After creating or moving something, tell the owner the date in words ("for tomorrow, Mon Oct 12") so a wrong guess is caught. If they gave no date, leave due_date empty (it lands in the inbox) rather than guessing.
 - Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
@@ -297,6 +299,61 @@ export function buildMcpServer(userId: string) {
     },
   );
   tool("archive_bot", "Retire a teammate bot from the dashboard (its history stays). Ask first.", { name: z.string().min(1).max(60) }, (ctx, a) => archiveBot(ctx, a.name), { destructive: true });
+  // Routines -----------------------------------------------------------------
+  tool(
+    "list_routines",
+    "Routines registered in Hyperpolymath, with owner bot, schedule, enabled state, linked widget and last run.",
+    { bot_name: z.string().max(60).optional() },
+    async (ctx, a) => {
+      let botId: string | undefined;
+      if (a.bot_name) {
+        const b = await resolveBotActor(ctx.db, ctx.userId, a.bot_name);
+        botId = b.kind === "bot" ? b.botId : undefined;
+      }
+      return listRoutines(ctx, { botId });
+    },
+    { readOnly: true },
+  );
+  tool(
+    "register_routine",
+    "Register (or update by name) a Grok Bot routine you run, so the owner sees and controls it in Hyperpolymath. Owner defaults to you.",
+    {
+      name: z.string().min(1).max(120),
+      schedule: z.string().max(200).optional().describe('In words, e.g. "weeknights at 10pm"'),
+      description: z.string().max(2000).optional(),
+      widget: z.string().max(120).optional().describe("Title or id of the widget this routine publishes to"),
+      grokbot_routine_id: z.string().max(200).optional(),
+      owner: z.string().max(60).optional().describe("Bot that owns it, if registering for another bot"),
+    },
+    (ctx, { owner, ...input }) => registerRoutine(ctx, { ...input, bot: owner }),
+  );
+  tool(
+    "update_routine",
+    "Change a registered routine (by id or name): schedule, description, widget link, enabled.",
+    {
+      routine: z.string().min(1).max(120),
+      name: z.string().min(1).max(120).optional(),
+      schedule: z.string().max(200).nullable().optional(),
+      description: z.string().max(2000).nullable().optional(),
+      widget: z.string().max(120).nullable().optional(),
+      enabled: z.boolean().optional(),
+    },
+    (ctx, { routine, ...patch }) => updateRoutine(ctx, routine, patch),
+  );
+  tool("remove_routine", "Remove a routine from Hyperpolymath (after deleting it in Grok Bot).", { routine: z.string().min(1).max(120) }, (ctx, a) => removeRoutine(ctx, a.routine), { destructive: true });
+  tool(
+    "start_routine_run",
+    "Call at the START of every routine run. If enabled is false, the owner paused it in the app: stop without doing the work.",
+    { routine: z.string().min(1).max(120) },
+    (ctx, a) => startRun(ctx, a.routine),
+  );
+  tool(
+    "finish_routine_run",
+    "Call at the END of a routine run with the run_id from start_routine_run.",
+    { run_id: uuid, status: z.enum(["ok", "error"]).optional(), summary: z.string().max(500).optional() },
+    (ctx, a) => finishRun(ctx, a.run_id, a),
+  );
+
   tool(
     "list_actions",
     "Recent activity log: what each bot (and the owner) changed.",
