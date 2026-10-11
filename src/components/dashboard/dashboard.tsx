@@ -29,6 +29,7 @@ import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
 import { SettingsSheet } from "./settings-sheet";
 import { RealtimeRefresh } from "./realtime";
+import { AddProjectsOffer } from "./add-projects-offer";
 import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
 import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
 import { TeammatesView } from "@/components/teammates/teammates-view";
@@ -303,6 +304,7 @@ function Home({
             className="fixed inset-x-0 bottom-[max(20px,env(safe-area-inset-bottom))] z-40 flex justify-center px-4"
           >
             <div className="flex items-center gap-1.5 rounded-full bg-white/90 p-1.5 shadow-pop backdrop-blur-xl">
+              <AddProjectsOffer />
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
