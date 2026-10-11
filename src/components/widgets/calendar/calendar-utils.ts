@@ -1,6 +1,7 @@
 import type { CalendarEvent, Task } from "@/lib/dashboard-types";
 import { timeLabel } from "@/lib/format";
 import { addDays, weekdayOf, zonedToUtc } from "@/lib/time";
+import { taskCalendarLabel } from "@/lib/projects";
 
 const dateFmt = new Map<string, Intl.DateTimeFormat>();
 const timeFmt = new Map<string, Intl.DateTimeFormat>();
@@ -102,7 +103,13 @@ export function overlapsRange(e: CalendarEvent, from: string, to: string, tz: st
 }
 
 /** Open tasks due in the range at a set time, as 30-minute agenda slots. */
-export function timedTaskEvents(tasks: Task[], from: string, to: string, tz: string): CalendarEvent[] {
+export function timedTaskEvents(
+  tasks: Task[],
+  from: string,
+  to: string,
+  tz: string,
+  projectName: (projectId: string) => string | undefined = () => undefined,
+): CalendarEvent[] {
   return tasks
     .filter((t) => t.status !== "done" && t.due_date && t.due_time && t.due_date >= from && t.due_date <= to)
     .map((t) => {
@@ -117,7 +124,7 @@ export function timedTaskEvents(tasks: Task[], from: string, to: string, tz: str
         all_day: false,
         location: null,
         description: null,
-        calendar: t.list ? `Task · ${t.list}` : "Task",
+        calendar: taskCalendarLabel(t.project_id ? projectName(t.project_id) : null),
         account: "",
         link: null,
         color: "var(--ink)",

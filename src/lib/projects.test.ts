@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AreasData, Task } from "./dashboard-types";
-import { classLabel, dateRangeLabel, groupTasks, indexProjects, isLive, matchesProject, progressOf } from "./projects";
+import { classLabel, dateRangeLabel, groupTasks, indexProjects, isLive, matchesProject, progressOf, taskCalendarLabel } from "./projects";
 
 const project = (id: string, area_id: string | null, extra: Record<string, unknown> = {}) =>
   ({
@@ -57,6 +57,11 @@ describe("projects", () => {
     expect(groupTasks(tasks, data, "project").map((g) => g.title)).toEqual(["Project p1", "Project p2", "Project p3", "No project"]);
     const byArea = groupTasks(tasks, data, "area");
     expect(byArea.map((g) => [g.title, g.tasks.length])).toEqual([["School", 2], ["Health", 1], ["No area", 1]]);
+  });
+
+  it("labels timed tasks on the calendar with their project", () => {
+    expect(taskCalendarLabel("Thesis")).toBe("Task · Thesis");
+    expect(taskCalendarLabel(null)).toBe("Task");
   });
 
   it("searches by project, area or course", () => {

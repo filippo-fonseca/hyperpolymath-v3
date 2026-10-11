@@ -97,6 +97,11 @@ export function groupTasks(tasks: Task[], data: AreasData, by: "project" | "area
   return [...groups.values()].sort((a, b) => rank(a.key) - rank(b.key));
 }
 
+/** "Task · Project" label for a timed task on the calendar. */
+export function taskCalendarLabel(projectName: string | null | undefined) {
+  return projectName ? `Task · ${projectName}` : "Task";
+}
+
 /** Case-insensitive match on project, area, course code or term. */
 export function matchesProject(e: ProjectEntry, query: string) {
   const q = query.trim().toLowerCase();

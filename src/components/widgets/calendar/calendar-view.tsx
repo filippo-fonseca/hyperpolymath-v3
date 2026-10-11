@@ -10,6 +10,7 @@ import { Button, IconButton, Segmented, fieldClass } from "@/components/ui/primi
 import { IconCalendar, IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
+import { useProjects } from "../projects/use-projects";
 import {
   addMonths,
   durationLabel,
@@ -61,6 +62,8 @@ export function CalendarView() {
 
 function CalendarViewInner() {
   const { data, calendar, run, nowMs } = useDashboard();
+  const { index } = useProjects();
+  const projectName = (id: string) => index.get(id)?.project.name;
   const cal: CalendarData = use(calendar);
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(data.today);
@@ -145,7 +148,7 @@ function CalendarViewInner() {
     );
   }
 
-  const events = [...known.filter((e) => overlapsRange(e, from, to, data.tz)), ...timedTaskEvents(data.openTasks, from, to, data.tz)]
+  const events = [...known.filter((e) => overlapsRange(e, from, to, data.tz)), ...timedTaskEvents(data.openTasks, from, to, data.tz, projectName)]
     .filter((e) => !hidden.has(e.id))
     .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   const hide = (id: string) => setHidden((s) => new Set(s).add(id));

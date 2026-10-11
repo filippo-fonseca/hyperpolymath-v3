@@ -2,6 +2,8 @@ import "server-only";
 import type { Ctx } from "@/server/ctx";
 import { listEvents, type CalendarEvent } from "@/server/google/calendar";
 import { listTasks } from "@/server/tasks";
+import { listAreas } from "@/server/projects";
+import { indexProjects, taskCalendarLabel } from "@/lib/projects";
 import { googleConfigured, listAccounts } from "@/server/google/oauth";
 import { addDays, localDate, zonedToUtc } from "@/lib/time";
 import type { CalendarData } from "@/lib/dashboard-types";
@@ -45,7 +47,8 @@ async function loadGoogle(ctx: Ctx, from: string, to: string): Promise<Omit<Cale
 /** Open tasks due this week at a set time, shown on the agenda as 30-minute slots. */
 async function timedTasks(ctx: Ctx, from: string, to: string): Promise<CalendarEvent[]> {
   try {
-    const tasks = await listTasks(ctx, { scope: "open", limit: 300 });
+    const [tasks, areas] = await Promise.all([listTasks(ctx, { scope: "open", limit: 300 }), listAreas(ctx, { includeArchived: true })]);
+    const projects = indexProjects(areas);
     return tasks
       .filter((t) => t.due_date && t.due_time && t.due_date >= from && t.due_date <= to)
       .map((t) => {
@@ -60,7 +63,7 @@ async function timedTasks(ctx: Ctx, from: string, to: string): Promise<CalendarE
           all_day: false,
           location: null,
           description: null,
-          calendar: t.list ? `Task · ${t.list}` : "Task",
+          calendar: taskCalendarLabel(t.project_id ? projects.get(t.project_id)?.project.name : null),
           account: "",
           link: null,
           color: "var(--ink)",
