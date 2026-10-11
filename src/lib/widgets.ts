@@ -9,7 +9,7 @@ const httpUrl = z
 // Widget kinds. Fixed kinds render live app data; custom kinds render a
 // payload that a bot publishes. Shared by server validation and the UI.
 
-export const FIXED_KINDS = ["tasks", "calendar", "habits", "capture", "kiwi"] as const;
+export const FIXED_KINDS = ["tasks", "calendar", "habits", "capture", "kiwi", "projects"] as const;
 export const CUSTOM_KINDS = ["digest", "list", "stat", "timeline", "markdown", "table"] as const;
 export type FixedKind = (typeof FIXED_KINDS)[number];
 export type CustomKind = (typeof CUSTOM_KINDS)[number];

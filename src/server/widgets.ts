@@ -11,6 +11,7 @@ const DEFAULT_LAYOUT: { kind: Widget["kind"]; title: string; size: WidgetSize }[
   { kind: "habits", title: "Habits", size: "m" },
   { kind: "capture", title: "Capture", size: "m" },
   { kind: "kiwi", title: "Kiwi", size: "m" },
+  { kind: "projects", title: "Projects", size: "m" },
 ];
 
 /** Seed the fixed widgets the first time a user opens the dashboard. */
