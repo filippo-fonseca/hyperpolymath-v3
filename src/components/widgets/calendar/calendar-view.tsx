@@ -23,6 +23,7 @@ import {
   weekStart,
 } from "./calendar-utils";
 import { WeekGrid } from "./week-grid";
+import { MonthGrid } from "./month-grid";
 
 type View = "agenda" | "week" | "month";
 type Draft = { date: string; time?: string };
@@ -190,6 +191,18 @@ function CalendarViewInner() {
         <div className="skeleton h-32 rounded-[18px]" />
       ) : view === "week" ? (
         <WeekGrid from={from} events={events} tz={data.tz} today={data.today} nowMs={nowMs} />
+      ) : view === "month" ? (
+        <MonthGrid
+          from={from}
+          month={anchor.slice(0, 7)}
+          events={events}
+          tz={data.tz}
+          today={data.today}
+          onPickDay={(day) => {
+            setAnchor(day);
+            setView("week");
+          }}
+        />
       ) : (
         <AgendaList events={events} tz={data.tz} today={data.today} onHide={hide} onUnhide={unhide} />
       )}
