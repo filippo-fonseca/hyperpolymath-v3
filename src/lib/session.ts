@@ -2,12 +2,13 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { makeCtx, type Actor, type Ctx } from "@/server/ctx";
 import { supabaseServer } from "@/lib/supabase/server";
-import { isOwnerEmail } from "@/lib/supabase/env";
+import { hasSupabaseEnv, isOwnerEmail } from "@/lib/supabase/env";
 
 export const USER_ACTOR: Actor = { kind: "user", name: "you" };
 
 /** The signed-in owner's id, or null. Never trusts anything but the session. */
 export async function currentUserId(): Promise<string | null> {
+  if (!hasSupabaseEnv()) return null;
   const supabase = await supabaseServer();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims) return null;
