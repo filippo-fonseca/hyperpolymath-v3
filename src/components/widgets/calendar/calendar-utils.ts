@@ -157,3 +157,41 @@ export function allDayOn(events: CalendarEvent[], day: string, tz: string): Cale
     return first <= day && day <= last;
   });
 }
+
+export type Placed = Segment & { col: number; cols: number };
+
+/**
+ * Side-by-side layout for overlapping events. Events that overlap (directly
+ * or through a chain) form a cluster; each gets the first free column and
+ * every member shares the cluster's column count. `minSpan` is the shortest
+ * visual length in minutes, so tiny events that would draw on top of each
+ * other still get their own column.
+ */
+export function layoutDay(segments: Segment[], minSpan = 0): Placed[] {
+  const sorted = [...segments].sort((a, b) => a.start - b.start || b.end - a.end);
+  const out: Placed[] = [];
+  let cluster: Placed[] = [];
+  let colEnds: number[] = [];
+  let clusterEnd = -Infinity;
+  const flush = () => {
+    for (const p of cluster) p.cols = colEnds.length;
+    cluster = [];
+    colEnds = [];
+    clusterEnd = -Infinity;
+  };
+  for (const s of sorted) {
+    const end = Math.max(s.end, s.start + minSpan);
+    if (cluster.length && s.start >= clusterEnd) flush();
+    let col = colEnds.findIndex((e) => e <= s.start);
+    if (col === -1) {
+      col = colEnds.length;
+      colEnds.push(end);
+    } else colEnds[col] = end;
+    const p: Placed = { ...s, col, cols: 1 };
+    cluster.push(p);
+    out.push(p);
+    clusterEnd = Math.max(clusterEnd, end);
+  }
+  flush();
+  return out;
+}

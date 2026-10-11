@@ -4,7 +4,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import type { CalendarEvent } from "@/lib/dashboard-types";
 import { addDays } from "@/lib/time";
 import { dayOfMonth, timeLabel, WEEKDAYS_SHORT } from "@/lib/format";
-import { allDayOn, daySegments, eventTime, type Segment } from "./calendar-utils";
+import { allDayOn, daySegments, eventTime, layoutDay, type Placed, type Segment } from "./calendar-utils";
 
 // Apple / Notion Calendar style time grid: sticky day header with an
 // all-day row, hour gutter on the left, events as tinted rounded blocks.
@@ -13,6 +13,8 @@ export const HOUR = 48;
 const GUTTER = 48;
 const DAY_MIN = 24 * 60;
 const MIN_BLOCK = 20;
+/** Shortest visual length in minutes (task pills are 22px tall). */
+const MIN_SPAN = Math.ceil((24 / HOUR) * 60);
 
 export function WeekGrid({ from, events, tz, today }: { from: string; events: CalendarEvent[]; tz: string; today: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -94,8 +96,8 @@ function DayColumn({ today, segments, tz }: { today: boolean; segments: Segment[
         backgroundImage: `repeating-linear-gradient(to bottom, var(--gray-150) 0, var(--gray-150) 1px, transparent 1px, transparent ${HOUR}px)`,
       }}
     >
-      {segments.map((s) => (
-        <EventBlock key={s.e.id} s={s} tz={tz} />
+      {layoutDay(segments, MIN_SPAN).map((p) => (
+        <EventBlock key={p.e.id} s={p} tz={tz} />
       ))}
     </div>
   );
@@ -103,11 +105,16 @@ function DayColumn({ today, segments, tz }: { today: boolean; segments: Segment[
 
 const tint = (color: string | null) => `color-mix(in srgb, ${color ?? "var(--accent)"} 13%, white)`;
 
-function EventBlock({ s, tz }: { s: Segment; tz: string }) {
+function EventBlock({ s, tz }: { s: Placed; tz: string }) {
   const { e } = s;
   const top = (s.start / 60) * HOUR;
   const height = Math.max(((Math.min(s.end, DAY_MIN) - s.start) / 60) * HOUR, MIN_BLOCK);
-  const pos: CSSProperties = { top: top + 1, height: height - 2, left: 2, right: 3 };
+  const pos: CSSProperties = {
+    top: top + 1,
+    height: height - 2,
+    left: `calc(${(s.col / s.cols) * 100}% + 2px)`,
+    width: `calc(${100 / s.cols}% - ${s.cols > 1 ? 3 : 5}px)`,
+  };
 
   if (e.task_id) {
     return (
