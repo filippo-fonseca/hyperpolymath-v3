@@ -191,7 +191,9 @@ export type Database = {
           created_at: string
           default_calendar_id: string
           email: string
+          enabled: boolean
           id: string
+          is_default: boolean
           refresh_token_enc: string
           updated_at: string
           user_id: string
@@ -203,7 +205,9 @@ export type Database = {
           created_at?: string
           default_calendar_id?: string
           email: string
+          enabled?: boolean
           id?: string
+          is_default?: boolean
           refresh_token_enc: string
           updated_at?: string
           user_id: string
@@ -215,7 +219,9 @@ export type Database = {
           created_at?: string
           default_calendar_id?: string
           email?: string
+          enabled?: boolean
           id?: string
+          is_default?: boolean
           refresh_token_enc?: string
           updated_at?: string
           user_id?: string
