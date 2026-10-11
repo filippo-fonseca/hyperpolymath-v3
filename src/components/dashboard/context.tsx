@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { DashboardData } from "@/lib/dashboard-types";
+import type { CalendarData, DashboardData } from "@/lib/dashboard-types";
 import type { Result } from "@/app/actions/run";
 import { useToast } from "@/components/ui/toast";
 
@@ -9,6 +9,7 @@ type RunOpts = { success?: string; quiet?: boolean };
 
 type DashboardApi = {
   data: DashboardData;
+  calendar: Promise<CalendarData>;
   nowMs: number;
   /** Await a server action; toasts its error and returns null on failure. */
   run: <T>(p: Promise<Result<T>>, opts?: RunOpts) => Promise<T | null>;
@@ -41,11 +42,13 @@ function useNow(initialIso: string) {
 
 export function DashboardProvider({
   data,
+  calendar,
   open,
   openSettings,
   children,
 }: {
   data: DashboardData;
+  calendar: Promise<CalendarData>;
   open: (id: string) => void;
   openSettings: () => void;
   children: ReactNode;
@@ -71,6 +74,9 @@ export function DashboardProvider({
     [toast],
   );
 
-  const value = useMemo(() => ({ data, nowMs, run, open, openSettings }), [data, nowMs, run, open, openSettings]);
+  const value = useMemo(
+    () => ({ data, calendar, nowMs, run, open, openSettings }),
+    [data, calendar, nowMs, run, open, openSettings],
+  );
   return <Ctx value={value}>{children}</Ctx>;
 }

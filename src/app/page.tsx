@@ -9,6 +9,7 @@ import { listBots } from "@/server/bots";
 import { listActions } from "@/server/log";
 import { listReminders } from "@/server/reminders";
 import { localDate } from "@/lib/time";
+import { loadCalendar } from "@/lib/calendar-data";
 import type { DashboardData } from "@/lib/dashboard-types";
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard/skeleton";
@@ -24,6 +25,8 @@ export default function Home() {
 async function DashboardLoader() {
   const userId = await requireUser();
   const ctx = await makeCtx(userId, USER_ACTOR);
+  // Streams separately so a slow or failing Google call never blocks the grid.
+  const calendar = loadCalendar(ctx);
   await ensureDefaultWidgets(ctx.db, userId);
   const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders] = await Promise.all([
     listWidgets(ctx),
@@ -54,5 +57,5 @@ async function DashboardLoader() {
     reminders,
     realtime: url && key ? { url, key } : null,
   };
-  return <Dashboard data={data} />;
+  return <Dashboard data={data} calendar={calendar} />;
 }

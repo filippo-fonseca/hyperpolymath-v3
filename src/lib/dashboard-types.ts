@@ -7,6 +7,9 @@ import type { listWidgets } from "@/server/widgets";
 import type { listActions } from "@/server/log";
 import type { listReminders } from "@/server/reminders";
 import type { widgetHistory } from "@/server/widgets";
+import type { CalendarEvent } from "@/server/google/calendar";
+
+export type { CalendarEvent };
 
 type T = Database["public"]["Tables"];
 
@@ -35,4 +38,15 @@ export type DashboardData = {
   actions: ActionRow[];
   reminders: ReminderRow[];
   realtime: { url: string; key: string } | null;
+};
+
+export type CalendarAccount = { id: string; email: string; calendar_ids: string[]; default_calendar_id: string };
+
+export type CalendarData = {
+  configured: boolean;
+  accounts: CalendarAccount[];
+  events: CalendarEvent[];
+  error: string | null;
+  from: string;
+  to: string;
 };
