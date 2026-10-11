@@ -77,3 +77,19 @@ describe("streak", () => {
     ).toBe(3);
   });
 });
+
+import { normalizeWidgetIcon } from "./widgets";
+
+describe("widget icons", () => {
+  it("turns domains into favicons, keeps emoji and https URLs", () => {
+    expect(normalizeWidgetIcon("slack.com")).toBe("https://www.google.com/s2/favicons?domain=slack.com&sz=128");
+    expect(normalizeWidgetIcon("www.linkedin.com/feed")).toContain("domain=linkedin.com");
+    expect(normalizeWidgetIcon("📬")).toBe("📬");
+    expect(normalizeWidgetIcon("https://example.com/i.png")).toBe("https://example.com/i.png");
+    expect(normalizeWidgetIcon("")).toBeNull();
+  });
+  it("rejects http and junk", () => {
+    expect(() => normalizeWidgetIcon("http://example.com/i.png")).toThrow(/https/);
+    expect(() => normalizeWidgetIcon("javascript:alert(1)")).toThrow();
+  });
+});

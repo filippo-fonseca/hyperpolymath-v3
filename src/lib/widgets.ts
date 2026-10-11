@@ -67,3 +67,30 @@ export const PAYLOAD_DOCS = `Payload shapes by kind:
 - timeline: { events: [{ time, text, url? }] }
 - markdown: { markdown }
 - table: { columns: string[], rows: (string|number|null)[][] }`;
+
+/**
+ * Normalize a widget icon: an emoji (or a couple of characters), an https
+ * image URL, or a website domain, which becomes that site's favicon.
+ * Returns null to clear; throws on anything else.
+ */
+export function normalizeWidgetIcon(raw: string | null | undefined): string | null {
+  const v = raw?.trim();
+  if (!v) return null;
+  if (/^https:\/\//i.test(v)) {
+    try {
+      return new URL(v).toString();
+    } catch {
+      throw new Error("That icon URL isn't valid.");
+    }
+  }
+  if (/^http:\/\//i.test(v)) throw new Error("Icon URLs must use https.");
+  const domain = v.replace(/^www\./i, "").replace(/\/.*$/, "");
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(domain)) {
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  }
+  if ([...v].length <= 4) return v; // emoji or short glyph
+  throw new Error("Use an emoji, an https image URL, or a website domain like slack.com.");
+}
+
+/** True when an icon value is an image URL (render <img>), otherwise text/emoji. */
+export const isImageIcon = (icon: string | null | undefined) => !!icon && /^https:\/\//i.test(icon);
