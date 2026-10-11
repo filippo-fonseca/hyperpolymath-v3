@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useSyncExternalStore, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { IconCheck, IconClose } from "./icons";
 import { WEEKDAY_LETTERS } from "@/lib/format";
@@ -268,4 +268,19 @@ export function Eyebrow({ children, className = "" }: { children: ReactNode; cla
 
 export function EmptyNote({ children }: { children: ReactNode }) {
   return <div className="py-6 text-center text-[13.5px] text-ink-3">{children}</div>;
+}
+
+/** How many rows of `rowHeight` fit in the element (for widgets that grow with the grid). */
+export function useFitCount<T extends HTMLElement>(rowHeight: number, fallback: number) {
+  const [count, setCount] = useState(fallback);
+  const [el, setEl] = useState<T | null>(null);
+  useEffect(() => {
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setCount(Math.max(1, Math.floor((entry.contentRect.height + 0.5) / rowHeight)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el, rowHeight]);
+  return [setEl, count] as const;
 }
