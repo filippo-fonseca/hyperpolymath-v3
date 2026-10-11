@@ -180,6 +180,45 @@ export type Database = {
           },
         ]
       }
+      google_accounts: {
+        Row: {
+          access_expires_at: string | null
+          access_token_enc: string | null
+          calendar_ids: string[]
+          created_at: string
+          default_calendar_id: string
+          email: string
+          id: string
+          refresh_token_enc: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_expires_at?: string | null
+          access_token_enc?: string | null
+          calendar_ids?: string[]
+          created_at?: string
+          default_calendar_id?: string
+          email: string
+          id?: string
+          refresh_token_enc: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_expires_at?: string | null
+          access_token_enc?: string | null
+          calendar_ids?: string[]
+          created_at?: string
+          default_calendar_id?: string
+          email?: string
+          id?: string
+          refresh_token_enc?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
         Row: {
           date: string
