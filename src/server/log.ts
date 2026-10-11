@@ -4,11 +4,11 @@ import { asJson, AppError, must, type Ctx, type Row } from "./ctx";
 // The audit log. Every write records before/after snapshots so the activity
 // view can show what happened and revert it.
 
-export type EntityType = "task" | "reminder" | "habit" | "habit_log" | "capture" | "widget" | "bot" | "routine" | "event";
+export type EntityType = "task" | "reminder" | "habit" | "habit_log" | "capture" | "widget" | "bot" | "routine" | "area" | "project" | "event";
 
 const TABLE: Record<
   Exclude<EntityType, "event">,
-  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines"
+  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects"
 > = {
   task: "tasks",
   reminder: "reminders",
@@ -18,10 +18,12 @@ const TABLE: Record<
   widget: "widgets",
   bot: "bots",
   routine: "routines",
+  area: "areas",
+  project: "projects",
 };
 
 // Tables where "create" is undone by soft delete rather than a hard delete.
-const SOFT_DELETE = new Set<EntityType>(["task", "capture", "widget", "routine"]);
+const SOFT_DELETE = new Set<EntityType>(["task", "capture", "widget", "routine", "area", "project"]);
 const IMMUTABLE = new Set(["id", "user_id", "created_at", "updated_at"]);
 
 export async function logAction(
