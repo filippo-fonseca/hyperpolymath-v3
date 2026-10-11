@@ -57,11 +57,13 @@ export function nextFire(schedule: Schedule, after: Date, tz: string): Date | nu
       const candidate = new Date(after.getTime() + schedule.every_minutes * 60_000);
       const start = schedule.window?.start ?? "00:00";
       const end = schedule.window?.end ?? "23:59";
-      let day = zonedParts(candidate, tz).date;
-      for (let i = 0; i < SEARCH_DAYS; i++, day = addDays(day, 1)) {
+      const overnight = end <= start; // e.g. 22:00 to 02:00 runs into the next day
+      // Start a day early: an overnight window that began yesterday may still be open.
+      let day = addDays(zonedParts(candidate, tz).date, -1);
+      for (let i = 0; i < SEARCH_DAYS + 1; i++, day = addDays(day, 1)) {
         if (schedule.days && !schedule.days.includes(weekdayOf(day))) continue;
         const ws = zonedToUtc(day, start, tz);
-        const we = zonedToUtc(day, end, tz);
+        const we = zonedToUtc(overnight ? addDays(day, 1) : day, end, tz);
         if (candidate <= we) return candidate < ws ? ws : candidate;
       }
       return null;

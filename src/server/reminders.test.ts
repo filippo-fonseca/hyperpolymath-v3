@@ -37,6 +37,13 @@ describe("advance", () => {
     expect(p.fire_count).toBe(1);
   });
 
+  it("interval cadence steps from the scheduled slot, not the late tick", () => {
+    const slot = zonedToUtc("2026-10-11", "12:00", NY);
+    const tick = new Date(slot.getTime() + 4 * 60_000); // tick ran 4 minutes late
+    const r = reminder({ schedule: { type: "interval", every_minutes: 180 }, next_fire_at: slot.toISOString() });
+    expect(advance(r, tick, NY).next_fire_at).toBe(zonedToUtc("2026-10-11", "15:00", NY).toISOString());
+  });
+
   it("once deactivates", () => {
     expect(advance(reminder({ until_kind: "once" }), now, NY).active).toBe(false);
   });

@@ -127,7 +127,15 @@ export type DueReminder = {
 export function advance(r: Reminder, now: Date, tz: string) {
   const schedule = scheduleSchema.safeParse(r.schedule);
   const fire_count = r.fire_count + 1;
-  let next = schedule.success ? nextFire(schedule.data, now, tz) : null;
+  // Step from the scheduled slot (not the tick time) so cadences don't drift,
+  // skipping any slots missed while the tick wasn't running.
+  let next: Date | null = null;
+  if (schedule.success) {
+    let base = r.next_fire_at ? new Date(r.next_fire_at) : now;
+    if (base > now) base = now;
+    next = nextFire(schedule.data, base, tz);
+    for (let i = 0; next && next <= now && i < 1000; i++) next = nextFire(schedule.data, next, tz);
+  }
   let remaining = r.remaining_count;
   if (r.until_kind === "once") next = null;
   if (r.until_kind === "count") {
