@@ -16,6 +16,11 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
   const due = sortToday(open.filter((t) => t.due_date && t.due_date <= today));
   const overdue = due.filter((t) => isOverdue(t, today)).length;
   const remaining = due.filter((t) => !isDone(t)).length;
+  // Nothing should be invisible: surface what's coming and what's undated.
+  const upcoming = open
+    .filter((t) => t.due_date && t.due_date > today && !isDone(t))
+    .sort((a, b) => (a.due_date! + (a.due_time ?? "")).localeCompare(b.due_date! + (b.due_time ?? "")));
+  const inbox = open.filter((t) => !t.due_date && !isDone(t)).length;
 
   if (size === "s") {
     const next = due.find((t) => !isDone(t));
@@ -29,6 +34,11 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
               <div className="line-clamp-2 text-[14px] font-medium leading-snug">{next.title}</div>
               {isOverdue(next, today) && <div className="mt-0.5 text-[12px] text-danger">Overdue</div>}
             </>
+          ) : upcoming[0] ? (
+            <>
+              <div className="text-[12px] text-ink-3">Next up</div>
+              <div className="line-clamp-2 text-[14px] font-medium leading-snug">{upcoming[0].title}</div>
+            </>
           ) : (
             <div className="text-[14px] text-ink-3">All clear</div>
           )}
@@ -37,10 +47,16 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
     );
   }
 
-  // Reserve a line for "N more" when the list doesn't fit.
-  const rows = due.length > fit ? Math.max(1, fit - 1) : fit;
-  const shown = due.slice(0, rows);
-  const more = due.length - shown.length;
+  // With nothing due today, show what's coming up instead of an empty card.
+  const list = due.length ? due : upcoming;
+  const footer = [upcoming.length && due.length ? `${upcoming.length} upcoming` : "", inbox ? `${inbox} in inbox` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  // Reserve a line for "N more" (and the footer) when the list doesn't fit.
+  const budget = footer ? fit - 1 : fit;
+  const rows = list.length > budget ? Math.max(1, budget - 1) : budget;
+  const shown = list.slice(0, Math.max(1, rows));
+  const more = list.length - shown.length;
 
   return (
     <div className="flex h-full flex-col">
@@ -59,13 +75,16 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
         />
       )}
       <div ref={listRef} className={`min-h-0 flex-1 overflow-hidden ${size === "l" ? "mt-2" : "mt-1"}`}>
-        {due.length === 0 ? (
+        {list.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="text-[15px] font-medium">Nothing due today</div>
-            <div className="mt-0.5 text-[13px] text-ink-3">Enjoy the quiet.</div>
+            <div className="mt-0.5 text-[13px] text-ink-3">{inbox ? `${inbox} in your inbox` : "Enjoy the quiet."}</div>
           </div>
         ) : (
           <ul className="flex flex-col">
+            {due.length === 0 && (
+              <li className="flex h-7 items-center text-[12px] font-medium text-ink-3">Nothing due today · coming up</li>
+            )}
             <AnimatePresence initial={false}>
               {shown.map((t) => (
                 <TodayRow key={t.id} task={t} today={today} done={isDone(t)} onToggle={() => toggle(t)} />
@@ -75,6 +94,7 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
           </ul>
         )}
       </div>
+      {footer && <div className="mt-1 text-[12px] text-ink-3">{footer}</div>}
     </div>
   );
 }
