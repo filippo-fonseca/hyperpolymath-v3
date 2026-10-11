@@ -112,7 +112,13 @@ export async function createTask(ctx: Ctx, input: TaskInput & { title: string })
 export async function updateTask(ctx: Ctx, id: string, input: TaskInput): Promise<Task> {
   const before = await getTask(ctx, id);
   const values = clean(input);
-  if (values.status === "done" && before.status !== "done") return completeTask(ctx, id);
+  if (values.status === "done" && before.status !== "done") {
+    // Apply any other edits first, then complete (which handles recurrence).
+    const { status: _done, ...rest } = values;
+    void _done;
+    if (Object.keys(rest).length) await updateTask(ctx, id, { ...input, status: undefined });
+    return completeTask(ctx, id);
+  }
   if (values.status && values.status !== "done") values.completed_at = null;
   const after = must(
     await ctx.db.from("tasks").update(values).eq("id", id).select().single(),
