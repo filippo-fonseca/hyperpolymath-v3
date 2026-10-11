@@ -3,6 +3,7 @@
 import { Suspense, use, useEffect, useState } from "react";
 import type { CalendarData, CalendarEvent } from "@/lib/dashboard-types";
 import { addDays } from "@/lib/time";
+import { safeHref } from "@/lib/markdown";
 import { longDate, shortDate, weekdayName } from "@/lib/format";
 import { createEventAction, deleteEventAction, listEventsAction } from "@/app/actions/calendar";
 import { Button, IconButton, Segmented, fieldClass } from "@/components/ui/primitives";
@@ -173,8 +174,8 @@ function EventRow({ e, onHide, onUnhide }: { e: CalendarEvent; onHide: (id: stri
       <span className="w-[3px] self-stretch rounded-full" style={{ background: e.color ?? "var(--accent)" }} />
       <div className="min-w-0 flex-1">
         <div className="text-[15px] font-medium leading-snug">
-          {e.link ? (
-            <a href={e.link} target="_blank" rel="noopener noreferrer" className="hover:text-accent">
+          {safeHref(e.link) ? (
+            <a href={safeHref(e.link)!} target="_blank" rel="noopener noreferrer" className="hover:text-accent">
               {e.title}
             </a>
           ) : (

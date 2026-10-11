@@ -21,6 +21,7 @@ describe("markdown subset", () => {
   it("keeps only safe link targets", () => {
     expect(parseInline("[ok](https://a.com)")[0]).toMatchObject({ t: "a", href: "https://a.com" });
     expect(parseInline("[bad](javascript:alert(1))")).toEqual([{ t: "text", v: "bad" }, { t: "text", v: ")" }]);
+    expect(parseInline("[mail](mailto:a@b.co)")).toEqual([{ t: "text", v: "mail" }]);
   });
 
   it("treats html as text", () => {

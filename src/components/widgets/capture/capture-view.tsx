@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Capture } from "@/lib/dashboard-types";
 import { relativeTime } from "@/lib/format";
+import { safeHref } from "@/lib/markdown";
 import {
   archiveCaptureAction,
   convertCaptureAction,
@@ -125,9 +126,9 @@ function CaptureRow({ c, onHide, onUnhide }: { c: Capture; onHide: (id: string) 
       <p className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed ${c.archived_at ? "text-ink-3" : ""}`}>
         {c.content}
       </p>
-      {c.urls.length > 0 && (
+      {c.urls.some((u) => safeHref(u)) && (
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-          {c.urls.slice(0, 3).map((u) => (
+          {c.urls.filter((u) => safeHref(u)).slice(0, 3).map((u) => (
             <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="max-w-full truncate text-[13px] text-accent hover:underline">
               {u.replace(/^https?:\/\//, "")}
             </a>

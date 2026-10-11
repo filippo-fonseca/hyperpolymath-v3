@@ -9,16 +9,18 @@ import type {
   TimelinePayload,
 } from "@/lib/widgets";
 import { IconCheck } from "@/components/ui/icons";
+import { safeHref } from "@/lib/markdown";
 import { Markdown } from "./markdown";
 
 // One renderer per custom kind. `compact` is the card; otherwise the full
 // expanded view. Compact renderers clip rather than scroll.
 
 function ItemText({ text, url, compact }: { text: string; url?: string; compact: boolean }) {
-  if (!url) return <>{text}</>;
+  const href = safeHref(url);
+  if (!href) return <>{text}</>;
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}

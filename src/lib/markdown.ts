@@ -19,9 +19,10 @@ export type Block =
   | { type: "code"; v: string }
   | { type: "hr" };
 
-export function safeHref(url: string): string | null {
-  const u = url.trim();
-  return /^(https?:\/\/|mailto:)/i.test(u) ? u : null;
+/** Only http(s) URLs become links; anything else renders as plain text. */
+export function safeHref(url: string | null | undefined): string | null {
+  const u = url?.trim();
+  return u && /^https?:\/\/[^\s]+$/i.test(u) ? u : null;
 }
 
 export function parseInline(src: string): Inline[] {
