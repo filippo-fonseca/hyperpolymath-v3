@@ -284,3 +284,31 @@ export function useFitCount<T extends HTMLElement>(rowHeight: number, fallback: 
   }, [el, rowHeight]);
   return [setEl, count] as const;
 }
+
+/** iOS-style on/off switch. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors duration-200"
+      style={{ background: checked ? "var(--accent)" : "var(--gray-300)" }}
+    >
+      <span
+        className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] transition-transform duration-200"
+        style={{ transform: `translateX(${checked ? 21 : 3}px)` }}
+      />
+    </button>
+  );
+}
