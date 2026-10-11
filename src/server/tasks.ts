@@ -1,6 +1,7 @@
 import "server-only";
 import { AppError, asJson, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
+import { projectIdFor } from "./projects";
 import { nextOccurrence, recurrenceSchema, type Recurrence } from "@/lib/recurrence";
 import { addDays, localDate } from "@/lib/time";
 
@@ -12,6 +13,8 @@ export type TaskInput = {
   status?: "todo" | "doing" | "done";
   priority?: number;
   list?: string | null;
+  /** Project name or id; null clears. */
+  project?: string | null;
   due_date?: string | null;
   due_time?: string | null;
   recurrence?: Recurrence | null;
@@ -28,7 +31,7 @@ export async function getTask(ctx: Ctx, id: string): Promise<Task> {
 
 export async function listTasks(
   ctx: Ctx,
-  opts: { scope?: TaskScope; list?: string; query?: string; limit?: number } = {},
+  opts: { scope?: TaskScope; list?: string; project?: string; area?: string; query?: string; limit?: number } = {},
 ): Promise<Task[]> {
   const today = localDate(ctx.now, ctx.tz);
   let q = ctx.db.from("tasks").select().eq("user_id", ctx.userId).is("deleted_at", null);
@@ -53,6 +56,13 @@ export async function listTasks(
       break;
   }
   if (opts.list) q = q.ilike("list", escapeLike(opts.list));
+  if (opts.project) q = q.eq("project_id", (await projectIdFor(ctx, opts.project))!);
+  if (opts.area) {
+    const { findArea } = await import("./projects");
+    const area = await findArea(ctx, opts.area);
+    const { data: ps } = await ctx.db.from("projects").select("id").eq("user_id", ctx.userId).eq("area_id", area.id).is("deleted_at", null);
+    q = q.in("project_id", (ps ?? []).map((p) => p.id));
+  }
   if (opts.query) q = q.ilike("title", `%${escapeLike(opts.query)}%`);
   const order = opts.scope === "done" ? "completed_at" : "due_date";
   q = q
@@ -87,6 +97,8 @@ function clean(input: TaskInput): Update<"tasks"> {
 
 export async function createTask(ctx: Ctx, input: TaskInput & { title: string }): Promise<Task> {
   const values = clean(input);
+  const project_id = await projectIdFor(ctx, input.project);
+  if (project_id !== undefined) values.project_id = project_id;
   const task = must(
     await ctx.db
       .from("tasks")
@@ -116,6 +128,8 @@ export async function createTask(ctx: Ctx, input: TaskInput & { title: string })
 export async function updateTask(ctx: Ctx, id: string, input: TaskInput): Promise<Task> {
   const before = await getTask(ctx, id);
   const values = clean(input);
+  const project_id = await projectIdFor(ctx, input.project);
+  if (project_id !== undefined) values.project_id = project_id;
   if (values.status === "done" && before.status !== "done") {
     // Apply any other edits first, then complete (which handles recurrence).
     const { status: _done, ...rest } = values;

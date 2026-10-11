@@ -2,6 +2,7 @@ import "server-only";
 import { AppError, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { createTask, type TaskInput } from "./tasks";
+import { projectIdFor } from "./projects";
 import { localDate } from "@/lib/time";
 
 export type Capture = Row<"captures">;
@@ -36,7 +37,10 @@ export async function resurfacingCaptures(ctx: Ctx): Promise<Capture[]> {
   );
 }
 
-export async function createCapture(ctx: Ctx, input: { content: string; resurface_at?: string | null }) {
+export async function createCapture(
+  ctx: Ctx,
+  input: { content: string; resurface_at?: string | null; project?: string | null },
+) {
   const content = input.content.trim();
   if (!content) throw new AppError("Capture can't be empty.");
   const capture = must(
@@ -48,6 +52,7 @@ export async function createCapture(ctx: Ctx, input: { content: string; resurfac
         urls: [...new Set(content.match(URL_RE) ?? [])],
         source: ctx.actor.name,
         resurface_at: input.resurface_at ?? null,
+        project_id: (await projectIdFor(ctx, input.project)) ?? null,
       })
       .select()
       .single(),
@@ -74,10 +79,12 @@ async function getCapture(ctx: Ctx, id: string) {
 export async function updateCapture(
   ctx: Ctx,
   id: string,
-  patch: { content?: string; resurface_at?: string | null; archived?: boolean },
+  patch: { content?: string; resurface_at?: string | null; archived?: boolean; project?: string | null },
 ) {
   const before = await getCapture(ctx, id);
   const values: Update<"captures"> = {};
+  const project_id = await projectIdFor(ctx, patch.project);
+  if (project_id !== undefined) values.project_id = project_id;
   if (patch.content !== undefined) {
     values.content = patch.content.trim();
     values.urls = [...new Set(patch.content.match(URL_RE) ?? [])];
@@ -121,6 +128,7 @@ export async function convertCaptureToTask(ctx: Ctx, id: string, task: Partial<T
   const created = await createTask(ctx, {
     ...task,
     title: task.title ?? firstLine,
+    project: task.project ?? capture.project_id ?? undefined,
     notes: task.notes ?? (capture.content.length > firstLine.length ? capture.content : null),
   });
   const after = must(

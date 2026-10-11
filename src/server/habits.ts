@@ -1,6 +1,7 @@
 import "server-only";
 import { AppError, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
+import { findArea } from "./projects";
 import { currentStreak } from "@/lib/streak";
 import { addDays, localDate, weekdayOf } from "@/lib/time";
 
@@ -60,7 +61,10 @@ export async function listHabits(ctx: Ctx): Promise<HabitWithStatus[]> {
   });
 }
 
-export async function createHabit(ctx: Ctx, input: { name: string; icon?: string | null; days_of_week?: number[] }) {
+export async function createHabit(
+  ctx: Ctx,
+  input: { name: string; icon?: string | null; days_of_week?: number[]; area?: string | null },
+) {
   const name = input.name.trim();
   if (!name) throw new AppError("Habit name can't be empty.");
   const habit = must(
@@ -71,6 +75,7 @@ export async function createHabit(ctx: Ctx, input: { name: string; icon?: string
         name,
         icon: input.icon ?? null,
         days_of_week: input.days_of_week ?? [0, 1, 2, 3, 4, 5, 6],
+        area_id: input.area ? (await findArea(ctx, input.area)).id : null,
         position: ctx.now.getTime(),
       })
       .select()
@@ -91,10 +96,11 @@ export async function createHabit(ctx: Ctx, input: { name: string; icon?: string
 export async function updateHabit(
   ctx: Ctx,
   idOrName: string,
-  patch: { name?: string; icon?: string | null; days_of_week?: number[]; archived?: boolean },
+  patch: { name?: string; icon?: string | null; days_of_week?: number[]; archived?: boolean; area?: string | null },
 ) {
   const before = await findHabit(ctx, idOrName);
   const values: Update<"habits"> = {};
+  if (patch.area !== undefined) values.area_id = patch.area ? (await findArea(ctx, patch.area)).id : null;
   if (patch.name !== undefined) values.name = patch.name.trim();
   if (patch.icon !== undefined) values.icon = patch.icon;
   if (patch.days_of_week !== undefined) values.days_of_week = patch.days_of_week;
