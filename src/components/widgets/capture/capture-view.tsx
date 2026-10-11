@@ -11,12 +11,14 @@ import {
   createCaptureAction,
   deleteCaptureAction,
   searchCapturesAction,
+  setCaptureProjectAction,
 } from "@/app/actions/captures";
 import { Button, IconButton } from "@/components/ui/primitives";
-import { IconArchive, IconCheck, IconSearch, IconTrash, IconUndo } from "@/components/ui/icons";
+import { IconArchive, IconCheck, IconFolder, IconSearch, IconTrash, IconUndo } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
 import { QuickAdd } from "../tasks/task-bits";
+import { ProjectChip, ProjectPicker } from "../projects/project-bits";
 
 export function CaptureView() {
   const { data, run } = useDashboard();
@@ -108,6 +110,15 @@ export function CaptureView() {
 function CaptureRow({ c, onHide, onUnhide }: { c: Capture; onHide: (id: string) => void; onUnhide: (id: string) => void }) {
   const { nowMs, run } = useDashboard();
   const [confirm, setConfirm] = useState(false);
+  const [picking, setPicking] = useState(false);
+  // Optimistic project until the refresh lands (undefined = use the server's).
+  const [projectId, setProjectId] = useState<string | null | undefined>(undefined);
+  const project = projectId === undefined ? c.project_id : projectId;
+  const fileUnder = async (id: string | null) => {
+    setProjectId(id);
+    await run(setCaptureProjectAction(c.id, id));
+    setProjectId(undefined);
+  };
 
   const act = async (p: () => Promise<unknown>, hide: boolean) => {
     if (hide) onHide(c.id);
@@ -142,6 +153,11 @@ function CaptureRow({ c, onHide, onUnhide }: { c: Capture; onHide: (id: string) 
           {c.archived_at ? " · archived" : ""}
           {c.converted_task_id ? " · became a task" : ""}
         </span>
+        {project && (
+          <button type="button" onClick={() => setPicking(true)} aria-label="Change project" className="min-w-0 max-w-full">
+            <ProjectChip projectId={project} />
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-0.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
           {confirm ? (
             <>
@@ -163,6 +179,9 @@ function CaptureRow({ c, onHide, onUnhide }: { c: Capture; onHide: (id: string) 
                   <IconCheck size={15} /> To task
                 </Button>
               )}
+              <IconButton label={project ? "Change project" : "File under a project"} className="h-8 w-8" onClick={() => setPicking(true)}>
+                <IconFolder size={15} />
+              </IconButton>
               {c.archived_at ? (
                 <IconButton label="Unarchive" className="h-8 w-8" onClick={() => act(() => run(archiveCaptureAction(c.id, false)), false)}>
                   <IconUndo size={15} />
@@ -179,6 +198,7 @@ function CaptureRow({ c, onHide, onUnhide }: { c: Capture; onHide: (id: string) 
           )}
         </div>
       </div>
+      <ProjectPicker open={picking} onClose={() => setPicking(false)} value={project} onChange={fileUnder} />
     </motion.li>
   );
 }
