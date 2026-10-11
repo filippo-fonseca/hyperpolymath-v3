@@ -28,6 +28,7 @@ import { CardSurface, WidgetCard } from "./widget-card";
 import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
 import { SettingsSheet } from "./settings-sheet";
+import { RealtimeRefresh } from "./realtime";
 import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
 import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
 
@@ -48,6 +49,7 @@ export function Dashboard({ data, calendar }: { data: DashboardData; calendar: P
       <DashboardProvider data={data} calendar={calendar} open={open} openSettings={openSettings}>
         <Home expandedId={expandedId} setExpandedId={setExpandedId} />
         <GoogleReturnToast />
+        {data.realtime && <RealtimeRefresh userId={data.userId} url={data.realtime.url} anonKey={data.realtime.key} />}
         <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </DashboardProvider>
     </ToastProvider>
