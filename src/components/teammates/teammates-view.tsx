@@ -298,7 +298,7 @@ function RoutineItem({ routine, onOpen }: { routine: RoutineRow; onOpen: () => v
           <span className="mt-0.5 block truncate text-[12.5px] text-ink-3">{routine.last_summary}</span>
         )}
       </button>
-      <div className="pt-0.5">
+      <div className="shrink-0 pt-0.5">
         <Switch checked={enabled} onChange={toggle} label={`${enabled ? "Pause" : "Resume"} ${routine.name}`} />
       </div>
     </li>
