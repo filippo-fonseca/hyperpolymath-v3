@@ -18,15 +18,16 @@ import {
   isNow,
   monthGridStart,
   monthLabel,
+  type Draft,
   overlapsRange,
   timedTaskEvents,
   weekStart,
 } from "./calendar-utils";
 import { WeekGrid } from "./week-grid";
 import { MonthGrid } from "./month-grid";
+import { EventPopover, type Selected } from "./event-popover";
 
 type View = "agenda" | "week" | "month";
-type Draft = { date: string; time?: string };
 /** Fetched Google events per "from:to" range; null marks a failed fetch. Tied to one calendar payload. */
 type RangeCache = { cal: CalendarData; ranges: Record<string, CalendarEvent[] | null> };
 
@@ -64,6 +65,7 @@ function CalendarViewInner() {
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(data.today);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [selected, setSelected] = useState<Selected | null>(null);
   const [cache, setCache] = useState<RangeCache>(() => ({ cal, ranges: {} }));
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const inflight = useRef(new WeakMap<CalendarData, Set<string>>());
@@ -182,7 +184,8 @@ function CalendarViewInner() {
         <Segmented<View> value={view} onChange={setView} options={VIEWS} />
       </div>
 
-      {draft && <EventForm key={`${draft.date}-${draft.time ?? ""}`} draft={draft} onDone={() => setDraft(null)} />}
+      {draft && <EventForm key={`${draft.date}-${draft.time ?? ""}-${draft.allDay ?? ""}`} draft={draft} onDone={() => setDraft(null)} />}
+      {selected && <EventPopover selected={selected} onClose={() => setSelected(null)} onHide={hide} onUnhide={unhide} />}
       {cal.error && from >= cal.from && from <= cal.to && (
         <p className="mb-4 rounded-[12px] bg-gray-100 px-3.5 py-2.5 text-[13px] text-ink-2">{cal.error}</p>
       )}
@@ -190,7 +193,16 @@ function CalendarViewInner() {
       {empty ? (
         <div className="skeleton h-32 rounded-[18px]" />
       ) : view === "week" ? (
-        <WeekGrid from={from} events={events} tz={data.tz} today={data.today} nowMs={nowMs} />
+        <WeekGrid
+          from={from}
+          events={events}
+          tz={data.tz}
+          today={data.today}
+          nowMs={nowMs}
+          draft={draft}
+          onSlot={setDraft}
+          onSelect={(e, rect) => setSelected({ e, rect })}
+        />
       ) : view === "month" ? (
         <MonthGrid
           from={from}
@@ -305,7 +317,7 @@ function EventForm({ draft, onDone }: { draft: Draft; onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(draft.date);
   const [time, setTime] = useState(draft.time ?? "09:00");
-  const [allDay, setAllDay] = useState(false);
+  const [allDay, setAllDay] = useState(draft.allDay ?? false);
   const [duration, setDuration] = useState(60);
   const [busy, setBusy] = useState(false);
 

@@ -51,6 +51,9 @@ export function groupByDay(events: CalendarEvent[], tz: string) {
   return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
+/** Quick-add prefill: a date, and a start time or all-day. */
+export type Draft = { date: string; time?: string; allDay?: boolean };
+
 /* ---------- ranges ---------- */
 
 /** Sunday on or before `date` (weeks start on Sunday, like the weekday pickers). */

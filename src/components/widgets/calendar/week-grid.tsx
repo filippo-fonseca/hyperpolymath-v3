@@ -4,7 +4,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import type { CalendarEvent } from "@/lib/dashboard-types";
 import { addDays } from "@/lib/time";
 import { dayOfMonth, timeLabel, WEEKDAYS_SHORT } from "@/lib/format";
-import { allDayOn, daySegments, eventTime, layoutDay, minutesInDay, type Placed, type Segment } from "./calendar-utils";
+import { allDayOn, daySegments, eventTime, layoutDay, minutesInDay, type Draft, type Placed, type Segment } from "./calendar-utils";
 
 // Apple / Notion Calendar style time grid: sticky day header with an
 // all-day row, hour gutter on the left, events as tinted rounded blocks.
@@ -22,12 +22,19 @@ export function WeekGrid({
   tz,
   today,
   nowMs,
+  draft,
+  onSlot,
+  onSelect,
 }: {
   from: string;
   events: CalendarEvent[];
   tz: string;
   today: string;
   nowMs: number;
+  /** The quick-add draft, drawn as a ghost block when it has a time. */
+  draft: Draft | null;
+  onSlot: (draft: Draft) => void;
+  onSelect: (e: CalendarEvent, rect: DOMRect) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
@@ -56,7 +63,7 @@ export function WeekGrid({
         {/* Day header + all-day row */}
         <div className="sticky top-0 z-20 flex border-b border-gray-200 bg-surface/95 backdrop-blur-sm">
           <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-end bg-surface/95 pb-1.5 pr-1.5 text-right" style={{ width: GUTTER }}>
-            {allDayRows > 0 && <span className="text-[10.5px] font-medium text-gray-500">all-day</span>}
+            <span className="text-[10.5px] font-medium text-gray-500">all-day</span>
           </div>
           {days.map((d, i) => {
             const isToday = d === today;
@@ -72,13 +79,15 @@ export function WeekGrid({
                     {dayOfMonth(d)}
                   </span>
                 </div>
-                {allDayRows > 0 && (
-                  <div className="mt-1.5 flex flex-col gap-[3px]">
-                    {allDay[i].map((e) => (
-                      <AllDayChip key={e.id} e={e} />
-                    ))}
-                  </div>
-                )}
+                <div
+                  className="mt-1.5 flex flex-col gap-[3px]"
+                  style={{ minHeight: Math.max(1, allDayRows) * 21 - 3 }}
+                  onClick={() => onSlot({ date: d, allDay: true })}
+                >
+                  {allDay[i].map((e) => (
+                    <AllDayChip key={e.id} e={e} onSelect={onSelect} />
+                  ))}
+                </div>
               </div>
             );
           })}
@@ -108,7 +117,16 @@ export function WeekGrid({
             )}
           </div>
           {days.map((d) => (
-            <DayColumn key={d} today={d === today} nowMin={nowMin} segments={daySegments(events, d, tz)} tz={tz} />
+            <DayColumn
+              key={d}
+              today={d === today}
+              nowMin={nowMin}
+              segments={daySegments(events, d, tz)}
+              tz={tz}
+              ghost={draft && draft.date === d && draft.time ? draft.time : null}
+              onSlot={(time) => onSlot({ date: d, time })}
+              onSelect={onSelect}
+            />
           ))}
         </div>
       </div>
@@ -116,18 +134,49 @@ export function WeekGrid({
   );
 }
 
-function DayColumn({ today, nowMin, segments, tz }: { today: boolean; nowMin: number; segments: Segment[]; tz: string }) {
+function DayColumn({
+  today,
+  nowMin,
+  segments,
+  tz,
+  ghost,
+  onSlot,
+  onSelect,
+}: {
+  today: boolean;
+  nowMin: number;
+  segments: Segment[];
+  tz: string;
+  ghost: string | null;
+  onSlot: (time: string) => void;
+  onSelect: (e: CalendarEvent, rect: DOMRect) => void;
+}) {
+  const ghostMin = ghost ? Number(ghost.slice(0, 2)) * 60 + Number(ghost.slice(3, 5)) : null;
   return (
     <div
       className={`relative w-[var(--col)] shrink-0 border-l border-gray-150 ${today ? "bg-[rgb(16_132_254/0.03)]" : ""}`}
+      onClick={(ev) => {
+        // Empty slot: snap down to the half hour.
+        const y = ev.clientY - ev.currentTarget.getBoundingClientRect().top;
+        const min = Math.min(Math.max(Math.floor(((y / HOUR) * 60) / 30) * 30, 0), DAY_MIN - 30);
+        onSlot(`${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`);
+      }}
       style={{
         height: 24 * HOUR,
         backgroundImage: `repeating-linear-gradient(to bottom, var(--gray-150) 0, var(--gray-150) 1px, transparent 1px, transparent ${HOUR}px)`,
       }}
     >
       {layoutDay(segments, MIN_SPAN).map((p) => (
-        <EventBlock key={p.e.id} s={p} tz={tz} />
+        <EventBlock key={p.e.id} s={p} tz={tz} onSelect={onSelect} />
       ))}
+      {ghostMin !== null && (
+        <div
+          className="pointer-events-none absolute inset-x-[2px] z-[4] rounded-[8px] border-[1.5px] border-dashed border-accent bg-accent-soft px-1.5 py-[3px] text-[11.5px] font-semibold text-accent"
+          style={{ top: (ghostMin / 60) * HOUR + 1, height: HOUR - 2 }}
+        >
+          New event
+        </div>
+      )}
       {today && (
         <div className="pointer-events-none absolute inset-x-0 z-[5] -translate-y-1/2" style={{ top: (nowMin / 60) * HOUR }} aria-hidden>
           <div className="relative h-[2px] bg-danger">
@@ -141,7 +190,14 @@ function DayColumn({ today, nowMin, segments, tz }: { today: boolean; nowMin: nu
 
 const tint = (color: string | null) => `color-mix(in srgb, ${color ?? "var(--accent)"} 13%, white)`;
 
-function EventBlock({ s, tz }: { s: Placed; tz: string }) {
+type SelectFn = (e: CalendarEvent, rect: DOMRect) => void;
+
+const pick = (e: CalendarEvent, onSelect: SelectFn) => (ev: React.MouseEvent<HTMLElement>) => {
+  ev.stopPropagation();
+  onSelect(e, ev.currentTarget.getBoundingClientRect());
+};
+
+function EventBlock({ s, tz, onSelect }: { s: Placed; tz: string; onSelect: SelectFn }) {
   const { e } = s;
   const top = (s.start / 60) * HOUR;
   const height = Math.max(((Math.min(s.end, DAY_MIN) - s.start) / 60) * HOUR, MIN_BLOCK);
@@ -154,40 +210,46 @@ function EventBlock({ s, tz }: { s: Placed; tz: string }) {
 
   if (e.task_id) {
     return (
-      <div
-        className="absolute flex h-[22px] items-center gap-1 overflow-hidden rounded-full bg-white px-1.5 text-[11.5px] font-medium text-ink shadow-ring"
+      <button
+        type="button"
+        onClick={pick(e, onSelect)}
+        className="absolute z-[2] flex h-[22px] items-center gap-1 overflow-hidden rounded-full bg-white px-1.5 text-left text-[11.5px] font-medium text-ink shadow-ring transition-shadow hover:shadow-pop"
         style={{ ...pos, height: 22 }}
         title={e.title}
       >
         <span className="h-[10px] w-[10px] shrink-0 rounded-[3px] border-[1.5px] border-gray-500" aria-hidden />
         <span className="truncate">{e.title}</span>
-      </div>
+      </button>
     );
   }
 
   const short = height < 36;
   return (
-    <div
-      className="absolute overflow-hidden rounded-[8px] px-1.5 py-[3px] text-ink"
-      style={{ ...pos, background: tint(e.color), boxShadow: `inset 3px 0 0 ${e.color ?? "var(--accent)"}` }}
+    <button
+      type="button"
+      onClick={pick(e, onSelect)}
+      className="absolute z-[1] overflow-hidden rounded-[8px] px-1.5 py-[3px] text-left align-top text-ink transition-[filter] hover:brightness-[0.97]"
+      style={{ ...pos, background: tint(e.color), boxShadow: `inset 3px 0 0 ${e.color ?? "var(--accent)"}, 0 0 0 1px var(--surface)` }}
       title={e.title}
     >
-      <div className={`pl-1 text-[11.5px] leading-[1.25] ${short ? "flex gap-1 truncate" : ""}`}>
-        <span className="font-semibold">{e.title}</span>
+      <div className={`absolute inset-x-1.5 top-[3px] pl-1 text-[11.5px] leading-[1.25] ${short ? "flex gap-1 truncate" : ""}`}>
+        <span className="font-semibold [overflow-wrap:anywhere]">{e.title}</span>
         <span className={`text-ink-2 tabular-nums ${short ? "" : "block"}`}>{eventTime(e.start, tz)}</span>
       </div>
-    </div>
+    </button>
   );
 }
 
-function AllDayChip({ e }: { e: CalendarEvent }) {
+function AllDayChip({ e, onSelect }: { e: CalendarEvent; onSelect: SelectFn }) {
   return (
-    <div
-      className="truncate rounded-[6px] px-1.5 py-[2px] text-[11px] font-medium text-ink"
+    <button
+      type="button"
+      onClick={pick(e, onSelect)}
+      className="block w-full truncate rounded-[6px] px-1.5 py-[2px] text-left text-[11px] font-medium text-ink"
       style={{ background: tint(e.color), boxShadow: `inset 3px 0 0 ${e.color ?? "var(--accent)"}` }}
       title={e.title}
     >
       <span className="pl-0.5">{e.title}</span>
-    </div>
+    </button>
   );
 }
