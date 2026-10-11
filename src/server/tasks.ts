@@ -1,5 +1,5 @@
 import "server-only";
-import { AppError, asJson, must, type Ctx, type Row, type Update } from "./ctx";
+import { AppError, asJson, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { nextOccurrence, recurrenceSchema, type Recurrence } from "@/lib/recurrence";
 import { addDays, localDate } from "@/lib/time";
@@ -52,8 +52,8 @@ export async function listTasks(
       q = q.eq("status", "done");
       break;
   }
-  if (opts.list) q = q.ilike("list", opts.list);
-  if (opts.query) q = q.ilike("title", `%${opts.query.replace(/[%_]/g, "\\$&")}%`);
+  if (opts.list) q = q.ilike("list", escapeLike(opts.list));
+  if (opts.query) q = q.ilike("title", `%${escapeLike(opts.query)}%`);
   const order = opts.scope === "done" ? "completed_at" : "due_date";
   q = q
     .order(order, { ascending: opts.scope !== "done", nullsFirst: false })

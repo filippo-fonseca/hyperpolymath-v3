@@ -1,5 +1,5 @@
 import "server-only";
-import { AppError, must, type Ctx, type Row, type Update } from "./ctx";
+import { AppError, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { createTask, type TaskInput } from "./tasks";
 import { localDate } from "@/lib/time";
@@ -14,7 +14,7 @@ export async function listCaptures(
 ): Promise<Capture[]> {
   let q = ctx.db.from("captures").select().eq("user_id", ctx.userId).is("deleted_at", null);
   if (!opts.includeArchived) q = q.is("archived_at", null);
-  if (opts.query) q = q.ilike("content", `%${opts.query.replace(/[%_]/g, "\\$&")}%`);
+  if (opts.query) q = q.ilike("content", `%${escapeLike(opts.query)}%`);
   return must(
     await q.order("created_at", { ascending: false }).limit(Math.min(opts.limit ?? 30, 200)),
     "list captures",

@@ -1,5 +1,5 @@
 import "server-only";
-import { AppError, must, type Actor, type Ctx, type DB } from "./ctx";
+import { AppError, must, type Actor, type Ctx, type DB, escapeLike } from "./ctx";
 import { logAction } from "./log";
 
 const SHAPES = ["blob", "squircle", "hex", "pebble", "tablet", "wedge"];
@@ -24,7 +24,7 @@ export async function resolveBotActor(db: DB, userId: string, rawName: string): 
     .from("bots")
     .select("id, name")
     .eq("user_id", userId)
-    .ilike("name", name.replace(/[%_]/g, "\\$&"))
+    .ilike("name", escapeLike(name))
     .maybeSingle();
   if (existing) {
     await db.from("bots").update({ last_seen_at: new Date().toISOString(), archived_at: null }).eq("id", existing.id);
@@ -77,7 +77,7 @@ export async function updateBot(
   patch: { role?: string; description?: string; parent?: string | null; avatar_shape?: string; avatar_color?: string },
 ) {
   const before = must(
-    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", name).maybeSingle(),
+    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", escapeLike(name)).maybeSingle(),
     `bot "${name}"`,
   );
   let parent_id = before.parent_id;
@@ -85,7 +85,7 @@ export async function updateBot(
     if (patch.parent === null) parent_id = null;
     else {
       const p = must(
-        await ctx.db.from("bots").select("id").eq("user_id", ctx.userId).ilike("name", patch.parent).maybeSingle(),
+        await ctx.db.from("bots").select("id").eq("user_id", ctx.userId).ilike("name", escapeLike(patch.parent)).maybeSingle(),
         `parent bot "${patch.parent}"`,
       );
       parent_id = p.id;
@@ -120,7 +120,7 @@ export async function updateBot(
 /** Retire a bot from the teammates view. Its history stays; acting again restores it. */
 export async function archiveBot(ctx: Ctx, name: string) {
   const before = must(
-    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", name).is("archived_at", null).maybeSingle(),
+    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", escapeLike(name)).is("archived_at", null).maybeSingle(),
     `bot "${name}"`,
   );
   if (before.is_coordinator) throw new AppError("The coordinator can't be archived.");

@@ -1,5 +1,5 @@
 import "server-only";
-import { AppError, must, type Ctx, type Row, type Update } from "./ctx";
+import { AppError, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { currentStreak } from "@/lib/streak";
 import { addDays, localDate, weekdayOf } from "@/lib/time";
@@ -17,7 +17,7 @@ const STREAK_WINDOW_DAYS = 400;
 export async function findHabit(ctx: Ctx, idOrName: string): Promise<Habit> {
   const isUuid = /^[0-9a-f-]{36}$/i.test(idOrName);
   const q = ctx.db.from("habits").select().eq("user_id", ctx.userId).is("archived_at", null);
-  const { data } = isUuid ? await q.eq("id", idOrName).maybeSingle() : await q.ilike("name", idOrName).maybeSingle();
+  const { data } = isUuid ? await q.eq("id", idOrName).maybeSingle() : await q.ilike("name", escapeLike(idOrName)).maybeSingle();
   if (!data) throw new AppError(`No habit "${idOrName}". Use list_habits to see names.`, "not_found");
   return data;
 }

@@ -62,3 +62,6 @@ export function must<T>(res: { data: T; error: { message: string } | null }, wha
 }
 
 export const asJson = (v: unknown) => v as Json;
+
+/** Escape LIKE wildcards so user/bot input matches literally in ilike(). */
+export const escapeLike = (v: string) => v.replace(/[\\%_]/g, "\\$&");

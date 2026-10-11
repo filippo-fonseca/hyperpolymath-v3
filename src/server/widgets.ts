@@ -1,5 +1,5 @@
 import "server-only";
-import { AppError, asJson, must, type Ctx, type DB, type Row } from "./ctx";
+import { AppError, asJson, must, type Ctx, type DB, type Row, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
 
@@ -40,7 +40,7 @@ async function findWidget(ctx: Ctx, idOrTitle: string): Promise<Widget> {
   const q = ctx.db.from("widgets").select().eq("user_id", ctx.userId).is("deleted_at", null);
   const { data } = isUuid
     ? await q.eq("id", idOrTitle).maybeSingle()
-    : await q.ilike("title", idOrTitle).limit(1).maybeSingle();
+    : await q.ilike("title", escapeLike(idOrTitle)).limit(1).maybeSingle();
   if (!data) throw new AppError(`No widget "${idOrTitle}". Use list_widgets.`, "not_found");
   return data;
 }
