@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { adminDb, userTimezone, type DB, type Row } from "./ctx";
 import { advance, type DueReminder } from "./reminders";
 import { describeSchedule, scheduleSchema } from "@/lib/schedule";
@@ -71,12 +72,14 @@ export async function runTick(
       result.sent += batch.length;
     } catch (e) {
       // Roll back the claim so the next tick retries, and surface the error.
+      // Only rows still exactly as we left them: a cancel or snooze that
+      // happened during delivery wins.
       const msg = e instanceof Error ? e.message : String(e);
       result.failed += batch.length;
       result.errors.push(msg);
       await Promise.all(
-        claimed.map(({ row }) =>
-          db
+        claimed.map(({ row, patch }) => {
+          let q = db
             .from("reminders")
             .update({
               next_fire_at: row.next_fire_at,
@@ -86,8 +89,12 @@ export async function runTick(
               active: true,
               last_error: msg.slice(0, 500),
             })
-            .eq("id", row.id),
-        ),
+            .eq("id", row.id)
+            .eq("fire_count", patch.fire_count)
+            .eq("active", patch.active);
+          q = patch.next_fire_at ? q.eq("next_fire_at", patch.next_fire_at) : q.is("next_fire_at", null);
+          return q;
+        }),
       );
     }
   }
@@ -123,7 +130,12 @@ export async function deliverToKiwi(_userId: string, batch: DueReminder[], now: 
 export async function verifyCronSecret(db: DB, presented: string | null): Promise<boolean> {
   if (!presented) return false;
   const env = process.env.CRON_SECRET;
-  if (env && presented === env) return true;
+  if (env) {
+    const digest = (v: string) => createHash("sha256").update(v).digest();
+    if (timingSafeEqual(digest(presented), digest(env))) return true;
+  }
+  // Cheap shape check before touching Vault: the generated secret is 64 hex chars.
+  if (!/^[0-9a-f]{64}$/.test(presented)) return false;
   const { data } = await db.rpc("check_cron_secret", { presented });
   return data === true;
 }
