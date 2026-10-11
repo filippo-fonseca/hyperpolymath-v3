@@ -15,6 +15,7 @@ import { useDashboard, type TeammatesFocus } from "@/components/dashboard/contex
 import { botStatus, coordinatorOf, StatusDot } from "@/components/widgets/kiwi/actors";
 import { RunDot, runState, WidgetChip } from "./routine-utils";
 import { BotEditor } from "./bot-sheet";
+import { RoutineEditor } from "./routine-sheet";
 
 export type TeamSheet =
   | { kind: "bot"; id: string }
@@ -109,6 +110,9 @@ function TeamSheets({ sheet, open, onClose }: { sheet: TeamSheet | null; open: b
       "Teammate"
     );
     body = <BotEditor key={sheet.id} botId={sheet.id} onDone={onClose} />;
+  } else if (sheet?.kind === "routine") {
+    title = data.routines.find((r) => r.id === sheet.id)?.name ?? "Routine";
+    body = <RoutineEditor key={sheet.id} routineId={sheet.id} onDone={onClose} />;
   }
   return (
     <Sheet open={open && !!body} onClose={onClose} title={title} width={480}>

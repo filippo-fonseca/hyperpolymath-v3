@@ -12,7 +12,7 @@ export function runState(status: string | null | undefined, at: string | null | 
     case "skipped":
       return { dot: "bg-gray-400", text: `Skipped ${when}` };
     case "running":
-      return { dot: "bg-accent pulse-dot", text: `Running since ${when}` };
+      return { dot: "bg-accent pulse-dot", text: `Started ${when}` };
     default:
       return { dot: "bg-success", text: `Ran ${when}` };
   }
