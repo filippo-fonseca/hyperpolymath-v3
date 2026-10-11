@@ -397,6 +397,116 @@ export type Database = {
           },
         ]
       }
+      routine_runs: {
+        Row: {
+          finished_at: string | null
+          id: string
+          routine_id: string
+          started_at: string
+          status: string
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          finished_at?: string | null
+          id?: string
+          routine_id: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          finished_at?: string | null
+          id?: string
+          routine_id?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_runs_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routines: {
+        Row: {
+          bot_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          enabled: boolean
+          grokbot_routine_id: string | null
+          id: string
+          last_run_at: string | null
+          last_status: string | null
+          last_summary: string | null
+          name: string
+          run_count: number
+          schedule: string | null
+          updated_at: string
+          user_id: string
+          widget_id: string | null
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          grokbot_routine_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: string | null
+          name: string
+          run_count?: number
+          schedule?: string | null
+          updated_at?: string
+          user_id: string
+          widget_id?: string | null
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          grokbot_routine_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: string | null
+          name?: string
+          run_count?: number
+          schedule?: string | null
+          updated_at?: string
+          user_id?: string
+          widget_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routines_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routines_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           timezone: string
