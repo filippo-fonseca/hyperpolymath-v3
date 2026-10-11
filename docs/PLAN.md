@@ -128,7 +128,7 @@ Grok Bot setup (done by you in chat, scripted in `docs/GROKBOT-SETUP.md` during 
 | Phase | State |
 |---|---|
 | 0. Scaffold | Done: Next.js 16, Supabase project, Vercel project on the v3 domain (`dev` = production until cutover) |
-| 1. Core + MCP | Done: schema, service layer, action log with revert, 36 MCP tools, token auth, integration test suite |
+| 1. Core + MCP | Done: schema, service layer, action log with revert, 34 MCP tools, token auth, integration test suite |
 | 2. Dashboard shell | In progress (widget grid, fixed widgets, Realtime) |
 | 3. Reminders | Done (backend): pg_cron tick every 5 minutes, batched webhook to Kiwi, retry on failure. Needs the Kiwi webhook env vars |
 | 4. Calendar | Backend done: Google OAuth, live multi-account reads, logged and revertible writes, MCP tools. UI in progress. Needs a Google OAuth client |
