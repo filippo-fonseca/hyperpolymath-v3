@@ -10,6 +10,7 @@ import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
 import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from "./captures";
 import { createWidget, listWidgets, publishWidget, removeWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
+import { setTimezone } from "./settings";
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
@@ -108,6 +109,13 @@ export function buildMcpServer(userId: string) {
 
   // Context ------------------------------------------------------------------
   tool("get_overview", "Today's tasks and overdue items, inbox, habits, captures, reminders and widgets in one call. Call this first.", {}, (ctx) => getOverview(ctx), { readOnly: true });
+
+  tool(
+    "set_timezone",
+    "Change the owner's timezone (IANA name, e.g. Europe/Rome) when they travel. Days, habits and reminder times follow it.",
+    { timezone: z.string().min(3).max(60) },
+    (ctx, a) => setTimezone(ctx, a.timezone),
+  );
 
   // Tasks --------------------------------------------------------------------
   tool(
