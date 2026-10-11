@@ -123,12 +123,28 @@ Grok Bot setup (done by you in chat, scripted in `docs/GROKBOT-SETUP.md` during 
 3. Create the "Reminder relay" webhook routine.
 4. Add a line to each sub-bot's description saying how it publishes to its widget.
 
+## Status (2026-10-11)
+
+| Phase | State |
+|---|---|
+| 0. Scaffold | Done: Next.js 16, Supabase project, Vercel project on the v3 domain (`dev` = production until cutover) |
+| 1. Core + MCP | Done: schema, service layer, action log with revert, 36 MCP tools, token auth, integration test suite |
+| 2. Dashboard shell | In progress (widget grid, fixed widgets, Realtime) |
+| 3. Reminders | Done (backend): pg_cron tick every 5 minutes, batched webhook to Kiwi, retry on failure. Needs the Kiwi webhook env vars |
+| 4. Calendar | Backend done: Google OAuth, live multi-account reads, logged and revertible writes, MCP tools. UI in progress. Needs a Google OAuth client |
+| 5. Custom widgets + Activity | Backend done (typed payloads, snapshots, bot registry, archive). UI in progress |
+| 6. Full task views | In progress |
+| 7. First custom widgets | Waiting on Grok Bot setup |
+
+Extras shipped: iOS Shortcut capture endpoint, PWA install with the serif monogram icon, timezone switching for travel.
+
 ## Risks and mitigations
 - **No official Grok Bot API for bots or routines.** The app can't list your Grok Bot roster itself, so bots register themselves through MCP. We'll avoid the undocumented gateway on port 1340.
 - **Usage burn.** Batched reminder webhooks (one run per tick, not per reminder) and `get_overview` (one call instead of five) keep Bot runs and tool calls down.
 - **Bots bypassing the log.** A bot that uses Grok Bot's native Google Calendar connector writes straight to Google, and we can't see or revert that. Kiwi's prompt will prefer our calendar tools, and the calendar view still shows those events because it reads Google live.
 - **Bad bot writes.** Soft deletes, before/after snapshots, one-tap revert, and a `bot` attribution on every row.
 - **Token leakage.** The MCP token is hashed at rest and stored in Grok Bot's secure credential field. It can be rotated from settings.
+- **Attribution is self-declared.** Grok Bot shares one MCP config across all bots, so the `bot` argument is trusted, not verified. Anyone holding the token could claim to be Kiwi. The log is for the owner's own review and undo, not a security boundary.
 
 ## Decisions (2026-10-11)
 1. **Kiwi = Dispatch, promoted.** Dispatch keeps its email and calendar context and becomes the coordinator (renamed to Kiwi in Grok Bot). Its description gets the Hyperpolymath rules added, not replaced.
