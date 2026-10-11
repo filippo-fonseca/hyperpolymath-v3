@@ -8,7 +8,7 @@ import { completeTask, createTask, deleteTask, listTasks, reopenTask, updateTask
 import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./reminders";
 import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
 import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from "./captures";
-import { createWidget, listWidgets, publishWidget, removeWidget } from "./widgets";
+import { createWidget, listWidgets, publishWidget, removeWidget, updateWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
 import { createArea, createProject, deleteProject, getProject, listAreas, updateArea, updateProject } from "./projects";
@@ -316,6 +316,7 @@ export function buildMcpServer(userId: string) {
       title: z.string().min(1).max(60),
       size: z.enum(["s", "m", "l"]).optional().describe("s = 1x1, m = 2x1, l = 2x2"),
       stale_after_hours: z.number().int().min(1).max(24 * 30).optional().describe("Dim the widget if not republished within this many hours"),
+      icon: z.string().max(500).optional().describe("An emoji, an https image URL, or the domain of the site it covers (e.g. slack.com) to use its favicon"),
       payload: z.record(z.string(), z.unknown()).optional(),
     },
     (ctx, a) => createWidget(ctx, a),
@@ -325,6 +326,17 @@ export function buildMcpServer(userId: string) {
     `Replace a custom widget's content (by title or id). ${PAYLOAD_DOCS}`,
     { widget: z.string().describe("Widget title or id"), payload: z.record(z.string(), z.unknown()) },
     (ctx, a) => publishWidget(ctx, a.widget, a.payload),
+  );
+  tool(
+    "update_widget",
+    "Change a widget's title, icon (emoji, https image URL, or a domain for its favicon; null clears) or staleness window.",
+    {
+      widget: z.string().describe("Widget title or id"),
+      title: z.string().min(1).max(60).optional(),
+      icon: z.string().max(500).nullable().optional(),
+      stale_after_hours: z.number().int().min(1).max(24 * 30).nullable().optional(),
+    },
+    (ctx, { widget, ...patch }) => updateWidget(ctx, widget, patch),
   );
   tool("remove_widget", "Remove a custom widget from the dashboard. Ask first.", { widget: z.string() }, (ctx, a) => removeWidget(ctx, a.widget), { destructive: true });
 
