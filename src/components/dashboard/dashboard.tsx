@@ -15,10 +15,10 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import type { DashboardData, WidgetRow } from "@/lib/dashboard-types";
+import type { CalendarData, DashboardData, WidgetRow } from "@/lib/dashboard-types";
 import { isCustomKind } from "@/lib/widgets";
 import { saveLayoutAction } from "@/app/actions/widgets";
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Logotype, Monogram } from "@/components/ui/brand";
 import { IconGear } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/primitives";
@@ -36,7 +36,7 @@ function toLocal(ws: WidgetRow[]): LocalWidget[] {
   return normalizeLayout(ws.map((w) => ({ ...w, size: asWidgetSize(w.size) })));
 }
 
-export function Dashboard({ data }: { data: DashboardData }) {
+export function Dashboard({ data, calendar }: { data: DashboardData; calendar: Promise<CalendarData> }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const open = useCallback((id: string) => setExpandedId(id), []);
@@ -44,12 +44,35 @@ export function Dashboard({ data }: { data: DashboardData }) {
 
   return (
     <ToastProvider>
-      <DashboardProvider data={data} open={open} openSettings={openSettings}>
+      <DashboardProvider data={data} calendar={calendar} open={open} openSettings={openSettings}>
         <Home expandedId={expandedId} setExpandedId={setExpandedId} />
+        <GoogleReturnToast />
         {settingsOpen && null}
       </DashboardProvider>
     </ToastProvider>
   );
+}
+
+const GOOGLE_MESSAGES: Record<string, string> = {
+  connected: "Google Calendar connected",
+  access_denied: "Google sign-in was cancelled",
+  state_mismatch: "That Google sign-in expired. Try again.",
+};
+
+/** Toast for the ?google= status the OAuth callback redirects back with. */
+function GoogleReturnToast() {
+  const toast = useToast();
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get("google");
+    if (!status) return;
+    url.searchParams.delete("google");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    const text = GOOGLE_MESSAGES[status] ?? "Couldn't connect Google Calendar. Try again.";
+    if (status === "connected") toast.show(text);
+    else toast.error(text);
+  }, [toast]);
+  return null;
 }
 
 function greeting(nowMs: number, tz: string) {

@@ -12,6 +12,8 @@ import { CaptureView } from "./capture/capture-view";
 import { KiwiWidget } from "./kiwi/kiwi-widget";
 import { ActivityView } from "./kiwi/activity-view";
 import { CustomWidget, CustomWidgetView } from "./custom/custom-widget";
+import { CalendarWidget } from "./calendar/calendar-widget";
+import { CalendarView } from "./calendar/calendar-view";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -25,6 +27,8 @@ export function WidgetBody({ widget, size }: { widget: WidgetRow; size: WidgetSi
       return <CaptureWidget size={size} />;
     case "kiwi":
       return <KiwiWidget size={size} />;
+    case "calendar":
+      return <CalendarWidget size={size} />;
     default:
       return isCustomKind(widget.kind) ? <CustomWidget widget={widget} size={size} /> : null;
   }
@@ -40,6 +44,8 @@ export function WidgetExpanded({ widget }: { widget: WidgetRow }) {
       return <CaptureView />;
     case "kiwi":
       return <ActivityView />;
+    case "calendar":
+      return <CalendarView />;
     default:
       return isCustomKind(widget.kind) ? (
         <CustomWidgetView widget={widget} />
