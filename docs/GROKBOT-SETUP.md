@@ -2,7 +2,7 @@
 
 Hyperpolymath is operated by Grok Bot teammates over MCP. Once you're set up, read [`WORKING-WITH-KIWI.md`](WORKING-WITH-KIWI.md) for how to use it day to day.
 
-The rest of this page: One bot is the coordinator ("Kiwi"); it can create and manage sub-bots, and every bot reads and writes the same database through the same server. Setup takes about five minutes.
+One bot is the coordinator ("Kiwi"); it can create and manage sub-bots, and every bot reads and writes the same database through the same server. Setup takes about five minutes.
 
 ## 1. Mint a token
 
