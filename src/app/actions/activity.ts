@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { listActions, revertAction } from "@/server/log";
+import { archiveBot } from "@/server/bots";
 import { asUser, readAsUser } from "./run";
 
 const id = z.string().uuid();
@@ -27,4 +28,8 @@ export async function revertActionAction(actionId: string, force = false) {
     const undo = recent.find((a) => a.tool === "revert_action" && a.entity_id === res.entity_id);
     return { ...res, undo_id: undo?.id ?? null };
   });
+}
+
+export async function archiveBotAction(name: string) {
+  return asUser((ctx) => archiveBot(ctx, z.string().min(1).max(60).parse(name)));
 }

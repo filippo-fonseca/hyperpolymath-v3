@@ -10,6 +10,8 @@ import { HabitsWidget } from "./habits/habits-widget";
 import { HabitsView } from "./habits/habits-view";
 import { CaptureWidget } from "./capture/capture-widget";
 import { CaptureView } from "./capture/capture-view";
+import { KiwiWidget } from "./kiwi/kiwi-widget";
+import { ActivityView } from "./kiwi/activity-view";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -21,6 +23,8 @@ export function WidgetBody({ widget, size }: { widget: WidgetRow; size: WidgetSi
       return <HabitsWidget size={size} />;
     case "capture":
       return <CaptureWidget size={size} />;
+    case "kiwi":
+      return <KiwiWidget size={size} />;
     default:
       return <Fallback widget={widget} size={size} />;
   }
@@ -34,6 +38,8 @@ export function WidgetExpanded({ widget }: { widget: WidgetRow }) {
       return <HabitsView />;
     case "capture":
       return <CaptureView />;
+    case "kiwi":
+      return <ActivityView />;
     default:
       return <ExpandedHeader eyebrow={widget.kind} title={widget.title} />;
   }
