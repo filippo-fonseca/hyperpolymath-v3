@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { ProjectStatus } from "@/lib/dashboard-types";
 import { STATUSES, STATUS_LABELS, asStatus, isLive, matchesProject, type ProjectEntry } from "@/lib/projects";
 import { Button, Sheet, fieldClass, stop } from "@/components/ui/primitives";
 import { IconCheck, IconChevronDown, IconFolder, IconSearch } from "@/components/ui/icons";
 import { useProjects } from "./use-projects";
 
+const noSubscribe = () => () => {};
+
 /**
- * Sheets aren't portaled, so React events inside one bubble to whatever row
- * or card it was opened from. This keeps taps inside the sheet from toggling
- * a row, opening a widget, or starting a drag.
+ * Renders a sheet into document.body, so a transformed ancestor (the
+ * expanded view's morph) can't trap its fixed positioning. React events
+ * still bubble through portals, so taps inside are stopped here and never
+ * toggle the row, open the widget, or start a drag they were opened from.
  */
-export function Contain({ children }: { children: ReactNode }) {
-  return (
+export function Layer({ children }: { children: ReactNode }) {
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
+  if (!mounted) return null;
+  return createPortal(
     <div className="contents" onClick={stop} onPointerDown={stop} onMouseDown={stop} onTouchStart={stop}>
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -79,7 +86,7 @@ export function EmojiButton({
       >
         <Emoji emoji={value} size={size} />
       </button>
-      <Contain>
+      <Layer>
         <Sheet open={open} onClose={() => setOpen(false)} title="Emoji" width={400}>
           <div className="grid grid-cols-8 gap-1 sm:grid-cols-10">
             {EMOJIS.map((e) => (
@@ -122,7 +129,7 @@ export function EmojiButton({
             </Button>
           )}
         </Sheet>
-      </Contain>
+      </Layer>
     </>
   );
 }
@@ -249,7 +256,7 @@ export function ProjectPicker({
   const empty = !groups.length && !!query.trim();
 
   return (
-    <Contain>
+    <Layer>
       <Sheet
         open={open}
         onClose={() => {
@@ -298,7 +305,7 @@ export function ProjectPicker({
           )}
         </div>
       </Sheet>
-    </Contain>
+    </Layer>
   );
 }
 

@@ -95,7 +95,9 @@ export function useTasks() {
     [run],
   );
 
-  return { open, done, isDone, toggle, update, setStatus, remove, create, today: data.today };
+  const isHidden = useCallback((t: Task) => hidden.has(t.id), [hidden]);
+
+  return { open, done, isDone, toggle, update, setStatus, remove, create, apply, isHidden, today: data.today };
 }
 
 export function sortToday(tasks: Task[]) {

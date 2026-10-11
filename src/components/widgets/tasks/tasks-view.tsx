@@ -132,7 +132,7 @@ function ListView({ ops }: { ops: Ops }) {
   );
 }
 
-function ListRow({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops; expanded: boolean; onToggleOpen: () => void }) {
+export function ListRow({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops; expanded: boolean; onToggleOpen: () => void }) {
   const done = ops.isDone(task);
   return (
     <motion.li
