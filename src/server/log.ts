@@ -78,21 +78,45 @@ export async function revertAction(ctx: Ctx, actionId: string, force = false) {
   if (action.reverted_at) throw new AppError("That action was already reverted.", "conflict");
   if (!action.entity_id) throw new AppError("That action can't be reverted.");
   const type = action.entity_type as EntityType;
-  if (type === "event") {
-    // Calendar events live in Google; the calendar module knows how to undo them.
-    const { revertEventAction } = await import("./google/calendar");
-    const { restored, current } = await revertEventAction(ctx, action, force);
-    return finishRevert(ctx, action, type, current, restored);
+  if (type !== "event" && !TABLE[type as Exclude<EntityType, "event">]) {
+    throw new AppError(`Unknown entity type ${action.entity_type}`);
   }
-  const table = TABLE[type];
-  if (!table) throw new AppError(`Unknown entity type ${action.entity_type}`);
 
+  // Claim the action first so two concurrent reverts can't both apply.
+  const { data: claimed } = await ctx.db
+    .from("actions")
+    .update({ reverted_at: ctx.now.toISOString() })
+    .eq("id", action.id)
+    .is("reverted_at", null)
+    .select("id");
+  if (!claimed?.length) throw new AppError("That action was already reverted.", "conflict");
+
+  try {
+    if (type === "event") {
+      // Calendar events live in Google; the calendar module knows how to undo them.
+      const { revertEventAction } = await import("./google/calendar");
+      const { restored, current, entityId } = await revertEventAction(ctx, action, force);
+      return await finishRevert(ctx, action, type, current, restored, entityId);
+    }
+    const restored = await revertRow(ctx, action, type, force);
+    return await finishRevert(ctx, action, type, restored.current, restored.restored);
+  } catch (e) {
+    await ctx.db.from("actions").update({ reverted_at: null }).eq("id", action.id);
+    throw e;
+  }
+}
+
+async function revertRow(ctx: Ctx, action: Row<"actions">, type: Exclude<EntityType, "event">, force: boolean) {
+  const table = TABLE[type];
+  const id = action.entity_id!;
   const before = action.before as Record<string, unknown> | null;
   const after = action.after as Record<string, unknown> | null;
-  const { data: current } = await ctx.db.from(table).select().eq("id", action.entity_id).maybeSingle();
+  const { data: current } = await ctx.db.from(table).select().eq("id", id).eq("user_id", ctx.userId).maybeSingle();
   const cur = current as Record<string, unknown> | null;
 
-  if (!force && cur && after && cur.updated_at && after.updated_at && cur.updated_at !== after.updated_at) {
+  // Bots' updated_at moves on every call (last_seen_at), so it can't signal edits.
+  const checkStale = type !== "bot";
+  if (checkStale && !force && cur && after && cur.updated_at && after.updated_at && cur.updated_at !== after.updated_at) {
     throw new AppError(
       "This item changed after that action. Revert anyway with force, or revert the later action first.",
       "conflict",
@@ -107,13 +131,14 @@ export async function revertAction(ctx: Ctx, actionId: string, force = false) {
         await ctx.db
           .from(table as "tasks")
           .update({ deleted_at: ctx.now.toISOString() })
-          .eq("id", action.entity_id)
+          .eq("id", id)
+          .eq("user_id", ctx.userId)
           .select()
           .single(),
         "revert create",
       );
     } else {
-      await ctx.db.from(table).delete().eq("id", action.entity_id);
+      await ctx.db.from(table).delete().eq("id", id).eq("user_id", ctx.userId);
     }
   } else if (!cur) {
     // Row was hard-deleted: put it back.
@@ -124,28 +149,42 @@ export async function revertAction(ctx: Ctx, actionId: string, force = false) {
       await ctx.db
         .from(table as "tasks")
         .update(patch as never)
-        .eq("id", action.entity_id)
+        .eq("id", id)
+        .eq("user_id", ctx.userId)
         .select()
         .single(),
       "revert update",
     );
   }
 
-  return finishRevert(ctx, action, type, cur, restored);
+  // Un-deleting a task brings back the reminders that deleting it switched off.
+  if (type === "task" && before && !before.deleted_at && cur?.deleted_at) {
+    await ctx.db
+      .from("reminders")
+      .update({ active: true })
+      .eq("task_id", id)
+      .eq("user_id", ctx.userId)
+      .not("next_fire_at", "is", null);
+  }
+  return { current: cur, restored };
 }
 
-async function finishRevert(ctx: Ctx, action: Row<"actions">, type: EntityType, current: unknown, restored: unknown) {
+async function finishRevert(
+  ctx: Ctx,
+  action: Row<"actions">,
+  type: EntityType,
+  current: unknown,
+  restored: unknown,
+  entityId = action.entity_id,
+) {
   const undo = await logAction(ctx, {
     tool: "revert_action",
     entityType: type,
-    entityId: action.entity_id,
+    entityId,
     before: current,
     after: restored,
     summary: `Reverted: ${action.summary}`,
   });
-  await ctx.db
-    .from("actions")
-    .update({ reverted_at: ctx.now.toISOString(), reverted_by: undo.id })
-    .eq("id", action.id);
-  return { reverted: action.summary, entity_type: type, entity_id: action.entity_id };
+  await ctx.db.from("actions").update({ reverted_by: undo.id }).eq("id", action.id);
+  return { reverted: action.summary, entity_type: type, entity_id: entityId };
 }

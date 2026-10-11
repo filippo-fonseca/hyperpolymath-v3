@@ -342,7 +342,7 @@ export async function revertEventAction(ctx: Ctx, action: Row<"actions">, force:
     await gfetch(ctx, account, path, { method: "DELETE" }).catch((e) => {
       if (!(e instanceof AppError && e.code === "not_found")) throw e;
     });
-    return { restored: null, current: after };
+    return { restored: null, current: after, entityId: action.entity_id };
   }
   const fields = {
     summary: before.event.summary,
@@ -356,14 +356,15 @@ export async function revertEventAction(ctx: Ctx, action: Row<"actions">, force:
       method: "POST",
       body: JSON.stringify(fields),
     });
-    return { restored: snap(account.id, calendarId, e), current: null };
+    // Re-created events get a new Google id; log under it so a later undo finds it.
+    return { restored: snap(account.id, calendarId, e), current: null, entityId: encodeId(account.id, calendarId, e.id) };
   }
   const current = await gfetch<GEvent>(ctx, account, path);
   if (!force && after.event.updated && current.updated && current.updated !== after.event.updated) {
     throw new AppError("This event changed after that action. Revert anyway with force.", "conflict");
   }
   const e = await gfetch<GEvent>(ctx, account, path, { method: "PATCH", body: JSON.stringify(fields) });
-  return { restored: snap(account.id, calendarId, e), current: snap(account.id, calendarId, current) };
+  return { restored: snap(account.id, calendarId, e), current: snap(account.id, calendarId, current), entityId: action.entity_id };
 }
 
 /** Today's remaining and upcoming events, compact, for the overview. */
