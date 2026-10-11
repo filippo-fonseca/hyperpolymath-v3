@@ -1,7 +1,7 @@
 import "server-only";
-import { AppError, asJson, must, type Ctx, type DB, type Row, escapeLike } from "./ctx";
+import { AppError, asJson, must, type Ctx, type DB, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
-import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
+import { isCustomKind, normalizeWidgetIcon, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
 
 export type Widget = Row<"widgets">;
 
@@ -48,7 +48,14 @@ async function findWidget(ctx: Ctx, idOrTitle: string): Promise<Widget> {
 
 export async function createWidget(
   ctx: Ctx,
-  input: { kind: CustomKind; title: string; size?: WidgetSize; stale_after_hours?: number | null; payload?: unknown },
+  input: {
+    kind: CustomKind;
+    title: string;
+    size?: WidgetSize;
+    stale_after_hours?: number | null;
+    payload?: unknown;
+    icon?: string | null;
+  },
 ) {
   if (!isCustomKind(input.kind)) throw new AppError(`Bots can only create custom widgets (${input.kind} is fixed).`);
   const title = input.title.trim();
@@ -72,6 +79,7 @@ export async function createWidget(
         title,
         size: input.size ?? "m",
         stale_after_hours: input.stale_after_hours ?? null,
+        icon: icon(input.icon),
         owner_bot_id: ctx.actor.kind === "bot" ? ctx.actor.botId : null,
         payload: asJson(payload ?? {}),
         published_at: payload ? ctx.now.toISOString() : null,
@@ -92,6 +100,64 @@ export async function createWidget(
     summary: `Added widget "${title}" (${input.kind})`,
   });
   return widget;
+}
+
+function icon(raw: string | null | undefined) {
+  try {
+    return normalizeWidgetIcon(raw);
+  } catch (e) {
+    throw new AppError((e as Error).message);
+  }
+}
+
+/**
+ * Edit a widget's title, icon, staleness window or owner bot. Size and page
+ * go through saveLayout. Built-in widgets only take a title and icon.
+ */
+export async function updateWidget(
+  ctx: Ctx,
+  idOrTitle: string,
+  patch: { title?: string; icon?: string | null; stale_after_hours?: number | null; owner_bot_id?: string | null },
+) {
+  const before = await findWidget(ctx, idOrTitle);
+  const custom = isCustomKind(before.kind);
+  if (!custom && (patch.stale_after_hours !== undefined || patch.owner_bot_id !== undefined)) {
+    throw new AppError("Built-in widgets show live app data, so they have no owner or staleness window.");
+  }
+  if (patch.owner_bot_id) {
+    must(
+      await ctx.db.from("bots").select("id").eq("id", patch.owner_bot_id).eq("user_id", ctx.userId).maybeSingle(),
+      "owner bot",
+    );
+  }
+  const values: Update<"widgets"> = {};
+  if (patch.title !== undefined) {
+    const t = patch.title.trim();
+    if (!t) throw new AppError("Widget title can't be empty.");
+    values.title = t;
+  }
+  if (patch.icon !== undefined) values.icon = icon(patch.icon);
+  if (patch.stale_after_hours !== undefined) values.stale_after_hours = patch.stale_after_hours;
+  if (patch.owner_bot_id !== undefined) values.owner_bot_id = patch.owner_bot_id;
+  const after = must(
+    await ctx.db.from("widgets").update(values).eq("id", before.id).eq("user_id", ctx.userId).select().single(),
+    "update widget",
+  );
+  const what = [
+    values.title !== undefined && values.title !== before.title ? `renamed to "${after.title}"` : null,
+    values.icon !== undefined && values.icon !== before.icon ? "icon changed" : null,
+    values.owner_bot_id !== undefined && values.owner_bot_id !== before.owner_bot_id ? "owner changed" : null,
+    values.stale_after_hours !== undefined && values.stale_after_hours !== before.stale_after_hours ? "staleness window changed" : null,
+  ].filter(Boolean);
+  await logAction(ctx, {
+    tool: "update_widget",
+    entityType: "widget",
+    entityId: before.id,
+    before,
+    after,
+    summary: `Updated widget "${before.title}"${what.length ? ` (${what.join(", ")})` : ""}`,
+  });
+  return after;
 }
 
 async function snapshot(ctx: Ctx, widgetId: string, payload: unknown) {

@@ -1,10 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { listWidgets, removeWidget, saveLayout, widgetHistory } from "@/server/widgets";
+import { listWidgets, removeWidget, saveLayout, updateWidget, widgetHistory } from "@/server/widgets";
 import { isCustomKind } from "@/lib/widgets";
-import { AppError, must } from "@/server/ctx";
-import { logAction } from "@/server/log";
+import { AppError } from "@/server/ctx";
 import { asUser, readAsUser } from "./run";
 
 const id = z.string().uuid();
@@ -42,54 +41,16 @@ export async function widgetHistoryAction(widgetId: string) {
 const widgetPatch = z
   .object({
     title: z.string().trim().min(1).max(120),
+    icon: z.string().trim().max(500).nullable(),
     stale_after_hours: z.number().int().min(1).max(24 * 60).nullable(),
     owner_bot_id: id.nullable(),
   })
   .partial();
 
-/**
- * Edit a widget's title, staleness window or owner bot. There's no service
- * for these, so this is a minimal scoped write that is still logged (and so
- * revertible from Activity). Size and page go through saveLayoutAction.
- */
+/** Edit a widget's title, icon, staleness window or owner bot (logged, revertible). */
 export async function updateWidgetAction(
   widgetId: string,
-  patch: { title?: string; stale_after_hours?: number | null; owner_bot_id?: string | null },
+  patch: { title?: string; icon?: string | null; stale_after_hours?: number | null; owner_bot_id?: string | null },
 ) {
-  return asUser(async (ctx) => {
-    const wid = id.parse(widgetId);
-    const p = widgetPatch.parse(patch);
-    const before = must(
-      await ctx.db.from("widgets").select().eq("id", wid).eq("user_id", ctx.userId).is("deleted_at", null).maybeSingle(),
-      "widget",
-    );
-    const custom = isCustomKind(before.kind);
-    if (!custom && (p.stale_after_hours !== undefined || p.owner_bot_id !== undefined)) {
-      throw new AppError("Built-in widgets show live app data, so they have no owner or staleness window.");
-    }
-    if (p.owner_bot_id) {
-      must(
-        await ctx.db.from("bots").select("id").eq("id", p.owner_bot_id).eq("user_id", ctx.userId).maybeSingle(),
-        "owner bot",
-      );
-    }
-    const after = must(
-      await ctx.db.from("widgets").update(p).eq("id", wid).eq("user_id", ctx.userId).select().single(),
-      "update widget",
-    );
-    const what = [
-      p.title !== undefined && p.title !== before.title ? `renamed to "${after.title}"` : null,
-      p.owner_bot_id !== undefined && p.owner_bot_id !== before.owner_bot_id ? "owner changed" : null,
-      p.stale_after_hours !== undefined && p.stale_after_hours !== before.stale_after_hours ? "staleness window changed" : null,
-    ].filter(Boolean);
-    await logAction(ctx, {
-      tool: "update_widget",
-      entityType: "widget",
-      entityId: wid,
-      before,
-      after,
-      summary: `Updated widget "${before.title}"${what.length ? ` (${what.join(", ")})` : ""}`,
-    });
-    return after;
-  });
+  return asUser((ctx) => updateWidget(ctx, id.parse(widgetId), widgetPatch.parse(patch)));
 }
