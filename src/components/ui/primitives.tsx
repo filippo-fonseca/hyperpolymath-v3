@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, useSyncExternalStore, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { IconCheck, IconClose } from "./icons";
 import { WEEKDAY_LETTERS } from "@/lib/format";
@@ -19,15 +19,34 @@ export function useMediaQuery(query: string, serverValue = false) {
   );
 }
 
+// Escape closes only the topmost layer (a sheet over an expanded view, a
+// picker over a sheet). Layers stack in the order they became active.
+const escapeLayers: { fire: () => void }[] = [];
+let escapeListening = false;
+
+function onEscapeKey(e: KeyboardEvent) {
+  if (e.key !== "Escape") return;
+  escapeLayers[escapeLayers.length - 1]?.fire();
+}
+
 export function useEscape(onEscape: () => void, active = true) {
+  const handler = useRef(onEscape);
+  useEffect(() => {
+    handler.current = onEscape;
+  });
   useEffect(() => {
     if (!active) return;
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onEscape();
+    const layer = { fire: () => handler.current() };
+    escapeLayers.push(layer);
+    if (!escapeListening) {
+      window.addEventListener("keydown", onEscapeKey);
+      escapeListening = true;
+    }
+    return () => {
+      const i = escapeLayers.indexOf(layer);
+      if (i >= 0) escapeLayers.splice(i, 1);
     };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onEscape, active]);
+  }, [active]);
 }
 
 export function useScrollLock(active: boolean) {
