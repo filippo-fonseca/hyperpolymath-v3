@@ -7,6 +7,7 @@ import type { listWidgets } from "@/server/widgets";
 import type { listActions } from "@/server/log";
 import type { listReminders } from "@/server/reminders";
 import type { widgetHistory } from "@/server/widgets";
+import type { listRoutines, listRuns } from "@/server/routines";
 import type { CalendarEvent } from "@/server/google/calendar";
 
 export type { CalendarEvent };
@@ -20,6 +21,8 @@ export type Habit = HabitWithStatus;
 export type WidgetRow = Awaited<ReturnType<typeof listWidgets>>[number];
 export type ActionRow = Awaited<ReturnType<typeof listActions>>[number];
 export type ReminderRow = Awaited<ReturnType<typeof listReminders>>[number];
+export type RoutineRow = Awaited<ReturnType<typeof listRoutines>>[number];
+export type RoutineRun = Awaited<ReturnType<typeof listRuns>>[number];
 export type Snapshot = Awaited<ReturnType<typeof widgetHistory>>[number];
 export type TaskStatus = "todo" | "doing" | "done";
 
@@ -37,6 +40,7 @@ export type DashboardData = {
   bots: Bot[];
   actions: ActionRow[];
   reminders: ReminderRow[];
+  routines: RoutineRow[];
   realtime: { url: string; key: string } | null;
 };
 

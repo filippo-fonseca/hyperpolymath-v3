@@ -8,6 +8,7 @@ import { listCaptures, resurfacingCaptures } from "@/server/captures";
 import { listBots } from "@/server/bots";
 import { listActions } from "@/server/log";
 import { listReminders } from "@/server/reminders";
+import { listRoutines } from "@/server/routines";
 import { localDate } from "@/lib/time";
 import { loadCalendar } from "@/lib/calendar-data";
 import type { DashboardData } from "@/lib/dashboard-types";
@@ -28,7 +29,7 @@ async function DashboardLoader() {
   // Streams separately so a slow or failing Google call never blocks the grid.
   const calendar = loadCalendar(ctx);
   await ensureDefaultWidgets(ctx.db, userId);
-  const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders] = await Promise.all([
+  const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders, routines] = await Promise.all([
     listWidgets(ctx),
     listTasks(ctx, { scope: "open", limit: 500 }),
     listTasks(ctx, { scope: "done", limit: 40 }),
@@ -38,6 +39,7 @@ async function DashboardLoader() {
     listBots(ctx),
     listActions(ctx, { limit: 100 }),
     listReminders(ctx),
+    listRoutines(ctx),
   ]);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -55,6 +57,7 @@ async function DashboardLoader() {
     bots,
     actions,
     reminders,
+    routines,
     realtime: url && key ? { url, key } : null,
   };
   return <Dashboard data={data} calendar={calendar} />;
