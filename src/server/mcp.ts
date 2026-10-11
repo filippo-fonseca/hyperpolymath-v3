@@ -2,7 +2,7 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { AppError, makeCtx, type Ctx } from "./ctx";
-import { resolveBotActor, listBots, updateBot } from "./bots";
+import { archiveBot, resolveBotActor, listBots, updateBot } from "./bots";
 import { getOverview } from "./overview";
 import { completeTask, createTask, deleteTask, listTasks, reopenTask, updateTask } from "./tasks";
 import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./reminders";
@@ -286,6 +286,7 @@ export function buildMcpServer(userId: string) {
       return updateBot(ctx, name, patch);
     },
   );
+  tool("archive_bot", "Retire a teammate bot from the dashboard (its history stays). Ask first.", { name: z.string().min(1).max(60) }, (ctx, a) => archiveBot(ctx, a.name), { destructive: true });
   tool(
     "list_actions",
     "Recent activity log: what each bot (and the owner) changed.",
