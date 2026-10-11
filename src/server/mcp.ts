@@ -10,6 +10,7 @@ import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
 import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from "./captures";
 import { createWidget, listWidgets, publishWidget, removeWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
+import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
 import { CUSTOM_KINDS, PAYLOAD_DOCS } from "@/lib/widgets";
@@ -23,6 +24,7 @@ Rules:
 - When the owner says something is done ("finished laundry"), find the task (get_overview or list_tasks with query) and call complete_task. If nothing matches, ask before creating one.
 - Reminders: translate their words into set_reminder's structured schedule. "Until I say it's done" = until "done" on a task (the reminder stops when the task completes). Times are local to their timezone (see get_overview), 24h HH:MM.
 - Quick thoughts, links and ideas without a clear action go to create_capture, not tasks.
+- Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
 - Widgets: only create or publish a widget when the owner asked for that routine to appear on the dashboard. Publish the full current content each run (it replaces the previous version, history is kept).
 - Ask before deleting anything. Mistakes can be undone with revert_action, so own them and revert.
 - When you create a sub-bot in Grok Bot, call update_bot with its name, role and parent (your name) so it appears in the teammates view.`;
@@ -210,6 +212,38 @@ export function buildMcpServer(userId: string) {
     { id: uuid, title: z.string().max(500).optional(), due_date: date.optional(), priority: z.number().int().min(0).max(3).optional(), list: z.string().max(80).optional() },
     (ctx, { id, ...task }) => convertCaptureToTask(ctx, id, task),
   );
+
+  // Calendar -----------------------------------------------------------------
+  const eventFields = {
+    date: date.optional(),
+    start_time: time.nullable().optional().describe("Omit or null for an all-day event"),
+    end_time: time.optional(),
+    duration_minutes: z.number().int().min(5).max(24 * 60).optional().describe("Used when end_time is omitted (default 60)"),
+    end_date: date.optional().describe("For multi-day events"),
+    location: z.string().max(500).nullable().optional(),
+    description: z.string().max(5000).nullable().optional(),
+  };
+  tool(
+    "list_events",
+    "Calendar events across the owner's shown Google calendars, between two local dates (inclusive). Defaults to the next 7 days.",
+    { from: date.optional(), to: date.optional(), query: z.string().max(200).optional() },
+    (ctx, a) => listEvents(ctx, a),
+    { readOnly: true },
+  );
+  tool("list_calendars", "Connected Google calendars, which are shown on the dashboard, and the default for new events.", {}, (ctx) => listCalendars(ctx), { readOnly: true });
+  tool(
+    "create_event",
+    "Add an event to Google Calendar (the default calendar unless `calendar` names one: an account email, calendar name or id).",
+    { title: z.string().min(1).max(300), calendar: z.string().max(200).optional(), ...eventFields, date },
+    (ctx, a) => createEvent(ctx, a),
+  );
+  tool(
+    "update_event",
+    "Move or edit an event. Pass only what changes.",
+    { id: z.string().min(3), title: z.string().min(1).max(300).optional(), ...eventFields },
+    (ctx, { id, ...input }) => updateEvent(ctx, id, input),
+  );
+  tool("delete_event", "Remove an event from Google Calendar. Ask first.", { id: z.string().min(3) }, (ctx, a) => deleteEvent(ctx, a.id), { destructive: true });
 
   // Widgets ------------------------------------------------------------------
   tool("list_widgets", "Widgets on the dashboard, with owner bot and last publish time.", {}, (ctx) => listWidgets(ctx), { readOnly: true });

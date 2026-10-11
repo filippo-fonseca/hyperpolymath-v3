@@ -5,6 +5,7 @@ import { listHabits } from "./habits";
 import { listCaptures, resurfacingCaptures } from "./captures";
 import { listReminders } from "./reminders";
 import { listWidgets } from "./widgets";
+import { upcomingForOverview } from "./google/calendar";
 import { localDate, zonedParts } from "@/lib/time";
 
 /**
@@ -12,7 +13,7 @@ import { localDate, zonedParts } from "@/lib/time";
  * purpose: ids and the fields a bot needs to act, nothing else.
  */
 export async function getOverview(ctx: Ctx) {
-  const [today, inbox, habits, captures, resurfacing, reminders, widgets] = await Promise.all([
+  const [today, inbox, habits, captures, resurfacing, reminders, widgets, calendar] = await Promise.all([
     listTasks(ctx, { scope: "today", limit: 50 }),
     listTasks(ctx, { scope: "inbox", limit: 20 }),
     listHabits(ctx),
@@ -20,6 +21,7 @@ export async function getOverview(ctx: Ctx) {
     resurfacingCaptures(ctx),
     listReminders(ctx),
     listWidgets(ctx),
+    upcomingForOverview(ctx),
   ]);
   const date = localDate(ctx.now, ctx.tz);
   const now = zonedParts(ctx.now, ctx.tz);
@@ -36,6 +38,7 @@ export async function getOverview(ctx: Ctx) {
   return {
     now: `${now.date} ${now.time}`,
     timezone: ctx.tz,
+    calendar_today_and_tomorrow: calendar,
     tasks_due_today_or_overdue: today.map(task),
     inbox_tasks_without_date: inbox.map(task),
     habits_today: habits
