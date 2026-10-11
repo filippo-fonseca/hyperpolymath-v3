@@ -77,6 +77,45 @@ export type Database = {
           },
         ]
       }
+      areas: {
+        Row: {
+          archived_at: string | null
+          color: string | null
+          created_at: string
+          deleted_at: string | null
+          emoji: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          emoji?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bots: {
         Row: {
           archived_at: string | null
@@ -141,6 +180,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           id: string
+          project_id: string | null
           resurface_at: string | null
           source: string
           updated_at: string
@@ -154,6 +194,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           id?: string
+          project_id?: string | null
           resurface_at?: string | null
           source?: string
           updated_at?: string
@@ -167,6 +208,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           id?: string
+          project_id?: string | null
           resurface_at?: string | null
           source?: string
           updated_at?: string
@@ -179,6 +221,13 @@ export type Database = {
             columns: ["converted_task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captures_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -266,6 +315,7 @@ export type Database = {
       habits: {
         Row: {
           archived_at: string | null
+          area_id: string | null
           created_at: string
           days_of_week: number[]
           icon: string | null
@@ -277,6 +327,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          area_id?: string | null
           created_at?: string
           days_of_week?: number[]
           icon?: string | null
@@ -288,6 +339,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          area_id?: string | null
           created_at?: string
           days_of_week?: number[]
           icon?: string | null
@@ -297,7 +349,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "habits_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mcp_tokens: {
         Row: {
@@ -331,6 +391,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          archived_at: string | null
+          area_id: string | null
+          course_code: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          emoji: string | null
+          end_date: string | null
+          id: string
+          is_class: boolean
+          name: string
+          position: number
+          start_date: string | null
+          status: string
+          term: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          area_id?: string | null
+          course_code?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          emoji?: string | null
+          end_date?: string | null
+          id?: string
+          is_class?: boolean
+          name: string
+          position?: number
+          start_date?: string | null
+          status?: string
+          term?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          area_id?: string | null
+          course_code?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          emoji?: string | null
+          end_date?: string | null
+          id?: string
+          is_class?: boolean
+          name?: string
+          position?: number
+          start_date?: string | null
+          status?: string
+          term?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reminders: {
         Row: {
@@ -538,6 +666,7 @@ export type Database = {
           notes: string | null
           position: number
           priority: number
+          project_id: string | null
           recurrence: Json | null
           status: string
           title: string
@@ -556,6 +685,7 @@ export type Database = {
           notes?: string | null
           position?: number
           priority?: number
+          project_id?: string | null
           recurrence?: Json | null
           status?: string
           title: string
@@ -574,13 +704,22 @@ export type Database = {
           notes?: string | null
           position?: number
           priority?: number
+          project_id?: string | null
           recurrence?: Json | null
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       widget_snapshots: {
         Row: {
