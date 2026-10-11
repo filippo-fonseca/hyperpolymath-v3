@@ -12,6 +12,13 @@ export const recurrenceSchema = z.object({
     .min(1)
     .optional()
     .describe("weekly only: weekdays, 0 = Sunday"),
+  month_day: z
+    .number()
+    .int()
+    .min(1)
+    .max(31)
+    .optional()
+    .describe("monthly only: day of month to aim for (defaults to the due date's day); short months clamp"),
 });
 
 export type Recurrence = z.infer<typeof recurrenceSchema>;
@@ -32,7 +39,8 @@ export function nextOccurrence(rule: Recurrence, from: LocalDate): LocalDate {
       return addDays(from, 7 * interval - wd + days[0]);
     }
     case "monthly": {
-      const [y, m, d] = from.split("-").map(Number);
+      const [y, m, fromDay] = from.split("-").map(Number);
+      const d = rule.month_day ?? fromDay;
       const target = new Date(Date.UTC(y, m - 1 + interval, 1));
       const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
       target.setUTCDate(Math.min(d, lastDay));

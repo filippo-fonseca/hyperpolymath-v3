@@ -42,6 +42,13 @@ describe("schedule", () => {
     const early = zonedToUtc("2026-10-11", "06:00", NY);
     expect(firstFire(s, early, NY)!.toISOString()).toBe(zonedToUtc("2026-10-11", "09:00", NY).toISOString());
   });
+  it("overnight windows run into the next morning", () => {
+    const s = { type: "interval" as const, every_minutes: 60, window: { start: "22:00", end: "02:00" } };
+    const late = zonedToUtc("2026-10-11", "23:30", NY);
+    expect(nextFire(s, late, NY)!.toISOString()).toBe(zonedToUtc("2026-10-12", "00:30", NY).toISOString());
+    const closing = zonedToUtc("2026-10-12", "01:30", NY);
+    expect(nextFire(s, closing, NY)!.toISOString()).toBe(zonedToUtc("2026-10-12", "22:00", NY).toISOString());
+  });
   it("once returns null after it passed", () => {
     const after = zonedToUtc("2026-10-12", "00:00", NY);
     expect(nextFire({ type: "once", date: "2026-10-11", time: "10:00" }, after, NY)).toBeNull();
@@ -55,6 +62,9 @@ describe("recurrence", () => {
   });
   it("monthly clamps to month end", () => {
     expect(nextOccurrence({ freq: "monthly", interval: 1 }, "2026-01-31")).toBe("2026-02-28");
+  });
+  it("monthly with an anchor day recovers after short months", () => {
+    expect(nextOccurrence({ freq: "monthly", interval: 1, month_day: 31 }, "2026-02-28")).toBe("2026-03-31");
   });
 });
 

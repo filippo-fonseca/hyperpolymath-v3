@@ -76,8 +76,12 @@ function clean(input: TaskInput): Update<"tasks"> {
   if (input.list !== undefined) out.list = input.list?.trim() || null;
   if (input.due_date !== undefined) out.due_date = input.due_date;
   if (input.due_time !== undefined) out.due_time = input.due_time;
-  if (input.recurrence !== undefined)
-    out.recurrence = input.recurrence ? asJson(recurrenceSchema.parse(input.recurrence)) : null;
+  if (input.recurrence !== undefined) {
+    const rule = input.recurrence ? recurrenceSchema.parse(input.recurrence) : null;
+    // Monthly rules remember their day so Jan 31 -> Feb 28 -> Mar 31, not Mar 28.
+    if (rule?.freq === "monthly" && !rule.month_day && input.due_date) rule.month_day = Number(input.due_date.slice(8, 10));
+    out.recurrence = rule ? asJson(rule) : null;
+  }
   return out;
 }
 
