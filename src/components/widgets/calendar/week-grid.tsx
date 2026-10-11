@@ -76,8 +76,8 @@ export function WeekGrid({
     >
       <div className="w-max min-w-full [--days:3] sm:[--days:7]" style={{ "--col": `calc((100cqw - ${GUTTER}px) / var(--days))` } as CSSProperties}>
         {/* Day header + all-day row */}
-        <div className="sticky top-0 z-20 flex border-b border-gray-200 bg-surface/95 backdrop-blur-sm">
-          <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-end bg-surface/95 pb-1.5 pr-1.5 text-right" style={{ width: GUTTER }}>
+        <div className="sticky top-0 z-20 flex border-b border-gray-200 bg-surface">
+          <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-end bg-surface pb-1.5 pr-1.5 text-right" style={{ width: GUTTER }}>
             <span className="text-[10.5px] font-medium text-gray-500">all-day</span>
           </div>
           {days.map((d, i) => {
@@ -248,7 +248,7 @@ function EventBlock({ s, tz, onSelect }: { s: Placed; tz: string; onSelect: Sele
       title={e.title}
     >
       <div className={`absolute inset-x-1.5 top-[3px] pl-1 text-[11.5px] leading-[1.25] ${short ? "flex gap-1 truncate" : ""}`}>
-        <span className="font-semibold [overflow-wrap:anywhere]">{e.title}</span>
+        <span className="font-semibold">{e.title}</span>
         <span className={`text-ink-2 tabular-nums ${short ? "" : "block"}`}>{eventTime(e.start, tz)}</span>
       </div>
     </button>

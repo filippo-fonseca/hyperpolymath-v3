@@ -85,7 +85,7 @@ function MonthChip({ e, tz, dim }: { e: CalendarEvent; tz: string; dim: boolean 
   if (e.all_day) {
     return (
       <span
-        className={`truncate rounded-[5px] px-1 py-px text-[10.5px] font-medium leading-[1.35] text-ink sm:text-[11px] ${dim ? "opacity-60" : ""}`}
+        className={`overflow-hidden whitespace-nowrap rounded-[5px] px-1 py-px sm:text-ellipsis text-[10.5px] font-medium leading-[1.35] text-ink sm:text-[11px] ${dim ? "opacity-60" : ""}`}
         style={{ background: `color-mix(in srgb, ${color} 14%, white)` }}
       >
         {e.title}
@@ -100,7 +100,7 @@ function MonthChip({ e, tz, dim }: { e: CalendarEvent; tz: string; dim: boolean 
         <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: color }} aria-hidden />
       )}
       <span className="hidden shrink-0 tabular-nums text-ink-3 sm:inline">{eventTime(e.start, tz)}</span>
-      <span className="truncate font-medium">{e.title}</span>
+      <span className="overflow-hidden whitespace-nowrap font-medium sm:text-ellipsis">{e.title}</span>
     </span>
   );
 }
