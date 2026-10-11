@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { CalendarEvent } from "@/lib/dashboard-types";
-import { addDays } from "@/lib/time";
+import { addDays, daysBetween } from "@/lib/time";
 import { dayOfMonth, timeLabel, WEEKDAYS_SHORT } from "@/lib/format";
 import { allDayOn, daySegments, eventTime, layoutDay, minutesInDay, type Draft, type Placed, type Segment } from "./calendar-utils";
 
@@ -18,6 +18,7 @@ const MIN_SPAN = Math.ceil((24 / HOUR) * 60);
 
 export function WeekGrid({
   from,
+  focusDay,
   events,
   tz,
   today,
@@ -27,6 +28,8 @@ export function WeekGrid({
   onSelect,
 }: {
   from: string;
+  /** Day to bring into view when only three columns fit (phones). */
+  focusDay: string;
   events: CalendarEvent[];
   tz: string;
   today: string;
@@ -54,12 +57,24 @@ export function WeekGrid({
     el.scrollTop = showsToday && nowY > sevenAm + el.clientHeight * 0.75 ? nowY - el.clientHeight / 3 : sevenAm;
   }, [nowMin, showsToday]);
 
+  // Phones show three days at a time: swipe through the week, and keep the
+  // focused day (today, a picked day) as the first visible column.
+  const scrolledX = useRef(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 1) return;
+    const col = (el.clientWidth - GUTTER) / 3;
+    const idx = Math.min(Math.max(daysBetween(from, focusDay), 0), 4);
+    el.scrollTo({ left: idx * col, behavior: scrolledX.current ? "smooth" : "auto" });
+    scrolledX.current = true;
+  }, [from, focusDay]);
+
   return (
     <div
       ref={scrollRef}
-      className="relative h-[min(680px,calc(100dvh-230px))] min-h-[380px] overflow-auto overscroll-contain rounded-[18px] bg-surface shadow-ring [container-type:inline-size]"
+      className="relative h-[min(680px,calc(100dvh-230px))] min-h-[380px] snap-x snap-mandatory overflow-auto overscroll-contain rounded-[18px] bg-surface shadow-ring [container-type:inline-size] [scroll-padding-left:48px] sm:snap-none"
     >
-      <div className="w-max min-w-full" style={{ "--col": `calc((100cqw - ${GUTTER}px) / 7)` } as CSSProperties}>
+      <div className="w-max min-w-full [--days:3] sm:[--days:7]" style={{ "--col": `calc((100cqw - ${GUTTER}px) / var(--days))` } as CSSProperties}>
         {/* Day header + all-day row */}
         <div className="sticky top-0 z-20 flex border-b border-gray-200 bg-surface/95 backdrop-blur-sm">
           <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-end bg-surface/95 pb-1.5 pr-1.5 text-right" style={{ width: GUTTER }}>
@@ -154,7 +169,7 @@ function DayColumn({
   const ghostMin = ghost ? Number(ghost.slice(0, 2)) * 60 + Number(ghost.slice(3, 5)) : null;
   return (
     <div
-      className={`relative w-[var(--col)] shrink-0 border-l border-gray-150 ${today ? "bg-[rgb(16_132_254/0.03)]" : ""}`}
+      className={`relative w-[var(--col)] shrink-0 snap-start border-l border-gray-150 ${today ? "bg-[rgb(16_132_254/0.03)]" : ""}`}
       onClick={(ev) => {
         // Empty slot: snap down to the half hour.
         const y = ev.clientY - ev.currentTarget.getBoundingClientRect().top;

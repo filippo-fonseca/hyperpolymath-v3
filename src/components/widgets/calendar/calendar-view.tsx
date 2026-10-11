@@ -195,6 +195,7 @@ function CalendarViewInner() {
       ) : view === "week" ? (
         <WeekGrid
           from={from}
+          focusDay={anchor}
           events={events}
           tz={data.tz}
           today={data.today}
