@@ -64,6 +64,6 @@ export async function cancelReminderAction(reminderId: string) {
 export async function snoozeReminderAction(reminderId: string, minutes: number) {
   return asUser(async (ctx) => {
     await snoozeReminder(ctx, id.parse(reminderId), { minutes: z.number().int().min(5).max(10080).parse(minutes) });
-    return null;
+    return true;
   });
 }

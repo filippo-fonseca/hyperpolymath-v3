@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { listTokens, mintToken, revokeToken } from "@/server/tokens";
+import { setTimezone } from "@/server/settings";
 import { asUser, readAsUser } from "./run";
 
 export async function listTokensAction() {
@@ -16,6 +17,10 @@ export async function mintTokenAction(name: string) {
 export async function revokeTokenAction(tokenId: string) {
   return asUser(async (ctx) => {
     await revokeToken(ctx.db, ctx.userId, z.string().uuid().parse(tokenId));
-    return null;
+    return true;
   }, { write: false });
+}
+
+export async function setTimezoneAction(tz: string) {
+  return asUser((ctx) => setTimezone(ctx, z.string().min(1).max(80).parse(tz)));
 }

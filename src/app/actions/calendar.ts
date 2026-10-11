@@ -48,13 +48,13 @@ export async function setCalendarsAction(accountId: string, patch: { calendar_id
       .partial()
       .parse(patch);
     await setCalendars(ctx.db, ctx.userId, z.string().uuid().parse(accountId), p);
-    return null;
+    return true;
   });
 }
 
 export async function disconnectGoogleAction(accountId: string) {
   return asUser(async (ctx) => {
     await disconnectAccount(ctx.db, ctx.userId, z.string().uuid().parse(accountId));
-    return null;
+    return true;
   });
 }

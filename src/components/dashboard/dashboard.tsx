@@ -27,6 +27,7 @@ import { DashboardProvider, useDashboard } from "./context";
 import { CardSurface, WidgetCard } from "./widget-card";
 import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
+import { SettingsSheet } from "./settings-sheet";
 import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
 import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
 
@@ -47,7 +48,7 @@ export function Dashboard({ data, calendar }: { data: DashboardData; calendar: P
       <DashboardProvider data={data} calendar={calendar} open={open} openSettings={openSettings}>
         <Home expandedId={expandedId} setExpandedId={setExpandedId} />
         <GoogleReturnToast />
-        {settingsOpen && null}
+        <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </DashboardProvider>
     </ToastProvider>
   );
