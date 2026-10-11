@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 // family is applied inline so it never depends on a scanned utility class.
 
 const LOGO_FONT: CSSProperties = {
-  fontFamily: "var(--font-logotype), 'EB Garamond', Georgia, serif",
+  fontFamily: "'EB Garamond', Georgia, serif",
   fontWeight: 500,
   letterSpacing: "-0.01em",
 };
