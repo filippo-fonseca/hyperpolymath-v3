@@ -1,9 +1,8 @@
 "use client";
 
 import type { WidgetRow } from "@/lib/dashboard-types";
-import type { WidgetSize } from "@/lib/widgets";
+import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
-import { Eyebrow } from "@/components/ui/primitives";
 import { TasksWidget } from "./tasks/tasks-widget";
 import { TasksView } from "./tasks/tasks-view";
 import { HabitsWidget } from "./habits/habits-widget";
@@ -12,6 +11,7 @@ import { CaptureWidget } from "./capture/capture-widget";
 import { CaptureView } from "./capture/capture-view";
 import { KiwiWidget } from "./kiwi/kiwi-widget";
 import { ActivityView } from "./kiwi/activity-view";
+import { CustomWidget, CustomWidgetView } from "./custom/custom-widget";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -26,7 +26,7 @@ export function WidgetBody({ widget, size }: { widget: WidgetRow; size: WidgetSi
     case "kiwi":
       return <KiwiWidget size={size} />;
     default:
-      return <Fallback widget={widget} size={size} />;
+      return isCustomKind(widget.kind) ? <CustomWidget widget={widget} size={size} /> : null;
   }
 }
 
@@ -41,10 +41,10 @@ export function WidgetExpanded({ widget }: { widget: WidgetRow }) {
     case "kiwi":
       return <ActivityView />;
     default:
-      return <ExpandedHeader eyebrow={widget.kind} title={widget.title} />;
+      return isCustomKind(widget.kind) ? (
+        <CustomWidgetView widget={widget} />
+      ) : (
+        <ExpandedHeader title={widget.title} />
+      );
   }
-}
-
-function Fallback({ widget }: { widget: WidgetRow; size: WidgetSize }) {
-  return <Eyebrow>{widget.title}</Eyebrow>;
 }
