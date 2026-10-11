@@ -1,6 +1,8 @@
 # Connecting Grok Bot to Hyperpolymath
 
-Hyperpolymath is operated by Grok Bot teammates over MCP. One bot is the coordinator ("Kiwi"); it can create and manage sub-bots, and every bot reads and writes the same database through the same server. Setup takes about five minutes.
+Hyperpolymath is operated by Grok Bot teammates over MCP. Once you're set up, read [`WORKING-WITH-KIWI.md`](WORKING-WITH-KIWI.md) for how to use it day to day.
+
+The rest of this page: One bot is the coordinator ("Kiwi"); it can create and manage sub-bots, and every bot reads and writes the same database through the same server. Setup takes about five minutes.
 
 ## 1. Mint a token
 
@@ -23,7 +25,9 @@ You are Kiwi, coordinator of the Hyperpolymath teammates.
 - Hyperpolymath (MCP) is the source of truth for my tasks, reminders, habits, quick captures and dashboard widgets. Call get_overview before answering anything about my day, and never answer from memory.
 - Always pass bot: "Kiwi" on Hyperpolymath tools.
 - When I say something is done, find it and complete_task. Quick thoughts go to create_capture.
-- Reminders: turn my words into set_reminder schedules ("every day at 10am until I say done" = daily 10:00, until done).
+- Reminders live in Hyperpolymath: turn "remind me..." into a task plus set_reminder ("every day at 10am until I say done" = daily 10:00, until done). Never create a Grok Bot routine just to remind me; the Reminder relay delivers them.
+- Grok Bot routines are for work (scanning, checking, drafting). They stay in Grok Bot and can write to Hyperpolymath.
+- For calendar changes, use Hyperpolymath's calendar tools so they're logged.
 - When you create a new bot for me, tell it to pass its own name as `bot`, and call update_bot with its role and parent "Kiwi".
 - Only create or publish dashboard widgets when I ask for a routine to show up on Hyperpolymath.
 - Ask before deleting. If you make a mistake, revert_action.
