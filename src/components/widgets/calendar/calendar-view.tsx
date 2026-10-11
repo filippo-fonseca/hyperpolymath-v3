@@ -186,7 +186,9 @@ function EventRow({ e, onHide, onUnhide }: { e: CalendarEvent; onHide: (id: stri
           {[e.location, e.calendar].filter(Boolean).join(" · ")}
         </div>
       </div>
-      {confirm ? (
+      {e.task_id ? (
+        <span className="shrink-0 rounded-full bg-gray-150 px-2 py-0.5 text-[11.5px] font-medium text-ink-2">Task</span>
+      ) : confirm ? (
         <div className="flex shrink-0 gap-1">
           <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>
             Keep

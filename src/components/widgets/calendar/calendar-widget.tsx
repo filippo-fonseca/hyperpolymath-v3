@@ -50,7 +50,7 @@ function CalendarBody({ size }: { size: WidgetSize }) {
   const [listRef, fit] = useFitCount<HTMLDivElement>(30, size === "l" ? 7 : 3);
   const { today, tz } = data;
 
-  if (!cal.accounts.length) return <ConnectState size={size} configured={cal.configured} error={cal.error} />;
+  if (!cal.accounts.length && !cal.events.length) return <ConnectState size={size} configured={cal.configured} error={cal.error} />;
 
   const todays = remainingToday(cal.events, today, tz, nowMs);
   const current = todays.find((e) => isNow(e, nowMs));

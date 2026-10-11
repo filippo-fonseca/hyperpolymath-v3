@@ -35,6 +35,8 @@ export type CalendarEvent = {
   link: string | null;
   color: string | null;
   updated: string | null;
+  /** Set for Hyperpolymath tasks with a due time shown on the agenda. */
+  task_id?: string;
 };
 
 export type CalendarInfo = {
