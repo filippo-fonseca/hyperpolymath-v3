@@ -23,6 +23,7 @@ const ENTITY_LABEL: Record<string, string> = {
   capture: "capture",
   widget: "widget",
   bot: "teammate",
+  routine: "routine",
   event: "event",
 };
 
