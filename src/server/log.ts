@@ -4,9 +4,9 @@ import { asJson, AppError, must, type Ctx, type Row } from "./ctx";
 // The audit log. Every write records before/after snapshots so the activity
 // view can show what happened and revert it.
 
-export type EntityType = "task" | "reminder" | "habit" | "habit_log" | "capture" | "widget" | "bot";
+export type EntityType = "task" | "reminder" | "habit" | "habit_log" | "capture" | "widget" | "bot" | "event";
 
-const TABLE: Record<EntityType, "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots"> = {
+const TABLE: Record<Exclude<EntityType, "event">, "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots"> = {
   task: "tasks",
   reminder: "reminders",
   habit: "habits",
@@ -78,6 +78,12 @@ export async function revertAction(ctx: Ctx, actionId: string, force = false) {
   if (action.reverted_at) throw new AppError("That action was already reverted.", "conflict");
   if (!action.entity_id) throw new AppError("That action can't be reverted.");
   const type = action.entity_type as EntityType;
+  if (type === "event") {
+    // Calendar events live in Google; the calendar module knows how to undo them.
+    const { revertEventAction } = await import("./google/calendar");
+    const { restored, current } = await revertEventAction(ctx, action, force);
+    return finishRevert(ctx, action, type, current, restored);
+  }
   const table = TABLE[type];
   if (!table) throw new AppError(`Unknown entity type ${action.entity_type}`);
 
@@ -125,11 +131,15 @@ export async function revertAction(ctx: Ctx, actionId: string, force = false) {
     );
   }
 
+  return finishRevert(ctx, action, type, cur, restored);
+}
+
+async function finishRevert(ctx: Ctx, action: Row<"actions">, type: EntityType, current: unknown, restored: unknown) {
   const undo = await logAction(ctx, {
     tool: "revert_action",
     entityType: type,
     entityId: action.entity_id,
-    before: cur,
+    before: current,
     after: restored,
     summary: `Reverted: ${action.summary}`,
   });
