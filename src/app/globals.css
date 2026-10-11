@@ -1,26 +1,226 @@
 @import "tailwindcss";
 
+/* Design tokens. Light mode only, mirroring the Grok Bot app palette. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #fcfcfc;
+  --bg-subtle: #f7f7f7;
+  --bg-tertiary: #f4f4f4;
+  --surface: #ffffff;
+
+  --ink: #141414;
+  --ink-2: rgb(20 20 20 / 0.61);
+  --ink-3: rgb(20 20 20 / 0.45);
+
+  --gray-50: #fafafa;
+  --gray-100: #f7f7f7;
+  --gray-150: #f3f3f3;
+  --gray-200: #eeeeee;
+  --gray-250: #e8e8e8;
+  --gray-300: #d5d5d5;
+  --gray-400: #b7b7b7;
+  --gray-500: #959595;
+  --gray-600: #777777;
+  --gray-700: #5a5a5a;
+  --gray-800: #3d3d3d;
+  --gray-900: #262626;
+
+  --accent: #1084fe;
+  --accent-hover: #0c64c1;
+  --accent-soft: rgb(16 132 254 / 0.1);
+  --danger: #ff263c;
+  --danger-soft: rgb(255 38 60 / 0.09);
+  --success: #2fb26b;
+
+  --radius-widget: 22px;
+  --radius-chip: 12px;
+
+  --shadow-widget: 0 0 0 1px rgb(20 20 20 / 0.035), 0 1px 2px rgb(20 20 20 / 0.04), 0 8px 24px rgb(20 20 20 / 0.06);
+  --shadow-lift: 0 0 0 1px rgb(20 20 20 / 0.04), 0 4px 10px rgb(20 20 20 / 0.06), 0 22px 48px rgb(20 20 20 / 0.14);
+  --shadow-pop: 0 0 0 1px rgb(20 20 20 / 0.05), 0 2px 6px rgb(20 20 20 / 0.05), 0 16px 40px rgb(20 20 20 / 0.12);
+  --shadow-ring: 0 0 0 1px rgb(20 20 20 / 0.06), 0 1px 2px rgb(20 20 20 / 0.04);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-bg: var(--bg);
+  --color-subtle: var(--bg-subtle);
+  --color-tertiary: var(--bg-tertiary);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-150: var(--gray-150);
+  --color-gray-200: var(--gray-200);
+  --color-gray-250: var(--gray-250);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+
+  --radius-widget: var(--radius-widget);
+  --radius-chip: var(--radius-chip);
+
+  --shadow-widget: var(--shadow-widget);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-ring: var(--shadow-ring);
+
+  --ease-out: var(--ease-out);
+
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  font-feature-settings: "cv11", "ss01";
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgb(16 132 254 / 0.18);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* Hidden scrollbars for the page swiper and chip rows. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Home-screen grid: square cells, 4 / 6 / 8 columns. A widget unit is two
+   cells, so S = 2x2 cells, M = 4x2, L = 4x4 (S/M/L = 1x1, 2x1, 2x2 units). */
+.widget-page {
+  container-type: inline-size;
+}
+.widget-grid {
+  --cols: 4;
+  --gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  grid-auto-flow: row dense;
+  gap: var(--gap);
+}
+@media (min-width: 640px) {
+  .widget-grid {
+    --cols: 6;
+    --gap: 20px;
+  }
+}
+@media (min-width: 1024px) {
+  .widget-grid {
+    --cols: 8;
+    --gap: 24px;
+  }
+}
+.size-s {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.size-m {
+  grid-column: span 4;
+  grid-row: span 2;
+}
+.size-l {
+  grid-column: span 4;
+  grid-row: span 4;
+}
+
+/* Edit mode wiggle. */
+@keyframes wiggle {
+  0% {
+    transform: rotate(-1.2deg);
+  }
+  100% {
+    transform: rotate(1.2deg);
+  }
+}
+.wiggle {
+  animation: wiggle 280ms ease-in-out infinite alternate;
+  transform-origin: 50% 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wiggle {
+    animation: none;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(16 132 254 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(16 132 254 / 0);
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--gray-100) 0%, var(--gray-150) 50%, var(--gray-100) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Native date and time inputs, tamed. */
+input[type="date"],
+input[type="time"] {
+  min-height: 34px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
 }
