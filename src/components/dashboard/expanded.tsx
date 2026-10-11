@@ -8,9 +8,20 @@ import { CloseButton, useEscape, useMediaQuery, useScrollLock } from "@/componen
  * Full-screen view a widget morphs into (shared layoutId with its card).
  * Rendered inside AnimatePresence by the dashboard.
  */
-export function ExpandedView({ id, onClose, children }: { id: string; onClose: () => void; children: ReactNode }) {
+export function ExpandedView({
+  id,
+  onClose,
+  escapeActive = true,
+  children,
+}: {
+  id: string;
+  onClose: () => void;
+  /** False while something is layered on top (a sheet, Teammates), so Esc closes only that. */
+  escapeActive?: boolean;
+  children: ReactNode;
+}) {
   const desktop = useMediaQuery("(min-width: 640px)");
-  useEscape(onClose);
+  useEscape(onClose, escapeActive);
   useScrollLock(true);
 
   return (

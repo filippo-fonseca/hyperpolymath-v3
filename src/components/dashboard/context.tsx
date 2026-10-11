@@ -7,6 +7,9 @@ import { useToast } from "@/components/ui/toast";
 
 type RunOpts = { success?: string; quiet?: boolean };
 
+/** What the Teammates view should open on: a bot or a routine. */
+export type TeammatesFocus = { botId?: string; routineId?: string };
+
 type DashboardApi = {
   data: DashboardData;
   calendar: Promise<CalendarData>;
@@ -15,6 +18,8 @@ type DashboardApi = {
   run: <T>(p: Promise<Result<T>>, opts?: RunOpts) => Promise<T | null>;
   open: (widgetId: string) => void;
   openSettings: () => void;
+  openTeammates: (focus?: TeammatesFocus) => void;
+  openWidgetSettings: (widgetId: string) => void;
 };
 
 const Ctx = createContext<DashboardApi | null>(null);
@@ -45,12 +50,16 @@ export function DashboardProvider({
   calendar,
   open,
   openSettings,
+  openTeammates,
+  openWidgetSettings,
   children,
 }: {
   data: DashboardData;
   calendar: Promise<CalendarData>;
   open: (id: string) => void;
   openSettings: () => void;
+  openTeammates: (focus?: TeammatesFocus) => void;
+  openWidgetSettings: (widgetId: string) => void;
   children: ReactNode;
 }) {
   const toast = useToast();
@@ -75,8 +84,8 @@ export function DashboardProvider({
   );
 
   const value = useMemo(
-    () => ({ data, calendar, nowMs, run, open, openSettings }),
-    [data, calendar, nowMs, run, open, openSettings],
+    () => ({ data, calendar, nowMs, run, open, openSettings, openTeammates, openWidgetSettings }),
+    [data, calendar, nowMs, run, open, openSettings, openTeammates, openWidgetSettings],
   );
   return <Ctx value={value}>{children}</Ctx>;
 }

@@ -27,7 +27,7 @@ const ENTITY_LABEL: Record<string, string> = {
 };
 
 export function ActivityView() {
-  const { data, run } = useDashboard();
+  const { data, run, openTeammates } = useDashboard();
   const [filter, setFilter] = useState<Filter>({ kind: "all" });
   const [fetched, setFetched] = useState<{ key: string; rows: ActionRow[]; done: boolean } | null>(null);
   const [extra, setExtra] = useState<ActionRow[]>([]);
@@ -74,7 +74,15 @@ export function ActivityView() {
 
   return (
     <div>
-      <ExpandedHeader eyebrow="Kiwi and teammates" title="Activity" />
+      <ExpandedHeader
+        eyebrow="Kiwi and teammates"
+        title="Activity"
+        aside={
+          <Button size="sm" variant="soft" onClick={() => openTeammates(botId ? { botId } : {})}>
+            Teammates and routines
+          </Button>
+        }
+      />
       <div className="grid gap-8 md:grid-cols-[250px_minmax(0,1fr)]">
         <aside>
           <TeamTree filter={filter} onPick={pick} />

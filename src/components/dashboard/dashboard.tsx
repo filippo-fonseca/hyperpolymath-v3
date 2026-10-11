@@ -23,7 +23,7 @@ import { Logotype, Monogram } from "@/components/ui/brand";
 import { IconGear } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/primitives";
 import { longDate, weekdayName } from "@/lib/format";
-import { DashboardProvider, useDashboard } from "./context";
+import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
 import { CardSurface, WidgetCard } from "./widget-card";
 import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
@@ -31,6 +31,7 @@ import { SettingsSheet } from "./settings-sheet";
 import { RealtimeRefresh } from "./realtime";
 import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
 import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
+import { TeammatesView } from "@/components/teammates/teammates-view";
 
 type LocalWidget = WidgetRow & { size: "s" | "m" | "l" };
 
@@ -41,13 +42,40 @@ function toLocal(ws: WidgetRow[]): LocalWidget[] {
 export function Dashboard({ data, calendar }: { data: DashboardData; calendar: Promise<CalendarData> }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const open = useCallback((id: string) => setExpandedId(id), []);
+  const [sheetId, setSheetId] = useState<string | null>(null);
+  const [teammates, setTeammates] = useState<{ focus: TeammatesFocus; key: number } | null>(null);
+  const open = useCallback((id: string) => {
+    setTeammates(null);
+    setExpandedId(id);
+  }, []);
   const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const openTeammates = useCallback((focus: TeammatesFocus = {}) => {
+    setSettingsOpen(false);
+    setSheetId(null);
+    setTeammates({ focus, key: Date.now() });
+  }, []);
+  const openWidgetSettings = useCallback((id: string) => setSheetId(id), []);
 
   return (
     <ToastProvider>
-      <DashboardProvider data={data} calendar={calendar} open={open} openSettings={openSettings}>
-        <Home expandedId={expandedId} setExpandedId={setExpandedId} />
+      <DashboardProvider
+        data={data}
+        calendar={calendar}
+        open={open}
+        openSettings={openSettings}
+        openTeammates={openTeammates}
+        openWidgetSettings={openWidgetSettings}
+      >
+        <Home
+          expandedId={expandedId}
+          setExpandedId={setExpandedId}
+          sheetId={sheetId}
+          setSheetId={setSheetId}
+          overlayOpen={!!teammates}
+        />
+        <AnimatePresence>
+          {teammates && <TeammatesView key={teammates.key} focus={teammates.focus} onClose={() => setTeammates(null)} />}
+        </AnimatePresence>
         <GoogleReturnToast />
         {data.realtime && <RealtimeRefresh userId={data.userId} url={data.realtime.url} anonKey={data.realtime.key} />}
         <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -86,12 +114,23 @@ function greeting(nowMs: number, tz: string) {
   return "Good evening";
 }
 
-function Home({ expandedId, setExpandedId }: { expandedId: string | null; setExpandedId: (id: string | null) => void }) {
+function Home({
+  expandedId,
+  setExpandedId,
+  sheetId,
+  setSheetId,
+  overlayOpen,
+}: {
+  expandedId: string | null;
+  setExpandedId: (id: string | null) => void;
+  sheetId: string | null;
+  setSheetId: (id: string | null) => void;
+  overlayOpen: boolean;
+}) {
   const { data, nowMs, run, openSettings } = useDashboard();
   const [widgets, setWidgets] = useState<LocalWidget[]>(() => toLocal(data.widgets));
   const [serverWidgets, setServerWidgets] = useState(data.widgets);
   const [editing, setEditing] = useState(false);
-  const [sheetId, setSheetId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -144,11 +183,11 @@ function Home({ expandedId, setExpandedId }: { expandedId: string | null; setExp
   useEffect(() => {
     if (!editing) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !sheetId && !addOpen) setEditing(false);
+      if (e.key === "Escape" && !sheetId && !addOpen && !overlayOpen) setEditing(false);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [editing, sheetId, addOpen]);
+  }, [editing, sheetId, addOpen, overlayOpen]);
 
   return (
     <div className="mx-auto w-full max-w-[1168px] pb-32">
@@ -285,7 +324,12 @@ function Home({ expandedId, setExpandedId }: { expandedId: string | null; setExp
 
       <AnimatePresence>
         {expanded && (
-          <ExpandedView key={expanded.id} id={expanded.id} onClose={() => setExpandedId(null)}>
+          <ExpandedView
+            key={expanded.id}
+            id={expanded.id}
+            onClose={() => setExpandedId(null)}
+            escapeActive={!sheetId && !overlayOpen}
+          >
             <WidgetExpanded widget={expanded} />
           </ExpandedView>
         )}

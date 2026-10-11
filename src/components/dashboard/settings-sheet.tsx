@@ -8,7 +8,7 @@ import { listTokensAction, mintTokenAction, revokeTokenAction, setTimezoneAction
 import { disconnectGoogleAction, listCalendarsAction, setCalendarsAction, setDefaultCalendarAction } from "@/app/actions/calendar";
 import { signOut } from "@/app/actions/auth";
 import { Button, Sheet, Switch, fieldClass } from "@/components/ui/primitives";
-import { IconCheck, IconCopy, IconPlus, IconSignOut } from "@/components/ui/icons";
+import { IconCheck, IconChevronRight, IconCopy, IconPlus, IconSignOut } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
 import { useDashboard } from "./context";
 
@@ -21,6 +21,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
         <div className="flex flex-col gap-8 pb-3">
           <TimezoneSection />
           <McpSection />
+          <TeammatesSection />
           <Suspense fallback={<Section title="Google Calendar"><div className="skeleton h-12 rounded-[14px]" /></Section>}>
             <GoogleSection />
           </Suspense>
@@ -64,6 +65,29 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
       {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
       {copied ? "Copied" : label}
     </Button>
+  );
+}
+
+/* ---------------- Teammates ---------------- */
+
+function TeammatesSection() {
+  const { data, openTeammates } = useDashboard();
+  const paused = data.routines.filter((r) => !r.enabled).length;
+  return (
+    <Section title="Teammates and routines" hint="Edit your bots, and pause or resume the routines they run in Grok Bot.">
+      <button
+        type="button"
+        onClick={() => openTeammates()}
+        className="flex w-full items-center justify-between gap-3 rounded-[14px] bg-gray-100 px-3.5 py-3 text-left transition hover:bg-gray-150"
+      >
+        <span className="text-[14px] font-medium">
+          {data.bots.length} {data.bots.length === 1 ? "teammate" : "teammates"} · {data.routines.length}{" "}
+          {data.routines.length === 1 ? "routine" : "routines"}
+          {paused > 0 && <span className="font-normal text-ink-3"> ({paused} paused)</span>}
+        </span>
+        <IconChevronRight size={16} className="shrink-0 text-gray-500" />
+      </button>
+    </Section>
   );
 }
 

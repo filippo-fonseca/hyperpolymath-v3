@@ -5,6 +5,7 @@ import { localDate } from "@/lib/time";
 import { relativeTime } from "@/lib/format";
 import { useFitCount } from "@/components/ui/primitives";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
+import { BotAvatar } from "@/components/ui/bot-avatar";
 import { useDashboard } from "@/components/dashboard/context";
 import { ActorAvatar, botStatus, coordinatorOf, StatusDot } from "./actors";
 
@@ -13,13 +14,14 @@ const STATUS_TEXT = { working: "Working", idle: "Idle", offline: "Not connected 
 
 /** Kiwi's status and the latest things any teammate did. */
 export function KiwiWidget({ size }: { size: WidgetSize }) {
-  const { data, nowMs } = useDashboard();
+  const { data, nowMs, openTeammates } = useDashboard();
   const kiwi = coordinatorOf(data.bots);
   const status = botStatus(kiwi, nowMs);
   const [listRef, fit] = useFitCount<HTMLDivElement>(ROW_H, size === "l" ? 6 : 2);
   const todayCount = data.actions.filter((a) => localDate(new Date(a.created_at), data.tz) === data.today).length;
   const name = kiwi?.name ?? "Kiwi";
 
+  const team = data.bots.filter((b) => b.id !== kiwi?.id);
   const header = (
     <div className="flex items-center gap-3">
       <KiwiBlob size={size === "s" ? 38 : 34} boinkKey={data.actions[0]?.id} />
@@ -33,6 +35,28 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
           )}
         </div>
       </div>
+      {size !== "s" && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openTeammates();
+          }}
+          aria-label="Open teammates"
+          className="-mr-1.5 ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-gray-500 transition hover:bg-gray-100 hover:text-ink"
+        >
+          {team.length > 0 && (
+            <span className="flex -space-x-1.5">
+              {team.slice(0, 3).map((b) => (
+                <span key={b.id} className="rounded-full bg-surface p-px">
+                  <BotAvatar bot={b} size={18} />
+                </span>
+              ))}
+            </span>
+          )}
+          Team
+        </button>
+      )}
     </div>
   );
 
