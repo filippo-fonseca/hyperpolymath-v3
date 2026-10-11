@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarData, CalendarEvent } from "@/lib/dashboard-types";
 import { addDays } from "@/lib/time";
 import { safeHref } from "@/lib/markdown";
@@ -10,9 +10,43 @@ import { Button, IconButton, Segmented, fieldClass } from "@/components/ui/primi
 import { IconCalendar, IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
-import { durationLabel, eventDate, eventTime, groupByDay, isNow } from "./calendar-utils";
+import {
+  addMonths,
+  durationLabel,
+  eventTime,
+  groupByDay,
+  isNow,
+  monthGridStart,
+  monthLabel,
+  overlapsRange,
+  timedTaskEvents,
+  weekStart,
+} from "./calendar-utils";
 
-type Mode = "day" | "week";
+type View = "agenda" | "week" | "month";
+type Draft = { date: string; time?: string };
+/** Fetched Google events per "from:to" range; null marks a failed fetch. Tied to one calendar payload. */
+type RangeCache = { cal: CalendarData; ranges: Record<string, CalendarEvent[] | null> };
+
+const VIEWS: { value: View; label: string }[] = [
+  { value: "agenda", label: "Agenda" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+];
+
+function rangeFor(view: View, anchor: string): { from: string; to: string } {
+  if (view === "agenda") return { from: anchor, to: addDays(anchor, 6) };
+  if (view === "week") {
+    const from = weekStart(anchor);
+    return { from, to: addDays(from, 6) };
+  }
+  const from = monthGridStart(anchor);
+  return { from, to: addDays(from, 41) };
+}
+
+function step(view: View, anchor: string, dir: 1 | -1) {
+  return view === "month" ? addMonths(anchor, dir) : addDays(anchor, 7 * dir);
+}
 
 export function CalendarView() {
   return (
@@ -25,27 +59,44 @@ export function CalendarView() {
 function CalendarViewInner() {
   const { data, calendar, run } = useDashboard();
   const cal: CalendarData = use(calendar);
-  const [mode, setMode] = useState<Mode>("week");
+  const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(data.today);
-  const [adding, setAdding] = useState(false);
-  const [fetched, setFetched] = useState<{ key: string; events: CalendarEvent[] } | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [cache, setCache] = useState<RangeCache>(() => ({ cal, ranges: {} }));
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const inflight = useRef(new WeakMap<CalendarData, Set<string>>());
 
-  const from = anchor;
-  const to = mode === "day" ? anchor : addDays(anchor, 6);
+  // A refreshed payload (after any write) invalidates every fetched range.
+  const ranges = useMemo(() => (cache.cal === cal ? cache.ranges : {}), [cache, cal]);
+  const { from, to } = rangeFor(view, anchor);
   const key = `${from}:${to}`;
-  const covered = from >= cal.from && to <= cal.to;
+  const covered =
+    (from >= cal.from && to <= cal.to) ||
+    Object.keys(ranges).some((k) => {
+      const [a, b] = k.split(":");
+      return a <= from && b >= to;
+    });
+  const loading = !covered && cal.accounts.length > 0;
 
   useEffect(() => {
     if (covered || !cal.accounts.length) return;
-    let live = true;
+    let pending = inflight.current.get(cal);
+    if (!pending) inflight.current.set(cal, (pending = new Set()));
+    if (pending.has(key)) return;
+    pending.add(key);
     void run(listEventsAction(from, to)).then((events) => {
-      if (live && events) setFetched({ key, events });
+      pending.delete(key);
+      setCache((c) => (c.cal === cal ? { cal, ranges: { ...c.ranges, [key]: events } } : { cal, ranges: { [key]: events } }));
     });
-    return () => {
-      live = false;
-    };
   }, [covered, from, to, key, cal, run]);
+
+  // Everything known so far, newest fetch winning. Shown while another range loads.
+  const known = useMemo(() => {
+    const byId = new Map<string, CalendarEvent>();
+    for (const e of cal.events) if (!e.task_id) byId.set(e.id, e);
+    for (const list of Object.values(ranges)) for (const e of list ?? []) if (!e.task_id) byId.set(e.id, e);
+    return [...byId.values()];
+  }, [cal, ranges]);
 
   if (!cal.accounts.length) {
     return (
@@ -77,31 +128,21 @@ function CalendarViewInner() {
     );
   }
 
-  const source = covered ? cal.events : fetched?.key === key ? fetched.events : null;
-  const events = (source ?? [])
+  const events = [...known.filter((e) => overlapsRange(e, from, to, data.tz)), ...timedTaskEvents(data.openTasks, from, to, data.tz)]
     .filter((e) => !hidden.has(e.id))
-    .filter((e) => {
-      const d = eventDate(e, data.tz);
-      return d >= from && d <= to;
-    });
-  const days: [string, CalendarEvent[]][] = mode === "day" ? [[from, events]] : groupByDay(events, data.tz);
+    .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  const hide = (id: string) => setHidden((s) => new Set(s).add(id));
+  const unhide = (id: string) => setHidden((s) => (s.delete(id), new Set(s)));
+  const empty = loading && events.length === 0;
 
   return (
     <div>
       <ExpandedHeader
-        eyebrow={
-          mode === "day" ? (
-            <>
-              <span className="text-accent">{weekdayName(anchor)}</span>, {longDate(anchor)}
-            </>
-          ) : (
-            `${shortDate(from)} to ${shortDate(to)}`
-          )
-        }
+        eyebrow={view === "month" ? monthLabel(anchor) : `${shortDate(from)} to ${shortDate(to)}`}
         title="Calendar"
         aside={
-          !adding && (
-            <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
+          !draft && (
+            <Button size="sm" variant="primary" onClick={() => setDraft({ date: anchor })}>
               <IconPlus size={15} /> Event
             </Button>
           )
@@ -109,54 +150,68 @@ function CalendarViewInner() {
       />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
-          <IconButton label="Previous" onClick={() => setAnchor((a) => addDays(a, mode === "day" ? -1 : -7))}>
+          <IconButton label="Previous" onClick={() => setAnchor((a) => step(view, a, -1))}>
             <IconChevronLeft size={18} />
           </IconButton>
           <Button size="sm" variant="ghost" onClick={() => setAnchor(data.today)} disabled={anchor === data.today}>
             Today
           </Button>
-          <IconButton label="Next" onClick={() => setAnchor((a) => addDays(a, mode === "day" ? 1 : 7))}>
+          <IconButton label="Next" onClick={() => setAnchor((a) => step(view, a, 1))}>
             <IconChevronRight size={18} />
           </IconButton>
+          <span
+            aria-hidden
+            className={`ml-1 h-1.5 w-1.5 rounded-full bg-accent transition-opacity duration-300 ${loading ? "animate-pulse opacity-100" : "opacity-0"}`}
+          />
         </div>
-        <Segmented<Mode>
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "day", label: "Day" },
-            { value: "week", label: "Week" },
-          ]}
-        />
+        <Segmented<View> value={view} onChange={setView} options={VIEWS} />
       </div>
 
-      {adding && <EventForm defaultDate={anchor} onDone={() => setAdding(false)} />}
-      {cal.error && covered && <p className="mb-4 rounded-[12px] bg-gray-100 px-3.5 py-2.5 text-[13px] text-ink-2">{cal.error}</p>}
-
-      {source === null ? (
-        <div className="skeleton h-32 rounded-[18px]" />
-      ) : events.length === 0 ? (
-        <div className="py-12 text-center text-[15px] text-ink-3">{mode === "day" ? "Nothing on this day." : "A clear week."}</div>
-      ) : (
-        <div className="flex flex-col gap-6">
-          {days.map(([day, evs]) => (
-            <section key={day}>
-              {mode === "week" && (
-                <h3 className="mb-1 text-[13px] font-semibold">
-                  <span className={day === data.today ? "text-accent" : "text-gray-500"}>
-                    {day === data.today ? "Today" : weekdayName(day)}
-                  </span>
-                  <span className="font-medium text-ink-3"> {shortDate(day).split(", ")[1]}</span>
-                </h3>
-              )}
-              <ul className="divide-y divide-gray-150">
-                {evs.map((e) => (
-                  <EventRow key={e.id} e={e} onHide={(id) => setHidden((s) => new Set(s).add(id))} onUnhide={(id) => setHidden((s) => (s.delete(id), new Set(s)))} />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+      {draft && <EventForm key={`${draft.date}-${draft.time ?? ""}`} draft={draft} onDone={() => setDraft(null)} />}
+      {cal.error && from >= cal.from && from <= cal.to && (
+        <p className="mb-4 rounded-[12px] bg-gray-100 px-3.5 py-2.5 text-[13px] text-ink-2">{cal.error}</p>
       )}
+
+      {empty ? (
+        <div className="skeleton h-32 rounded-[18px]" />
+      ) : (
+        <AgendaList events={events} tz={data.tz} today={data.today} onHide={hide} onUnhide={unhide} />
+      )}
+    </div>
+  );
+}
+
+const sortKey = (e: CalendarEvent) => (e.all_day ? `${e.start.slice(0, 10)}T00:00:00.000Z#0` : `${e.start}#1`);
+
+function AgendaList({
+  events,
+  tz,
+  today,
+  onHide,
+  onUnhide,
+}: {
+  events: CalendarEvent[];
+  tz: string;
+  today: string;
+  onHide: (id: string) => void;
+  onUnhide: (id: string) => void;
+}) {
+  if (events.length === 0) return <div className="py-12 text-center text-[15px] text-ink-3">A clear week.</div>;
+  return (
+    <div className="flex flex-col gap-6">
+      {groupByDay(events, tz).map(([day, evs]) => (
+        <section key={day}>
+          <h3 className="mb-1 text-[13px] font-semibold">
+            <span className={day === today ? "text-accent" : "text-gray-500"}>{day === today ? "Today" : weekdayName(day)}</span>
+            <span className="font-medium text-ink-3"> {shortDate(day).split(", ")[1]}</span>
+          </h3>
+          <ul className="divide-y divide-gray-150">
+            {evs.map((e) => (
+              <EventRow key={e.id} e={e} onHide={onHide} onUnhide={onUnhide} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
@@ -216,11 +271,11 @@ function EventRow({ e, onHide, onUnhide }: { e: CalendarEvent; onHide: (id: stri
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
-function EventForm({ defaultDate, onDone }: { defaultDate: string; onDone: () => void }) {
+function EventForm({ draft, onDone }: { draft: Draft; onDone: () => void }) {
   const { run } = useDashboard();
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState("09:00");
+  const [date, setDate] = useState(draft.date);
+  const [time, setTime] = useState(draft.time ?? "09:00");
   const [allDay, setAllDay] = useState(false);
   const [duration, setDuration] = useState(60);
   const [busy, setBusy] = useState(false);
