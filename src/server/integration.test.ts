@@ -15,6 +15,7 @@ import { createWidget, publishWidget, widgetHistory } from "./widgets";
 import { getOverview } from "./overview";
 import { runTick } from "./tick";
 import { mintToken } from "./tokens";
+import { finishRun, listRoutines, registerRoutine, startRun, updateRoutine } from "./routines";
 import { zonedToUtc } from "@/lib/time";
 
 const enabled = !!(process.env.SUPABASE_SECRET_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -142,6 +143,26 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     await publishWidget(ctx, "slack", { sections: [{ title: "#general", items: [{ text: "Standup moved" }] }] });
     await publishWidget(ctx, w.id, { summary: "Quiet night", sections: [] });
     expect(await widgetHistory(ctx, w.id)).toHaveLength(2);
+  });
+
+  it("routines: register, pause from the app, and runs respect it", async () => {
+    const actor = await resolveBotActor(adminDb(), userId, "Slack Roundup");
+    const bot = ctxAt(NOON, actor);
+    await registerRoutine(bot, { name: "Nightly scan", schedule: "weeknights at 10pm" });
+    await registerRoutine(bot, { name: "nightly scan", description: "Missed messages" }); // upsert by name
+    const [r] = await listRoutines(bot);
+    expect(r.description).toBe("Missed messages");
+
+    const run = await startRun(bot, "Nightly scan");
+    expect(run.enabled).toBe(true);
+    await finishRun(bot, run.run_id!, { summary: "3 missed threads" });
+
+    await updateRoutine(ctxAt(NOON), r.id, { enabled: false }); // owner pauses it in the app
+    const skipped = await startRun(bot, "Nightly scan");
+    expect(skipped.enabled).toBe(false);
+    const [after] = await listRoutines(bot);
+    expect(after.run_count).toBe(1);
+    expect(after.last_status).toBe("skipped");
   });
 
   it("overview grounds a bot in one call", async () => {
