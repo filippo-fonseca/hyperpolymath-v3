@@ -662,7 +662,6 @@ export type Database = {
           due_date: string | null
           due_time: string | null
           id: string
-          list: string | null
           notes: string | null
           position: number
           priority: number
@@ -681,7 +680,6 @@ export type Database = {
           due_date?: string | null
           due_time?: string | null
           id?: string
-          list?: string | null
           notes?: string | null
           position?: number
           priority?: number
@@ -700,7 +698,6 @@ export type Database = {
           due_date?: string | null
           due_time?: string | null
           id?: string
-          list?: string | null
           notes?: string | null
           position?: number
           priority?: number
