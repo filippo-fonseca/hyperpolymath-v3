@@ -66,6 +66,8 @@ Kiwi will ask before deleting anything. Check the Activity view afterwards; anyt
 
 Ask for it explicitly: *"...and show it on Hyperpolymath."* The bot creates one widget (a digest, list, stat, timeline, table or markdown) and republishes it at the end of every run. Old versions are kept, so expanding the widget shows past runs. If a run is missed the widget greys out after its staleness window.
 
+Widgets can have an icon: an emoji, an https image, or the domain of the site the routine covers ("slack.com" uses Slack's favicon). Bots set it with `create_widget` / `update_widget`; you can change it in the widget's settings.
+
 ## Limits worth knowing
 
 - **Reminder delivery needs the relay.** Until `KIWI_WEBHOOK_URL` and `KIWI_WEBHOOK_TOKEN` are set, reminders are saved and shown in the app but not delivered. They retry every 5 minutes and fire once the relay works.
