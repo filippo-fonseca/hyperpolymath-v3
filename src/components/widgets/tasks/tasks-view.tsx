@@ -273,7 +273,7 @@ function BoardCard({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops
         </div>
       )}
       {expanded && (
-        <div className="-ml-[34px] mt-2" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <div className="mt-2 sm:-ml-[34px]" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <TaskEditor task={task} ops={ops} />
         </div>
       )}

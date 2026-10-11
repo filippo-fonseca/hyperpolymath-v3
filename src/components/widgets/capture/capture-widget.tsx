@@ -32,9 +32,8 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
 
   return (
     <div className="flex h-full flex-col">
-      <Eyebrow>Capture</Eyebrow>
+      {size === "l" && <Eyebrow className="mb-2.5">Capture</Eyebrow>}
       <QuickAdd
-        className="mt-2.5"
         placeholder="What's on your mind?"
         onSubmit={(content) => run(createCaptureAction(content), { success: "Captured" })}
       />

@@ -55,7 +55,7 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
           <span className="shrink-0 text-[11.5px] text-ink-3">{relativeTime(widget.published_at, nowMs)}</span>
         )}
       </div>
-      <div className="mt-2 min-h-0 flex-1">
+      <div className="mt-2 min-h-0 flex-1 overflow-hidden">
         {widget.published_at ? (
           <Content kind={widget.kind} payload={widget.payload} compact size={size} />
         ) : (

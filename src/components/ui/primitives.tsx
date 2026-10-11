@@ -207,7 +207,7 @@ export function Checkbox({
 }
 
 export const fieldClass =
-  "h-10 w-full rounded-[12px] bg-gray-100 px-3 text-[14px] outline-none ring-1 ring-transparent transition placeholder:text-ink-3 focus:bg-white focus:ring-accent/35";
+  "h-10 min-w-0 rounded-[12px] bg-gray-100 px-3 text-[14px] outline-none ring-1 ring-transparent transition placeholder:text-ink-3 focus:bg-white focus:ring-accent/35";
 
 /* ---------- sheet ---------- */
 

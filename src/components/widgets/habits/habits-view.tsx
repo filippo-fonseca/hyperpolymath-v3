@@ -135,7 +135,7 @@ function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Habit name, e.g. Read 20 pages"
           maxLength={120}
-          className={fieldClass}
+          className={`${fieldClass} w-full`}
         />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <WeekdayPicker value={days} onChange={setDays} />

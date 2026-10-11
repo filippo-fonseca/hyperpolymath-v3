@@ -62,7 +62,7 @@ export function ReminderForm({ task, onDone }: { task: Task; onDone: () => void 
 
   return (
     <div className="rounded-[16px] bg-gray-50 p-4 shadow-ring" onClick={(e) => e.stopPropagation()}>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[14px] font-semibold">
           <IconBell size={16} /> Remind me
         </span>
@@ -80,8 +80,8 @@ export function ReminderForm({ task, onDone }: { task: Task; onDone: () => void 
 
       {kind === "once" && (
         <div className="flex gap-2">
-          <input type="date" value={date} min={data.today} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${fieldClass} max-w-[130px]`} />
+          <input type="date" value={date} min={data.today} onChange={(e) => setDate(e.target.value)} className={`${fieldClass} flex-1`} />
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${fieldClass} w-[118px] shrink-0`} />
         </div>
       )}
 

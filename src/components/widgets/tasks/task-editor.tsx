@@ -18,7 +18,7 @@ export function TaskEditor({ task, ops }: { task: Task; ops: Ops }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3 pb-3 pl-[34px] pr-1 pt-1" onClick={(e) => e.stopPropagation()}>
+    <div className="flex flex-col gap-3 pb-3 pr-1 pt-1 sm:pl-[34px]" onClick={(e) => e.stopPropagation()}>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
@@ -33,7 +33,7 @@ export function TaskEditor({ task, ops }: { task: Task; ops: Ops }) {
           aria-label="Due date"
           value={task.due_date ?? ""}
           onChange={(e) => ops.update(task, { due_date: e.target.value || null })}
-          className={`${fieldClass} h-9 w-[150px]`}
+          className={`${fieldClass} h-9 w-[150px] max-sm:flex-1`}
         />
         <input
           type="time"
@@ -48,7 +48,7 @@ export function TaskEditor({ task, ops }: { task: Task; ops: Ops }) {
           onBlur={() => list !== (task.list ?? "") && ops.update(task, { list: list || null })}
           placeholder="List"
           aria-label="List"
-          className={`${fieldClass} h-9 w-[130px]`}
+          className={`${fieldClass} h-9 w-[130px] max-sm:w-full`}
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">

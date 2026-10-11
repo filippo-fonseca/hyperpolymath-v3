@@ -84,7 +84,7 @@ function TimezoneSection() {
       <select
         value={data.tz}
         onChange={(e) => void run(setTimezoneAction(e.target.value), { success: `Timezone set to ${e.target.value.replace(/_/g, " ")}` })}
-        className={`${fieldClass} appearance-none`}
+        className={`${fieldClass} w-full appearance-none`}
         aria-label="Timezone"
       >
         {list.map((z) => (
@@ -111,7 +111,7 @@ function McpSection() {
     const t = window.setTimeout(() => setOrigin(window.location.origin), 0);
     let live = true;
     void run(listTokensAction()).then((t) => {
-      if (live && t) setTokens(t);
+      if (live) setTokens(t ?? []);
     });
     return () => {
       live = false;
@@ -156,7 +156,7 @@ function McpSection() {
           }
         }}
       >
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Token name" maxLength={60} className={fieldClass} aria-label="Token name" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Token name" maxLength={60} className={`${fieldClass} flex-1`} aria-label="Token name" />
         <Button type="submit" variant="dark" className="shrink-0">
           <IconPlus size={15} /> New token
         </Button>

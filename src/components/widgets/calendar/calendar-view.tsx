@@ -247,7 +247,7 @@ function EventForm({ defaultDate, onDone }: { defaultDate: string; onDone: () =>
       }}
       className="mb-6 flex flex-col gap-3 rounded-[18px] bg-gray-50 p-4 shadow-ring"
     >
-      <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" maxLength={300} className={fieldClass} />
+      <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" maxLength={300} className={`${fieldClass} w-full`} />
       <div className="flex flex-wrap items-center gap-2">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${fieldClass} w-[150px]`} aria-label="Date" />
         {!allDay && (

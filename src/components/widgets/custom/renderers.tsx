@@ -146,7 +146,7 @@ export function StatView({ p, compact, large }: { p: StatPayload; compact: boole
       {p.label && <div className={`mt-1.5 text-gray-500 ${compact ? "text-[13px]" : "text-[15px]"}`}>{p.label}</div>}
       {p.trend && p.trend.length > 1 && (
         <div className={compact ? "mt-auto pt-2" : "mt-8"}>
-          <Sparkline values={p.trend} height={compact ? (large ? 90 : 36) : 140} />
+          <Sparkline values={p.trend} height={compact ? (large ? 90 : 26) : 140} />
         </div>
       )}
     </div>
