@@ -45,3 +45,13 @@ Follow [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md): mint an MCP token in Settings, ad
 pnpm test                                   # unit tests; integration tests run too when .env.local has the secret key
 HPM_TOKEN=hpm_... node scripts/smoke-mcp.mjs https://<app>   # end-to-end MCP check as a bot
 ```
+
+## 6. Quick capture from your phone
+
+Any token from **Settings → MCP tokens** also works for the capture endpoint. In the iOS Shortcuts app: *Ask for Input* → *Get Contents of URL* with:
+
+- URL: `https://<app>/api/capture`, method `POST`
+- Header: `Authorization: Bearer hpm_...`
+- Request body: JSON, `content` = the input (optionally `source` = `"shortcut"`)
+
+Add it to the Action Button or Back Tap, and captures land on the dashboard instantly (and in Kiwi's overview).
