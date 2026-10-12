@@ -4,6 +4,7 @@ import type { WidgetSize } from "@/lib/widgets";
 import { relativeTime } from "@/lib/format";
 import { createCaptureAction } from "@/app/actions/captures";
 import { Eyebrow, useFitCount } from "@/components/ui/primitives";
+import { KiwiReading } from "@/components/illustrations";
 import { IconPencil } from "@/components/ui/icons";
 import { useDashboard } from "@/components/dashboard/context";
 import { QuickAdd } from "../tasks/task-bits";
@@ -52,10 +53,16 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
               <span className="shrink-0 text-[12.5px] text-gray-500">{relativeTime(c.created_at, nowMs)}</span>
             </li>
           ))}
-          {!resurfacing.length && !recent.length && data.captures.length === 0 && (
+          {!resurfacing.length && !recent.length && data.captures.length === 0 && size !== "l" && (
             <li className="flex h-7 items-center text-[13px] text-ink-3">Thoughts, links, ideas. Sort them later.</li>
           )}
         </ul>
+        {size === "l" && data.captures.length === 0 && (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <KiwiReading size={124} />
+            <p className="mt-1 text-[13px] text-ink-3">Thoughts, links, ideas. Sort them later.</p>
+          </div>
+        )}
       </div>
     </div>
   );

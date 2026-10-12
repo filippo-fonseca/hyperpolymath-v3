@@ -16,6 +16,7 @@ import {
 import { Button, IconButton } from "@/components/ui/primitives";
 import { IconArchive, IconCheck, IconFolder, IconSearch, IconTrash, IconUndo } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { KiwiReading } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { QuickAdd } from "../tasks/task-bits";
 import { ProjectChip, ProjectPicker } from "../projects/project-bits";
@@ -90,9 +91,14 @@ export function CaptureView() {
       <section className="mt-7">
         <h3 className="mb-1 text-[13px] font-semibold text-gray-500">{searching ? "Results" : "Recent"}</h3>
         {list.length === 0 ? (
-          <div className="py-10 text-center text-[14px] text-ink-3">
-            {searching ? "Nothing matches." : "Nothing captured yet. Anything you jot down lands here."}
-          </div>
+          searching ? (
+            <div className="py-10 text-center text-[14px] text-ink-3">Nothing matches.</div>
+          ) : (
+            <div className="flex flex-col items-center pb-4 pt-2 text-center">
+              <KiwiReading size={148} />
+              <p className="mt-1 text-[14px] text-ink-3">Nothing captured yet. Anything you jot down lands here.</p>
+            </div>
+          )
         ) : (
           <ul className="divide-y divide-gray-150">
             <AnimatePresence initial={false}>
