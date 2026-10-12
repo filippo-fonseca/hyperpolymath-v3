@@ -653,6 +653,24 @@ export type Database = {
         }
         Relationships: []
       }
+      system_state: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           completed_at: string | null
