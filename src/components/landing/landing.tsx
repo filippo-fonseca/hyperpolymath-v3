@@ -1,6 +1,7 @@
 import { Hero } from "./hero";
 import { HowItWorks } from "./how-it-works";
 import { Talk } from "./talk";
+import { Features } from "./features";
 
 // Public landing page, shown to signed-out visitors at `/`. Static: no session,
 // no data. Sections are plain server components; only Kiwi and the chat mock
@@ -11,6 +12,7 @@ export function Landing() {
       <Hero />
       <HowItWorks />
       <Talk />
+      <Features />
     </main>
   );
 }
