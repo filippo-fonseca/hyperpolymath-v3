@@ -12,9 +12,9 @@ type Line = { from: "you"; text: string } | { from: "kiwi"; text: string; tool: 
 
 const LINES: Line[] = [
   { from: "you", text: "finished laundry" },
-  { from: "kiwi", text: "Marked done, sir. The basket thanks you.", tool: "complete_task" },
+  { from: "kiwi", text: "Done, sir. Laundry is off the list.", tool: "complete_task" },
   { from: "you", text: "remind me to call the bank every day at 10 until I do it" },
-  { from: "kiwi", text: "Daily at 10:00 until it's done, sir. I'll be persistent but polite.", tool: "create_task, set_reminder" },
+  { from: "kiwi", text: "Very good, sir. I'll remind you at 10:00 every day until it's done.", tool: "create_task, set_reminder" },
   { from: "you", text: "add review fluids for tomorrow" },
   { from: "kiwi", text: "Added to Fluid Mechanics, due tomorrow.", tool: "create_task" },
 ];
