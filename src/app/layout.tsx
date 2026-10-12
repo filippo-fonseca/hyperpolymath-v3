@@ -6,6 +6,7 @@ import "@fontsource/eb-garamond/latin-400.css";
 import "@fontsource/eb-garamond/latin-500.css";
 import "@fontsource/eb-garamond/latin-600.css";
 import "./globals.css";
+import { OfflineBanner } from "@/components/ui/offline-banner";
 
 export const metadata: Metadata = {
   title: "Hyperpolymath",
@@ -23,7 +24,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-bg text-ink">{children}</body>
+      <body className="min-h-full bg-bg text-ink">
+        {children}
+        <OfflineBanner />
+      </body>
     </html>
   );
 }

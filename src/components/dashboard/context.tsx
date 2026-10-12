@@ -76,7 +76,12 @@ export function DashboardProvider({
         if (opts.success) toast.show(opts.success);
         return res.data;
       } catch {
-        if (!opts.quiet) toast.error("Couldn't reach the server. Check your connection.");
+        // The action never reached the server (offline, or the request failed).
+        // Resolve to null so callers always leave their busy state.
+        if (!opts.quiet) {
+          const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+          toast.error(offline ? "You're offline, so that didn't save. Try again once you're back." : "Couldn't reach the server. Check your connection.");
+        }
         return null;
       }
     },
