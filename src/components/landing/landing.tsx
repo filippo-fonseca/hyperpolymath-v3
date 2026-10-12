@@ -1,6 +1,7 @@
 import { Hero } from "./hero";
 import { HowItWorks } from "./how-it-works";
 import { Talk } from "./talk";
+import { Organized } from "./organized";
 import { Features } from "./features";
 import { Footer } from "./footer";
 
@@ -14,6 +15,7 @@ export function Landing() {
         <Hero />
         <HowItWorks />
         <Talk />
+        <Organized />
         <Features />
       </main>
       <Footer />
