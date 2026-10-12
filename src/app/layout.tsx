@@ -9,13 +9,18 @@ import "./globals.css";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 
 export const metadata: Metadata = {
-  title: "Hyperpolymath",
+  title: { default: "Hyperpolymath", template: "%s · Hyperpolymath" },
   description: "A calm, one-screen life dashboard.",
+  applicationName: "Hyperpolymath",
+  // Private, single-owner app: keep every page out of search engines.
+  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
+  formatDetection: { telephone: false, email: false, address: false },
   appleWebApp: { capable: true, title: "Hyperpolymath", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   themeColor: "#fcfcfc",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

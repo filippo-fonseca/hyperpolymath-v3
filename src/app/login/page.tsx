@@ -4,7 +4,7 @@ import { LoginForm } from "./login-form";
 import { Logotype } from "@/components/ui/brand";
 import { KiwiLoader } from "@/components/ui/kiwi-loader";
 
-export const metadata: Metadata = { title: "Sign in · Hyperpolymath" };
+export const metadata: Metadata = { title: "Sign in" };
 
 export default function LoginPage() {
   return (

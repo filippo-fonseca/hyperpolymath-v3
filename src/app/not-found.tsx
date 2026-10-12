@@ -3,7 +3,7 @@ import Link from "next/link";
 import { KiwiLost } from "@/components/illustrations";
 import { StatePage, statePrimary } from "@/components/ui/state-page";
 
-export const metadata: Metadata = { title: "Not found · Hyperpolymath" };
+export const metadata: Metadata = { title: "Not found" };
 
 export default function NotFound() {
   return (
