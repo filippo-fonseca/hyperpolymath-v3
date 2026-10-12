@@ -183,6 +183,25 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     expect(school.projects[0]).toMatchObject({ status: "done", open_tasks: 1 });
   });
 
+  it("routines are inferred from widget publishes and adopted on register", async () => {
+    const actor = await resolveBotActor(adminDb(), userId, "Shopper");
+    const bot = ctxAt(NOON, actor);
+    await createWidget(bot, { kind: "list", title: "Groceries" });
+    await publishWidget(bot, "Groceries", { items: [{ text: "Milk" }] });
+    let mine = (await listRoutines(bot)).filter((r) => r.widget_id);
+    const inferred = mine.find((r) => r.name === "Groceries")!;
+    expect(inferred.source).toBe("inferred");
+    expect(inferred.run_count).toBe(1);
+
+    await registerRoutine(bot, { name: "Weekly grocery run", schedule: "Sundays 9am", widget: "Groceries" });
+    mine = (await listRoutines(bot)).filter((r) => r.widget_id === inferred.widget_id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ name: "Weekly grocery run", source: "registered" });
+
+    const run = await startRun(bot, "Brand new routine"); // unknown routine auto-registers
+    expect(run.enabled).toBe(true);
+  });
+
   it("overview grounds a bot in one call", async () => {
     const o = await getOverview(ctxAt(NOON));
     expect(o.timezone).toBe(TZ);
