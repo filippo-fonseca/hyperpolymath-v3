@@ -140,10 +140,13 @@ function GrokBotMark() {
   );
 }
 
+/** A soft blue light behind the hero that drifts and breathes very slowly,
+ * with a fainter second one wandering out of phase. */
 function Glow() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-280px] h-[640px] w-[min(900px,140vw)] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(16,132,254,0.09),transparent)]" />
+      <div className="landing-glow absolute left-1/2 top-[-280px] h-[640px] w-[min(900px,140vw)] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(16,132,254,0.09),transparent)]" />
+      <div className="landing-glow landing-glow-2 absolute left-[58%] top-[120px] hidden h-[460px] w-[620px] rounded-full bg-[radial-gradient(closest-side,rgba(16,132,254,0.045),transparent)] sm:block" />
     </div>
   );
 }
