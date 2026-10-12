@@ -138,3 +138,79 @@ export async function archiveBot(ctx: Ctx, name: string) {
   });
   return { archived: before.name };
 }
+
+/**
+ * Rename a bot, keeping its history. Used when a bot is renamed in Grok Bot
+ * (the bot reports it with rename_bot) or from Settings.
+ */
+export async function renameBot(ctx: Ctx, from: string, to: string) {
+  const name = to.trim().slice(0, 60);
+  if (!name) throw new AppError("The new name can't be empty.");
+  const before = must(
+    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", escapeLike(from.trim())).maybeSingle(),
+    `bot "${from}"`,
+  );
+  if (before.name === name) return before;
+  const { data: clash } = await ctx.db
+    .from("bots")
+    .select("id")
+    .eq("user_id", ctx.userId)
+    .ilike("name", escapeLike(name))
+    .neq("id", before.id)
+    .maybeSingle();
+  if (clash) throw new AppError(`There's already a bot called "${name}". Archive or rename it first.`, "conflict");
+  const after = must(
+    await ctx.db.from("bots").update({ name }).eq("id", before.id).eq("user_id", ctx.userId).select().single(),
+    "rename bot",
+  );
+  await logAction(ctx, {
+    tool: "rename_bot",
+    entityType: "bot",
+    entityId: before.id,
+    before,
+    after,
+    summary: `Renamed ${before.name} to ${name}`,
+  });
+  return after;
+}
+
+/**
+ * Make a bot the main assistant (coordinator). The previous coordinator and
+ * its direct reports move under the new one.
+ */
+export async function setCoordinator(ctx: Ctx, name: string) {
+  const next = must(
+    await ctx.db.from("bots").select().eq("user_id", ctx.userId).ilike("name", escapeLike(name.trim())).is("archived_at", null).maybeSingle(),
+    `bot "${name}"`,
+  );
+  if (next.is_coordinator) return next;
+  const { data: prev } = await ctx.db
+    .from("bots")
+    .select()
+    .eq("user_id", ctx.userId)
+    .eq("is_coordinator", true)
+    .maybeSingle();
+  if (prev) {
+    await ctx.db.from("bots").update({ parent_id: next.id }).eq("user_id", ctx.userId).eq("parent_id", prev.id).neq("id", next.id);
+    await ctx.db.from("bots").update({ is_coordinator: false, parent_id: next.id }).eq("id", prev.id);
+  }
+  const after = must(
+    await ctx.db.from("bots").update({ is_coordinator: true, parent_id: null }).eq("id", next.id).select().single(),
+    "set coordinator",
+  );
+  await logAction(ctx, {
+    tool: "set_coordinator",
+    entityType: "bot",
+    entityId: next.id,
+    before: next,
+    after,
+    summary: `${after.name} is now the main assistant${prev ? ` (was ${prev.name})` : ""}`,
+  });
+  return after;
+}
+
+/** The main assistant's name, for instructions and UI copy. */
+export async function coordinatorName(db: DB, userId: string): Promise<string | null> {
+  const { data } = await db.from("bots").select("name").eq("user_id", userId).eq("is_coordinator", true).maybeSingle();
+  return data?.name ?? null;
+}
