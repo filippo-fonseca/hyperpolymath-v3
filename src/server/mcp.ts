@@ -29,7 +29,10 @@ Rules:
 - Grok Bot routines are for WORK a bot does on a schedule (scan Slack, write a digest, check a website, draft emails). They stay in Grok Bot and may read or write Hyperpolymath through these tools. If a routine only exists to remind the owner of something, migrate it to set_reminder and offer to delete the routine.
 - Register every routine you run with register_routine (name, schedule in words, what it does, its widget if it publishes one) so it shows in the app. At the START of every run call start_routine_run: if it returns enabled=false the owner paused it in the app, so stop immediately. At the END call finish_routine_run with status and a one-line summary. When you change or delete a routine in Grok Bot, mirror it with update_routine / remove_routine.
 - Quick thoughts, links and ideas without a clear action go to create_capture, not tasks.
-- Organise work by life area and project (list_areas). File tasks and captures under the right project when it is obvious; ask when it is not. Keep project status current as things move on.
+- Projects: the owner organises life into areas (School, Health, Work...) holding projects (classes are projects too). Tasks and captures can belong to one project; habits to an area. Know the current projects (get_overview lists active ones per area; list_areas has all).
+  - When the owner gives you a task or capture, file it under a project ONLY if it clearly fits one (same class, same initiative, obvious keyword or context). Don't force it: if nothing fits well, or two projects fit equally, leave it unfiled (it stays in the inbox) rather than guessing. Never create a new project just to file one item unless they ask.
+  - Always confirm where it went, briefly: "Added to Machine Elements." or "Added, not filed under a project." The tool result's filed_under field tells you. They can say "move it to X" (update_task project) or "undo" (revert_action).
+  - Keep project status current as things move on (update_project status: active, paused, done).
 - Dates: use the "now" and timezone from get_overview, never your own clock. After creating or moving something, tell the owner the date in words ("for tomorrow, Mon Oct 12") so a wrong guess is caught. If they gave no date, leave due_date empty (it lands in the inbox) rather than guessing.
 - Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
 - Widgets: only create or publish a widget when the owner asked for that routine to appear on the dashboard. Publish the full current content each run (it replaces the previous version, history is kept).
@@ -78,6 +81,20 @@ function fail(e: unknown) {
         : "Something went wrong on the Hyperpolymath side.";
   if (!(e instanceof AppError) && !(e instanceof z.ZodError)) console.error("[mcp]", e);
   return { content: [{ type: "text" as const, text: msg }], isError: true };
+}
+
+/** "Project (Area)" for confirmations, or null when unfiled. */
+async function filedUnder(ctx: Ctx, projectId: string | null | undefined) {
+  if (!projectId) return null;
+  const { data } = await ctx.db
+    .from("projects")
+    .select("name, area:areas(name)")
+    .eq("id", projectId)
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (!data) return null;
+  const area = (data.area as { name: string } | null)?.name;
+  return area ? `${data.name} (${area})` : data.name;
 }
 
 export function buildMcpServer(userId: string) {
@@ -143,16 +160,20 @@ export function buildMcpServer(userId: string) {
     { title: z.string().min(1).max(500), ...taskFields, reminder: z.object(reminderFields).optional() },
     async (ctx, { reminder, ...input }) => {
       const task = await createTask(ctx, input);
-      if (!reminder) return task;
+      const filed_under = await filedUnder(ctx, task.project_id);
+      if (!reminder) return { ...task, filed_under };
       const r = await setReminder(ctx, { task_id: task.id, ...reminder });
-      return { task, reminder: { id: r.id, describes: r.describes, first_fire_at: r.first_fire_at } };
+      return { task, filed_under, reminder: { id: r.id, describes: r.describes, first_fire_at: r.first_fire_at } };
     },
   );
   tool(
     "update_task",
     "Change a task's fields. Pass only what changes; null clears a field.",
     { id: uuid, title: z.string().min(1).max(500).optional(), ...taskFields },
-    (ctx, { id, ...input }) => updateTask(ctx, id, input),
+    async (ctx, { id, ...input }) => {
+      const task = await updateTask(ctx, id, input);
+      return { ...task, filed_under: await filedUnder(ctx, task.project_id) };
+    },
   );
   tool("complete_task", "Mark a task done. Recurring tasks roll to their next date. Stops until-done reminders.", { id: uuid }, (ctx, a) => completeTask(ctx, a.id));
   tool("reopen_task", "Mark a done task as not done.", { id: uuid }, (ctx, a) => reopenTask(ctx, a.id));
@@ -206,7 +227,10 @@ export function buildMcpServer(userId: string) {
     "create_capture",
     "Save a quick thought, link or idea. resurface_at brings it back on a date.",
     { content: z.string().min(1).max(20000), resurface_at: date.optional(), project: z.string().max(120).optional() },
-    (ctx, a) => createCapture(ctx, a),
+    async (ctx, a) => {
+      const capture = await createCapture(ctx, a);
+      return { ...capture, filed_under: await filedUnder(ctx, capture.project_id) };
+    },
   );
   tool(
     "list_captures",
