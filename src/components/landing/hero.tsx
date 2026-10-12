@@ -16,8 +16,19 @@ export function Hero() {
           <Logotype className="text-[26px] leading-none" />
         </div>
 
+        <a
+          href="https://docs.x.ai/grok-bot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="landing-rise mt-9 inline-flex h-8 items-center gap-2 rounded-full bg-surface pl-1.5 pr-3 text-[13px] font-medium text-ink-2 shadow-ring transition-colors hover:text-ink"
+          style={rise(45)}
+        >
+          <GrokBotMark />
+          Powered by Grok Bot
+        </a>
+
         <h1
-          className="landing-rise mt-10 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
+          className="landing-rise mt-6 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
           style={rise(90)}
         >
           A personal <span className="whitespace-nowrap">life-OS</span> for people who refuse to specialize.
@@ -46,6 +57,25 @@ export function Hero() {
         </div>
       </div>
     </section>
+  );
+}
+
+/** A small stand-in mark for Grok Bot (drawn here, not their asset): a dark
+ * tile with a glossy light blob and two tilted pill eyes. */
+function GrokBotMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="shrink-0">
+      <defs>
+        <radialGradient id="grokbot-gloss" cx="0.38" cy="0.32" r="0.75">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#d9d9d9" />
+        </radialGradient>
+      </defs>
+      <rect width="18" height="18" rx="5" fill="#141414" />
+      <path d="M9.2 3.6c3.3 0 5.2 2 5.2 5.1 0 3.3-2.2 5.7-5.5 5.7S3.6 12.3 3.6 9.1c0-3.2 2.3-5.5 5.6-5.5z" fill="url(#grokbot-gloss)" />
+      <rect x="6.3" y="7" width="1.7" height="3.4" rx="0.85" fill="#141414" transform="rotate(-14 7.15 8.7)" />
+      <rect x="10" y="7" width="1.7" height="3.4" rx="0.85" fill="#141414" transform="rotate(-14 10.85 8.7)" />
+    </svg>
   );
 }
 
