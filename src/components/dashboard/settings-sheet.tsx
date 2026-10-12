@@ -9,6 +9,7 @@ import { SetupSection } from "@/components/settings/setup";
 import { AccountSection } from "@/components/settings/account";
 import { PreferencesSection } from "@/components/settings/preferences";
 import { GrokBotSection } from "@/components/settings/grokbot";
+import { AssistantSection } from "@/components/settings/assistant";
 import { CalendarSection } from "@/components/settings/calendar";
 import { RemindersSection } from "@/components/settings/reminders";
 import { DataSection } from "@/components/settings/data";
@@ -29,6 +30,7 @@ const SECTIONS: SectionDef[] = [
   { id: "setup", label: "Setup", icon: IconSparkle, Body: SetupSection },
   { id: "account", label: "Account", icon: IconMail, Body: AccountSection },
   { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
+  { id: "assistant", label: "Assistant", icon: IconSparkle, Body: AssistantSection },
   { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
   { id: "calendar", label: "Calendar", icon: IconCalendar, Body: CalendarSection },
   { id: "reminders", label: "Reminders", icon: IconBell, Body: RemindersSection },

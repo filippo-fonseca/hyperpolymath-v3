@@ -15,7 +15,7 @@ export type SectionProps = {
   go: (section: SectionId, focusId?: string) => void;
 };
 
-export type SectionId = "setup" | "account" | "preferences" | "grokbot" | "calendar" | "reminders" | "data" | "about";
+export type SectionId = "setup" | "account" | "preferences" | "assistant" | "grokbot" | "calendar" | "reminders" | "data" | "about";
 
 export const REPO_URL = "https://github.com/filippo-fonseca/hyperpolymath-v3";
 export const DOCS = {
