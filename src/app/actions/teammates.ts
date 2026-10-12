@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { escapeLike, AppError } from "@/server/ctx";
-import { resolveBotActor, updateBot } from "@/server/bots";
+import { renameBot, resolveBotActor, setCoordinator, updateBot } from "@/server/bots";
 import { listRuns, registerRoutine, removeRoutine, updateRoutine } from "@/server/routines";
 import { asUser, readAsUser } from "./run";
 
@@ -101,4 +101,14 @@ export async function addTeammateAction(input: { name: string; role?: string }) 
     }
     return updateBot(ctx, actor.name, role ? { role } : {});
   });
+}
+
+/** Rename a bot (history, routines and widgets stay with it). */
+export async function renameBotAction(from: string, to: string) {
+  return asUser((ctx) => renameBot(ctx, botName.parse(from), botName.parse(to)));
+}
+
+/** Make a bot the main assistant. */
+export async function setCoordinatorAction(name: string) {
+  return asUser((ctx) => setCoordinator(ctx, botName.parse(name)));
 }
