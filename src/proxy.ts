@@ -2,14 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isOwnerEmail } from "@/lib/supabase/env";
 
-// Refreshes the Supabase session cookie on every page request, sends
-// signed-out visitors from the app to /login, and sends a signed-in owner
-// away from /login. This is an optimistic check only: every Server Component
-// and Server Action re-verifies the session itself. Unknown paths pass
-// through so they render the 404 page.
+// Refreshes the Supabase session cookie on every page request, shows
+// signed-out visitors to `/` the public landing page (a rewrite to /welcome,
+// so the URL stays `/`), sends them from the rest of the app to /login, and
+// sends a signed-in owner away from /login. This is an optimistic check only:
+// every Server Component and Server Action re-verifies the session itself.
+// Unknown paths pass through so they render the 404 page.
 
 /** Routes that need a session. Everything else is public or a 404. */
 const PRIVATE = (pathname: string) => pathname === "/" || pathname.startsWith("/api/google/");
+
+/** A signed-out page view of `/` gets the landing page instead of a redirect. */
+const LANDING = (request: NextRequest) =>
+  request.nextUrl.pathname === "/" && (request.method === "GET" || request.method === "HEAD");
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,7 +23,8 @@ export async function proxy(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !key) {
-    // Not configured: let /login render its setup notice.
+    // Not configured: show the landing page and let /login render its setup notice.
+    if (LANDING(request)) return NextResponse.rewrite(new URL("/welcome", request.url));
     return isPublic ? NextResponse.next() : NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -45,6 +51,11 @@ export async function proxy(request: NextRequest) {
     for (const c of response.cookies.getAll()) redirect.cookies.set(c);
     return redirect;
   };
+  if (!signedIn && LANDING(request)) {
+    const rewrite = NextResponse.rewrite(new URL("/welcome", request.url), { request });
+    for (const c of response.cookies.getAll()) rewrite.cookies.set(c);
+    return rewrite;
+  }
   if (!signedIn && !isPublic) return go("/login");
   if (signedIn && pathname === "/login") return go("/");
   return response;
