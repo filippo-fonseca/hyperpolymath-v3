@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { KiwiFixing } from "@/components/illustrations";
 import { KiwiLoader } from "./kiwi-loader";
 import { IconCheck, IconCopy } from "./icons";
@@ -37,10 +38,9 @@ export function ErrorScreen({ error, retry }: { error: Error & { digest?: string
             {pending ? <KiwiLoader size={22} label="Trying again" /> : null}
             {pending ? "Trying again…" : "Try again"}
           </button>
-          {/* A full load, in case the client router is what broke. */}
-          <button type="button" onClick={() => window.location.assign("/")} className={stateSecondary}>
+          <Link href="/" className={stateSecondary}>
             Go to the dashboard
-          </button>
+          </Link>
         </>
       }
     >
