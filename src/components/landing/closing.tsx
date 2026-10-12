@@ -8,9 +8,21 @@ export function Closing() {
       <div className="mx-auto flex max-w-[560px] flex-col items-center text-center">
         <KiwiBlob size={56} title="Kiwi" />
         <h2 className="mt-6 text-balance text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[36px]">
-          Ready when you are, sir.
+          That&apos;s the whole app.
         </h2>
-        <p className="mt-3 text-balance text-[15px] text-ink-2">One owner, one dashboard, a small team of bots.</p>
+        <p className="mt-3 text-balance text-[15px] leading-relaxed text-ink-2">
+          Each install has one owner, so sign-in is only for them. If you want your own, the code and the Grok Bot setup
+          guide are{" "}
+          <a
+            href="https://github.com/filippo-fonseca/hyperpolymath-v3"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink underline underline-offset-4 hover:text-ink-2"
+          >
+            on GitHub
+          </a>
+          .
+        </p>
         <Link
           href="/login"
           className="group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-medium text-white transition-colors hover:bg-gray-800"
