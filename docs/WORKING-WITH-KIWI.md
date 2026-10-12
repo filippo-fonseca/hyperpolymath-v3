@@ -8,7 +8,7 @@ How to run your life through Grok Bot with Hyperpolymath as the source of truth.
 |---|---|---|
 | **Tasks, reminders, habits, captures, calendar** | Hyperpolymath | The data. One database, shown on the dashboard, edited by you or any bot. |
 | **Life areas and projects** | Hyperpolymath | How the data is organised, like v2: areas (School, Health, Work...) hold projects (and classes); tasks and captures belong to a project, habits to an area. |
-| **Kiwi** | Grok Bot | Your coordinator. Talks to you, reads and writes Hyperpolymath, creates and manages other bots. |
+| **Kiwi** | Grok Bot | Your coordinator and butler (think J.A.R.V.I.S.: composed, dry wit, calls you sir). Talks to you, reads and writes Hyperpolymath, creates and manages other bots. |
 | **Sub-bots** (Slack Roundup, School, Social, ...) | Grok Bot | Specialists Kiwi creates. They use the same Hyperpolymath tools and report under Kiwi. |
 | **Routines** | Run in Grok Bot, registered in Hyperpolymath | Scheduled *work* a bot does: scan Slack nightly, check Canvas, write a digest, log into a site. Every routine is listed on the Teammates page with an on/off switch. |
 | **Widgets** | Hyperpolymath | Optional display surfaces. A routine publishes to one only if you asked for it on the dashboard. |
