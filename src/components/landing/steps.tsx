@@ -1,3 +1,5 @@
+import { revealDelay } from "./reveal";
+
 const STEPS = [
   {
     title: "You message Kiwi",
@@ -21,7 +23,7 @@ export function Steps() {
   return (
     <ol className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
       {STEPS.map((s, i) => (
-        <li key={s.title} className="border-t border-ink/10 pt-5">
+        <li key={s.title} data-reveal style={revealDelay(i * 110)} className="border-t border-ink/10 pt-5">
           <span className="flex h-6 w-6 items-center justify-center rounded-full border-[1.5px] border-ink text-[12px] font-semibold tabular-nums">
             {i + 1}
           </span>

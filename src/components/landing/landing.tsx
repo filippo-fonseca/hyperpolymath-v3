@@ -5,10 +5,11 @@ import { Organized } from "./organized";
 import { Features } from "./features";
 import { Closing } from "./closing";
 import { Footer } from "./footer";
+import { RevealObserver } from "./reveal-observer";
 
 // Public landing page, shown to signed-out visitors at `/`. Static: no session,
-// no data. Sections are plain server components; only Kiwi and the chat mock
-// hydrate.
+// no data. Sections are plain server components; Kiwi, the chat mock, the hero
+// dot grid and the reveal observer are the only parts that hydrate.
 export function Landing() {
   return (
     <>
@@ -19,6 +20,7 @@ export function Landing() {
         <Organized />
         <Features />
         <Closing />
+        <RevealObserver />
       </main>
       <Footer />
     </>

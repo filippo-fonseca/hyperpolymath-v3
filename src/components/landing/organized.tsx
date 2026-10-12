@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { IconArrowRight, IconCheck } from "@/components/ui/icons";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
+import { revealDelay } from "./reveal";
 
 // "How it's organized": life areas hold projects (classes are projects too),
 // projects hold tasks and captures, and habits hang off areas. Drawn as the
@@ -39,7 +40,7 @@ export function Organized() {
   return (
     <section className="px-4 py-20 sm:py-28">
       <div className="mx-auto max-w-[1080px]">
-        <header className="mx-auto max-w-[640px] text-center">
+        <header data-reveal className="mx-auto max-w-[640px] text-center">
           <p className="text-[13px] font-medium text-accent">How it&apos;s organized</p>
           <h2 className="mt-3 text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
             Everything lives under a life area
@@ -56,7 +57,7 @@ export function Organized() {
               ))}
             </div>
           </Area>
-          <Area emoji="💪" name="Health">
+          <Area emoji="💪" name="Health" delay={140}>
             <p className="mb-2 text-[12px] font-medium text-ink-3">Habits</p>
             <ul className="space-y-2">
               {HABITS.map((h) => (
@@ -75,7 +76,7 @@ export function Organized() {
           </Area>
         </div>
 
-        <div className="mx-auto mt-14 flex max-w-[600px] flex-col items-center text-center sm:mt-16">
+        <div data-reveal className="mx-auto mt-14 flex max-w-[600px] flex-col items-center text-center sm:mt-16">
           <p className="text-pretty text-[15px] leading-[1.7] text-ink-2">
             Kiwi only files something under a project when it obviously belongs there. Otherwise it goes to the inbox.
             Either way, it tells you where it went:
@@ -95,7 +96,7 @@ export function Organized() {
 function Legend() {
   const steps = ["Life area", "Project", "Tasks and captures"];
   return (
-    <div className="mt-8 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-3 text-[12px] text-ink-2 sm:gap-x-2 sm:text-[13px]">
+    <div data-reveal style={revealDelay(80)} className="mt-8 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-3 text-[12px] text-ink-2 sm:gap-x-2 sm:text-[13px]">
       {steps.map((s, i) => (
         <span key={s} className="flex items-center gap-2">
           {i > 0 ? <IconArrowRight size={13} className="text-ink-3" /> : null}
@@ -107,9 +108,9 @@ function Legend() {
   );
 }
 
-function Area({ emoji, name, children }: { emoji: string; name: string; children: ReactNode }) {
+function Area({ emoji, name, delay = 0, children }: { emoji: string; name: string; delay?: number; children: ReactNode }) {
   return (
-    <div className="rounded-[22px] bg-subtle p-4 sm:p-5">
+    <div data-reveal style={revealDelay(delay)} className="rounded-[22px] bg-subtle p-4 sm:p-5">
       <div className="mb-4 flex items-center gap-2">
         <span aria-hidden className="text-[18px] leading-none">
           {emoji}

@@ -9,6 +9,7 @@ import {
 } from "@/components/illustrations";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { IconBoard, IconCalendar, IconList, IconTable } from "@/components/ui/icons";
+import { revealDelay } from "./reveal";
 
 // Two verticals: the fixed core that is always on the dashboard, and the
 // custom widgets your bots build and publish when you ask. The dashed border
@@ -64,7 +65,7 @@ export function Features() {
   return (
     <section className="bg-subtle px-4 py-20 sm:py-28">
       <div className="mx-auto max-w-[1080px]">
-        <header className="mx-auto max-w-[680px] text-center">
+        <header data-reveal className="mx-auto max-w-[680px] text-center">
           <h2 className="text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
             What&apos;s on the dashboard
           </h2>
@@ -101,12 +102,12 @@ function ColumnHeader({ title, note, casual = false }: { title: string; note: st
 
 function FixedColumn() {
   return (
-    <div className="rounded-[26px] bg-surface p-5 shadow-ring sm:p-7">
+    <div data-reveal className="rounded-[26px] bg-surface p-5 shadow-ring sm:p-7">
       <ColumnHeader title="Built in" note="Always there" />
       <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">These ship with the app. You can edit anything in them by hand, same as a bot can.</p>
       <ul className="divide-y divide-ink/[0.06]">
-        {FIXED.map((f) => (
-          <li key={f.title} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
+        {FIXED.map((f, i) => (
+          <li key={f.title} data-reveal style={revealDelay(120 + i * 70)} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[16px] bg-subtle">{f.art}</div>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold tracking-[-0.01em]">{f.title}</p>
@@ -140,7 +141,7 @@ const HOW_CUSTOM = [
 
 function CustomColumn() {
   return (
-    <div className="rounded-[26px] border-[1.5px] border-dashed border-ink/30 p-5 sm:p-7">
+    <div data-reveal style={revealDelay(140)} className="rounded-[26px] border-[1.5px] border-dashed border-ink/30 p-5 sm:p-7">
       <ColumnHeader title="Made by your bots" note="You just have to ask your coordinator to make a new widget! It will spawn a bot for it and make a UI widget right in your dashboard. Toggle it on or off anytime." casual />
       <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">
         A bot can publish a digest, list, stat or table to a widget of its own. It only ever sends data, so it can&apos;t
@@ -179,7 +180,7 @@ function CustomColumn() {
 
       <ol className="mt-6 space-y-3">
         {HOW_CUSTOM.map((step, i) => (
-          <li key={i} className="flex gap-3 text-[13px] leading-relaxed text-ink-2">
+          <li key={i} data-reveal style={revealDelay(i * 110)} className="flex gap-3 text-[13px] leading-relaxed text-ink-2">
             <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-ink text-[11px] font-semibold tabular-nums text-ink">
               {i + 1}
             </span>

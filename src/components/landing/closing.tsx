@@ -5,7 +5,7 @@ import { IconArrowRight } from "@/components/ui/icons";
 export function Closing() {
   return (
     <section className="px-4 py-20 sm:py-28">
-      <div className="mx-auto flex max-w-[560px] flex-col items-center text-center">
+      <div data-reveal className="mx-auto flex max-w-[560px] flex-col items-center text-center">
         <KiwiBlob size={56} title="Kiwi" />
         <h2 className="mt-6 text-balance text-[28px] font-semibold leading-[1.15] tracking-[-0.03em] sm:text-[36px]">
           Built for one person

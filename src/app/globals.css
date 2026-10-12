@@ -635,3 +635,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     display: none;
   }
 }
+
+/* Landing scroll reveals (reveal-observer.tsx): fade and a 12px rise, once.
+   Only hidden after the observer arms the page, and never with reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-armed [data-reveal] {
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 700ms var(--ease-out);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
