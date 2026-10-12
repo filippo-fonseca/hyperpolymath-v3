@@ -12,7 +12,7 @@ export function Hero() {
   return (
     <section className="relative px-4 pb-4 pt-[max(56px,env(safe-area-inset-top))] sm:pb-6 sm:pt-24">
       <Glow />
-      <div className="relative mx-auto flex max-w-[760px] flex-col items-center text-center">
+      <div className="relative mx-auto flex max-w-[1040px] flex-col items-center text-center">
         <div className="landing-rise flex flex-col items-center" style={rise(0)}>
           <div className="flex items-center gap-2.5">
             <KiwiBlob size={40} title="Kiwi, the coordinator bot" />
@@ -30,10 +30,11 @@ export function Hero() {
         </div>
 
         <h1
-          className="landing-rise mt-9 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
+          className="landing-rise mt-9 max-w-[760px] text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px] lg:max-w-none lg:text-[clamp(60px,4.8vw,68px)]"
           style={rise(90)}
         >
-          A personal <span className="whitespace-nowrap">life-OS</span> for people who refuse to specialize.
+          A personal <span className="whitespace-nowrap">life-OS</span> for people <br className="hidden lg:block" />
+          who refuse to specialize.
         </h1>
 
         <p className="landing-rise mt-6 max-w-[560px] text-pretty text-[17px] leading-relaxed text-ink-2 sm:text-[19px]" style={rise(180)}>
