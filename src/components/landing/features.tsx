@@ -21,7 +21,7 @@ type Fixed = { title: string; body: string; art: ReactNode; chips?: { icon: Reac
 const FIXED: Fixed[] = [
   {
     title: "Tasks",
-    body: "Priorities, due dates and tasks that repeat.",
+    body: "Due dates and priorities. A repeating task rolls forward when you finish it.",
     art: <KiwiSleeping size={ART} animated />,
     chips: [
       { icon: <IconList size={12} />, label: "List" },
@@ -31,7 +31,7 @@ const FIXED: Fixed[] = [
   },
   {
     title: "Calendar",
-    body: "Your Google calendars, with bot changes logged too.",
+    body: "Your Google calendars. When a bot moves an event, that gets logged like anything else.",
     art: <KiwiStargazing size={ART} />,
     chips: [
       { icon: <IconCalendar size={12} />, label: "Week" },
@@ -40,22 +40,22 @@ const FIXED: Fixed[] = [
   },
   {
     title: "Habits",
-    body: "Rings for today and streaks that only count the days you planned.",
+    body: "A ring per habit for today. Streaks only count the days you planned, so a rest day won't break one.",
     art: <KiwiWatering size={ART} />,
   },
   {
     title: "Quick capture",
-    body: "Park a thought in a second. It resurfaces when you asked.",
+    body: "For thoughts that aren't tasks yet. Give one a date and it comes back then.",
     art: <KiwiReading size={ART} />,
   },
   {
     title: "Projects and areas",
-    body: "Life areas hold projects and classes, and everything files under them.",
+    body: "Areas like School or Health, with projects and classes inside them.",
     art: <KiwiBuilding size={ART} />,
   },
   {
-    title: "Activity and Teammates",
-    body: "Every change logged with one-tap Revert. See every bot and pause any routine.",
+    title: "Activity log and Teammates",
+    body: "Each change, yours or a bot's, has a Revert button. Teammates lists your bots and lets you pause their routines.",
     art: <KiwiTeam size={ART} />,
   },
 ];
@@ -65,12 +65,11 @@ export function Features() {
     <section className="bg-subtle px-4 py-20 sm:py-28">
       <div className="mx-auto max-w-[1080px]">
         <header className="mx-auto max-w-[680px] text-center">
-          <p className="text-[13px] font-medium text-accent">On the dashboard</p>
-          <h2 className="mt-3 text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
-            A fixed core. Room for whatever your bots build.
+          <h2 className="text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
+            What&apos;s on the dashboard
           </h2>
           <p className="mx-auto mt-5 max-w-[540px] text-pretty text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
-            One screen of widgets you can rearrange and resize. Tap any of them to open the full view.
+            Everything sits on one screen as widgets you can drag around and resize. Tap a widget to open its full page.
           </p>
         </header>
 
@@ -95,8 +94,8 @@ function ColumnHeader({ title, note }: { title: string; note: string }) {
 function FixedColumn() {
   return (
     <div className="rounded-[26px] bg-surface p-5 shadow-ring sm:p-7">
-      <ColumnHeader title="Fixed features" note="Built in" />
-      <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">The core of the app. Always there, always yours to edit by hand.</p>
+      <ColumnHeader title="Built in" note="Always there" />
+      <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">These ship with the app. You can edit anything in them by hand, same as a bot can.</p>
       <ul className="divide-y divide-ink/[0.06]">
         {FIXED.map((f) => (
           <li key={f.title} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
@@ -124,18 +123,20 @@ function FixedColumn() {
 
 const HOW_CUSTOM = [
   <>
-    Ask Kiwi: <span className="text-ink">&ldquo;check Slack every night and put it on the dashboard.&rdquo;</span>
+    You ask Kiwi something like{" "}
+    <span className="text-ink">&ldquo;check Slack every night and put it on the dashboard.&rdquo;</span>
   </>,
-  <>The bot publishes to its own widget, with its own icon, only when something changed. Past runs are kept.</>,
-  <>Pause its routine from Teammates any time. A widget that misses its window greys out.</>,
+  <>Each night the bot updates its widget, but only if something changed. Open the widget to scroll back through old runs.</>,
+  <>You can pause the routine from Teammates. If a run gets missed, the widget greys out so you know it&apos;s stale.</>,
 ];
 
 function CustomColumn() {
   return (
     <div className="rounded-[26px] border-[1.5px] border-dashed border-ink/30 p-5 sm:p-7">
-      <ColumnHeader title="Custom widgets" note="Built by bots" />
+      <ColumnHeader title="Made by your bots" note="On request" />
       <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">
-        Extensible by your bots: digests, lists, stats and tables. Data, never code.
+        A bot can publish a digest, list, stat or table to a widget of its own. It only ever sends data, so it can&apos;t
+        break the page.
       </p>
 
       <div className="space-y-3" aria-hidden>
@@ -147,7 +148,7 @@ function CustomColumn() {
             </li>
             <li className="flex gap-2">
               <span className="w-[64px] shrink-0 font-medium">#launch</span>
-              <span className="text-ink-2">A decision on the date is waiting</span>
+              <span className="text-ink-2">Someone is waiting on you</span>
             </li>
           </ul>
         </WidgetMock>
