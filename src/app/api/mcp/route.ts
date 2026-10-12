@@ -2,6 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { adminDb } from "@/server/ctx";
 import { buildMcpServer } from "@/server/mcp";
 import { verifyToken } from "@/server/tokens";
+import { coordinatorName } from "@/server/bots";
 
 // Stateless Streamable HTTP MCP endpoint. Auth: `Authorization: Bearer hpm_...`
 // (or `x-api-key: hpm_...` for clients that only support custom headers).
@@ -21,7 +22,7 @@ async function handle(req: Request) {
       { status: 401, headers: { "WWW-Authenticate": 'Bearer realm="hyperpolymath"' } },
     );
   }
-  const server = buildMcpServer(userId);
+  const server = buildMcpServer(userId, await coordinatorName(adminDb(), userId));
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

@@ -2,7 +2,7 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { AppError, makeCtx, type Ctx } from "./ctx";
-import { archiveBot, resolveBotActor, listBots, updateBot } from "./bots";
+import { archiveBot, renameBot, resolveBotActor, listBots, setCoordinator, updateBot } from "./bots";
 import { getOverview } from "./overview";
 import { completeTask, createTask, deleteTask, listTasks, reopenTask, updateTask } from "./tasks";
 import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./reminders";
@@ -19,7 +19,7 @@ import { recurrenceSchema } from "@/lib/recurrence";
 import { CUSTOM_KINDS, PAYLOAD_DOCS } from "@/lib/widgets";
 import { isLocalDate, isLocalTime } from "@/lib/time";
 
-const INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
+const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
 
 Voice (Kiwi, the coordinator, only; other bots keep their own voices):
 - Kiwi is a British butler in the manner of J.A.R.V.I.S.: composed, precise, quietly capable, with dry, understated wit. Address the owner as "sir".
@@ -103,8 +103,16 @@ async function filedUnder(ctx: Ctx, projectId: string | null | undefined) {
   return area ? `${data.name} (${area})` : data.name;
 }
 
-export function buildMcpServer(userId: string) {
-  const server = new McpServer({ name: "hyperpolymath", version: "3.0.0" }, { instructions: INSTRUCTIONS });
+/** Instructions with the owner's chosen name for the main assistant. */
+function instructions(coordinator: string | null) {
+  const name = coordinator ?? "Kiwi";
+  const text = name === "Kiwi" ? BASE_INSTRUCTIONS : BASE_INSTRUCTIONS.replaceAll("Kiwi", name);
+  return `${text}
+- Names: the main assistant (coordinator) is currently "${name}". If a bot's name in Grok Bot no longer matches the name it is registered under here (see list_bots), call rename_bot once with the old and new names before anything else, so its history carries over instead of a new bot appearing.`;
+}
+
+export function buildMcpServer(userId: string, coordinator: string | null = null) {
+  const server = new McpServer({ name: "hyperpolymath", version: "3.0.0" }, { instructions: instructions(coordinator) });
 
   /** Register a tool whose handler runs with a bot-attributed context. */
   function tool<S extends z.ZodRawShape>(
@@ -445,6 +453,18 @@ export function buildMcpServer(userId: string) {
     (ctx, a) => finishRun(ctx, a.run_id, a),
   );
 
+  tool(
+    "rename_bot",
+    "Rename a registered bot (e.g. after it was renamed in Grok Bot). Keeps its history, routines and widgets.",
+    { from: z.string().min(1).max(60), to: z.string().min(1).max(60) },
+    (ctx, a) => renameBot(ctx, a.from, a.to),
+  );
+  tool(
+    "set_coordinator",
+    "Make a bot the owner's main assistant. Only when the owner asks.",
+    { name: z.string().min(1).max(60) },
+    (ctx, a) => setCoordinator(ctx, a.name),
+  );
   tool(
     "list_actions",
     "Recent activity log: what each bot (and the owner) changed.",
