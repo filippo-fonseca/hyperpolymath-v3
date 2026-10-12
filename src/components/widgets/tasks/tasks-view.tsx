@@ -18,6 +18,7 @@ import { PRIORITY_LABELS, longDate, weekdayName } from "@/lib/format";
 import { Checkbox, IconButton, Segmented } from "@/components/ui/primitives";
 import { IconBoard, IconChevronDown, IconList, IconTable, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { KiwiSleeping } from "@/components/illustrations";
 import { DueMeta, PriorityDot, QuickAdd } from "./task-bits";
 import { InlineTitle, TaskEditor } from "./task-editor";
 import { sortToday, useTasks } from "./use-tasks";
@@ -115,7 +116,12 @@ function ListView({ ops }: { ops: Ops }) {
           ]}
         />
       </div>
-      {empty && <div className="py-10 text-center text-[15px] text-ink-3">No open tasks. Add one above.</div>}
+      {empty && (
+        <div className="flex flex-col items-center pb-6 text-center">
+          <KiwiSleeping animated size={148} />
+          <div className="mt-1 text-[15px] text-ink-3">No open tasks. Add one above.</div>
+        </div>
+      )}
       {groups.map((g) => {
         if (!g.tasks.length) return null;
         const isDone = g.key === "done";

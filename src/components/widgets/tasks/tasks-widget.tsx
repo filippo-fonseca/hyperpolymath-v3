@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Task } from "@/lib/dashboard-types";
 import type { WidgetSize } from "@/lib/widgets";
 import { Checkbox, Eyebrow, useFitCount } from "@/components/ui/primitives";
+import { KiwiSleeping } from "@/components/illustrations";
 import { DueMeta, isOverdue, QuickAdd } from "./task-bits";
 import { sortToday, useTasks } from "./use-tasks";
 
@@ -76,9 +77,12 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
       )}
       <div ref={listRef} className={`min-h-0 flex-1 overflow-hidden ${size === "l" ? "mt-2" : "mt-1"}`}>
         {list.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="text-[15px] font-medium">Nothing due today</div>
-            <div className="mt-0.5 text-[13px] text-ink-3">{inbox ? `${inbox} in your inbox` : "Enjoy the quiet."}</div>
+          <div className={`flex h-full items-center justify-center ${size === "l" ? "flex-col gap-1 text-center" : "gap-3"}`}>
+            <KiwiSleeping animated size={size === "l" ? 132 : 76} className="shrink-0" />
+            <div>
+              <div className="text-[15px] font-medium">Nothing due today</div>
+              <div className="mt-0.5 text-[13px] text-ink-3">{inbox ? `${inbox} in your inbox` : "Enjoy the quiet."}</div>
+            </div>
           </div>
         ) : (
           <ul className="flex flex-col">
