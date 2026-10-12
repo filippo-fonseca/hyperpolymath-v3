@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { settingsOverviewAction, type SettingsOverview } from "@/app/actions/status";
 import { Sheet, useMediaQuery } from "@/components/ui/primitives";
-import { IconCalendar, IconChevronLeft, IconChevronRight, IconGlobe, IconKey, IconMail, IconSparkle } from "@/components/ui/icons";
+import { IconCalendar, IconChevronLeft, IconBell, IconChevronRight, IconGlobe, IconKey, IconMail, IconSparkle } from "@/components/ui/icons";
 import type { SectionId, SectionProps } from "@/components/settings/shared";
 import { SetupSection } from "@/components/settings/setup";
 import { AccountSection } from "@/components/settings/account";
 import { PreferencesSection } from "@/components/settings/preferences";
 import { GrokBotSection } from "@/components/settings/grokbot";
 import { CalendarSection } from "@/components/settings/calendar";
+import { RemindersSection } from "@/components/settings/reminders";
 import { useDashboard } from "./context";
 
 // Settings: a left nav with one section at a time on desktop, and an
@@ -28,6 +29,7 @@ const SECTIONS: SectionDef[] = [
   { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
   { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
   { id: "calendar", label: "Calendar", icon: IconCalendar, Body: CalendarSection },
+  { id: "reminders", label: "Reminders", icon: IconBell, Body: RemindersSection },
 ];
 
 const HEADING_ID = "settings-section-heading";
