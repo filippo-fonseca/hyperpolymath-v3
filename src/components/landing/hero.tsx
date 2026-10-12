@@ -93,7 +93,8 @@ export function Hero() {
 // A row of Kiwi scenes under the buttons, one bot per pursuit, with the team in
 // the middle, ground lines aligned. Phones get only the team; tablets add the
 // two nearest scenes. Each one pops in, the team first, then outward; the team
-// boinks once when it lands.
+// boinks once when it lands. After that they bob gently out of phase, blink and
+// twinkle now and then, and tilt with a little boink on hover (globals.css).
 const SCENES = [
   { Art: KiwiReading, slot: "mb-[18px] hidden h-[118px] w-[118px] lg:block", delay: 1020 },
   { Art: KiwiBuilding, slot: "mb-[14px] hidden h-[140px] w-[140px] sm:block", delay: 900 },
@@ -108,7 +109,11 @@ function Scenes() {
       {SCENES.map(({ Art, slot, delay, hero }, i) => (
         <div key={i} className={slot}>
           <div className={`landing-pop h-full w-full ${hero ? "landing-pop-boink" : ""}`} style={hero ? { animationDelay: `${delay}ms, ${delay + 620}ms` } : rise(delay)}>
-            <Art className="h-full w-full" />
+            <div className="scene-float h-full w-full">
+              <div className="scene-hover h-full w-full">
+                <Art className="h-full w-full" />
+              </div>
+            </div>
           </div>
         </div>
       ))}

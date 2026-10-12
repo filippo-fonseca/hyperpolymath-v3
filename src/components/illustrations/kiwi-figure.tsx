@@ -85,8 +85,11 @@ export function KiwiFigure({ x = 20, y = 68, s = 2.4, rotate = 0, eyes = "open",
         <path d="M19.8 17.4q1.9 2.2 3.8.4M25.9 16.6q1.7 2 3.5.4" strokeWidth={sw * 1.1} />
       ) : (
         <g fill={INK} stroke="none" transform={`translate(${shift[0]} ${shift[1]})`}>
-          <rect x="20.2" y="14.6" width="3" height="7" rx="1.5" transform="rotate(22 21.7 18.1)" />
-          <rect x="26.4" y="13.8" width="2.8" height="6.4" rx="1.4" transform="rotate(22 27.8 17)" />
+          {/* hook for the landing page's idle blink; inert elsewhere */}
+          <g className="illo-eyes">
+            <rect x="20.2" y="14.6" width="3" height="7" rx="1.5" transform="rotate(22 21.7 18.1)" />
+            <rect x="26.4" y="13.8" width="2.8" height="6.4" rx="1.4" transform="rotate(22 27.8 17)" />
+          </g>
         </g>
       )}
     </g>
@@ -134,6 +137,7 @@ export function Sparkle({ x, y, r = 6, color = INK }: { x: number; y: number; r?
   const k = r * 0.22;
   return (
     <path
+      className="illo-sparkle"
       d={`M${x} ${y - r}Q${x + k} ${y - k} ${x + r} ${y}Q${x + k} ${y + k} ${x} ${y + r}Q${x - k} ${y + k} ${x - r} ${y}Q${x - k} ${y - k} ${x} ${y - r}z`}
       fill={color}
       stroke={color}

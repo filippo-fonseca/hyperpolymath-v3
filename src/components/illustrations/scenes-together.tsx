@@ -51,9 +51,11 @@ function Friend({ d, eyes, tilt, fill = PAPER }: { d: string; eyes: [number, num
   return (
     <>
       <path d={d} fill={fill} />
-      {eyes.map(([x, y]) => (
-        <rect key={x} x={x - 3.4} y={y - 8} width="6.8" height="16" rx="3.4" fill={INK} stroke="none" transform={`rotate(${tilt} ${x} ${y})`} />
-      ))}
+      <g className="illo-eyes">
+        {eyes.map(([x, y]) => (
+          <rect key={x} x={x - 3.4} y={y - 8} width="6.8" height="16" rx="3.4" fill={INK} stroke="none" transform={`rotate(${tilt} ${x} ${y})`} />
+        ))}
+      </g>
     </>
   );
 }
