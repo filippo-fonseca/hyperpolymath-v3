@@ -578,6 +578,7 @@ export type Database = {
           name: string
           run_count: number
           schedule: string | null
+          source: string
           updated_at: string
           user_id: string
           widget_id: string | null
@@ -596,6 +597,7 @@ export type Database = {
           name: string
           run_count?: number
           schedule?: string | null
+          source?: string
           updated_at?: string
           user_id: string
           widget_id?: string | null
@@ -614,6 +616,7 @@ export type Database = {
           name?: string
           run_count?: number
           schedule?: string | null
+          source?: string
           updated_at?: string
           user_id?: string
           widget_id?: string | null
