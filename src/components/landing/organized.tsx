@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { IconArrowRight, IconCheck } from "@/components/ui/icons";
+import { KiwiBlob } from "@/components/ui/kiwi-blob";
 
 // "How it's organized": life areas hold projects (classes are projects too),
 // projects hold tasks and captures, and habits hang off areas. Drawn as the
@@ -74,11 +75,18 @@ export function Organized() {
           </Area>
         </div>
 
-        <p className="mx-auto mt-10 max-w-[600px] text-pretty text-center text-[15px] leading-relaxed text-ink-2">
-          Kiwi only files something under a project when it obviously belongs there. Otherwise it goes to the inbox.
-          Either way, it tells you where it went:{" "}
-          <span className="whitespace-nowrap rounded-full bg-gray-200 px-2.5 py-0.5 text-[14px] text-ink">Added to Fluid Mechanics.</span>
-        </p>
+        <div className="mx-auto mt-14 flex max-w-[600px] flex-col items-center text-center sm:mt-16">
+          <p className="text-pretty text-[15px] leading-[1.7] text-ink-2">
+            Kiwi only files something under a project when it obviously belongs there. Otherwise it goes to the inbox.
+            Either way, it tells you where it went:
+          </p>
+          <p className="mt-4 flex items-end gap-2">
+            <KiwiBlob size={26} title="Kiwi" />
+            <span className="rounded-[18px] rounded-bl-[6px] bg-gray-200 px-3.5 py-1.5 text-[14px] leading-snug text-ink">
+              Added to Fluid Mechanics.
+            </span>
+          </p>
+        </div>
       </div>
     </section>
   );
