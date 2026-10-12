@@ -367,8 +367,71 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .landing-rise {
   animation: landing-rise 800ms var(--ease-out) both;
 }
+
+/* Hero headline: each word rises a little on its own. */
+@keyframes landing-word {
+  from {
+    opacity: 0;
+    transform: translateY(0.32em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.landing-word {
+  display: inline-block;
+  animation: landing-word 760ms var(--ease-out) both;
+}
+
+/* Hero scenes pop in with a small overshoot, from the ground line up. The
+   middle one (the team) boinks once after it lands. */
+@keyframes landing-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.86);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.025);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes landing-boink {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  20% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+  45% {
+    transform: translateY(-7%) scale(0.97, 1.04);
+  }
+  68% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+  84% {
+    transform: translateY(-1.5%) scale(0.99, 1.01);
+  }
+}
+.landing-pop {
+  animation: landing-pop 720ms var(--ease-out) both;
+  transform-origin: 50% 82%;
+}
+.landing-pop-boink {
+  animation:
+    landing-pop 720ms var(--ease-out) both,
+    landing-boink 680ms cubic-bezier(0.3, 0.7, 0.4, 1) 1;
+}
 @media (prefers-reduced-motion: reduce) {
-  .landing-rise {
+  .landing-rise,
+  .landing-word,
+  .landing-pop,
+  .landing-pop-boink {
     animation: none;
   }
 }
