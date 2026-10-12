@@ -20,7 +20,7 @@ export function AuthorPill({ quiet = false }: { quiet?: boolean }) {
         alt=""
         width={quiet ? 20 : 24}
         height={quiet ? 20 : 24}
-        className="shrink-0 rounded-full bg-gray-200 object-cover ring-1 ring-ink/10"
+        className={`shrink-0 rounded-full bg-gray-200 object-cover ring-1 ring-ink/10 ${quiet ? "h-5 w-5" : "h-6 w-6"}`}
       />
       <span>
         An open-source project by <span className="text-ink">Filippo Fonseca</span>
