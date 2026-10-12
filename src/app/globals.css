@@ -455,6 +455,20 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   animation-delay: -9s;
 }
 
+/* Hero dot grid (dot-field.tsx): fades in, and fades out toward the scenes. */
+@keyframes landing-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.landing-dots {
+  animation: landing-fade 1.4s ease-out 0.15s both;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 92%);
+}
+
 /* Hero scenes at rest: a slow bob out of phase, blinks, twinkling sparkles. */
 @keyframes scene-float {
   0%,
@@ -560,6 +574,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .landing-pop-boink,
   .scene-float,
   .landing-glow,
+  .landing-dots,
   .landing-scenes .illo-eyes,
   .landing-scenes .illo-sparkle,
   .landing-scenes > :hover svg {

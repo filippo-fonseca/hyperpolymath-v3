@@ -5,6 +5,7 @@ import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { KiwiBuilding, KiwiReading, KiwiStargazing, KiwiTeam, KiwiWatering } from "@/components/illustrations";
 import { IconArrowRight, IconChevronDown } from "@/components/ui/icons";
 import { AuthorPill, SourceLink } from "./credits";
+import { DotField } from "./dot-field";
 
 const rise = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
@@ -19,6 +20,7 @@ const H1_STEP = 45;
 export function Hero() {
   return (
     <section className="relative px-4 pb-4 pt-[max(56px,env(safe-area-inset-top))] sm:pb-6 sm:pt-24">
+      <DotField className="landing-dots absolute inset-0 h-full w-full" />
       <Glow />
       <div className="relative mx-auto flex max-w-[1040px] flex-col items-center text-center">
         <div className="flex flex-col items-center">
