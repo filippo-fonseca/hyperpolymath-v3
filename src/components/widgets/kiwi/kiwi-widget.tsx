@@ -6,6 +6,7 @@ import { relativeTime } from "@/lib/format";
 import { useFitCount } from "@/components/ui/primitives";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { BotAvatar } from "@/components/ui/bot-avatar";
+import { KiwiTeam } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { ActorAvatar, botStatus, coordinatorOf, StatusDot } from "./actors";
 
@@ -77,12 +78,15 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
     <div className="flex h-full flex-col">
       {header}
       <div ref={listRef} className="mt-3 min-h-0 flex-1 overflow-hidden">
-        {rows.length === 0 ? (
-          <p className="text-[13px] leading-snug text-ink-3">
-            {status === "offline"
-              ? "Connect Grok Bot from Settings and Kiwi's work will show up here."
-              : "No activity yet."}
-          </p>
+        {rows.length === 0 && status === "offline" ? (
+          <div className={`flex h-full items-center justify-center ${size === "l" ? "flex-col gap-1 text-center" : "gap-3"}`}>
+            <KiwiTeam size={size === "l" ? 132 : 72} className="shrink-0" />
+            <p className="max-w-[260px] text-[13px] leading-snug text-ink-3">
+              Connect Grok Bot from Settings and Kiwi&apos;s work will show up here.
+            </p>
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="text-[13px] leading-snug text-ink-3">No activity yet.</p>
         ) : (
           <ul>
             {rows.map((a) => (

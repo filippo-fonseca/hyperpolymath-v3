@@ -7,6 +7,7 @@ import { relativeTime } from "@/lib/format";
 import { scheduleInWords } from "@/lib/cron-words";
 import { updateRoutineAction } from "@/app/actions/teammates";
 import { BotAvatar } from "@/components/ui/bot-avatar";
+import { KiwiTeam } from "@/components/illustrations";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { Button, CloseButton, Sheet, Switch, useEscape, useMediaQuery, useScrollLock } from "@/components/ui/primitives";
 import { IconPlus } from "@/components/ui/icons";
@@ -152,9 +153,9 @@ function TeamTree({ onOpen }: { onOpen: (s: TeamSheet) => void }) {
 
   if (data.bots.length === 0) {
     return (
-      <div className="rounded-[20px] bg-surface px-5 py-10 text-center shadow-widget">
-        <KiwiBlob size={44} className="mx-auto" />
-        <p className="mx-auto mt-3 max-w-[300px] text-[14px] leading-snug text-ink-2">
+      <div className="rounded-[20px] bg-surface px-5 pb-10 pt-4 text-center shadow-widget">
+        <KiwiTeam size={148} className="mx-auto" />
+        <p className="mx-auto mt-1 max-w-[300px] text-[14px] leading-snug text-ink-2">
           No teammates yet. Bots join the first time they act through MCP, or you can add one by hand.
         </p>
       </div>
