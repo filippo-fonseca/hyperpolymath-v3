@@ -546,10 +546,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .landing-scenes > :nth-child(2n) .illo-sparkle {
   animation-delay: -2.3s;
 }
+/* Phones: a smaller, slower bob, no tilt, and a fainter dot grid. */
+@keyframes scene-float-sm {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
 @media (max-width: 639px) {
-  .scene-float {
-    --scene-tilt: 0deg !important;
+  .landing-scenes > * .scene-float {
+    animation-name: scene-float-sm;
     animation-duration: 7.5s;
+  }
+  .landing-dots {
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.6) 0%, rgb(0 0 0 / 0.6) 35%, transparent 85%);
   }
 }
 /* Hover: tilt toward you with a small boink. */

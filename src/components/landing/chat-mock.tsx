@@ -78,7 +78,7 @@ export function ChatMock() {
   }, []);
 
   const bubble = (i: number) =>
-    `transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+    `transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
       i < shown ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.98]"
     }`;
 
