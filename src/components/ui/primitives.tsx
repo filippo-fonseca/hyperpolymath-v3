@@ -49,6 +49,61 @@ export function useEscape(onEscape: () => void, active = true) {
   }, [active]);
 }
 
+// Focus trapping for modal layers. Only the topmost trap handles Tab, so a
+// picker over a sheet keeps focus in the picker.
+const focusTraps: HTMLElement[] = [];
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+
+function onTrapKey(e: KeyboardEvent) {
+  if (e.key !== "Tab") return;
+  const root = focusTraps[focusTraps.length - 1];
+  if (!root) return;
+  const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
+  if (!items.length) {
+    e.preventDefault();
+    root.focus();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const current = document.activeElement as HTMLElement | null;
+  if (!current || !root.contains(current)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  } else if (e.shiftKey && (current === first || current === root)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && current === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+/**
+ * Keep Tab inside `el` while active, move focus into it on open, and give
+ * focus back to whatever had it before when it closes.
+ */
+export function useFocusTrap(el: HTMLElement | null, active: boolean) {
+  useEffect(() => {
+    if (!active || !el) return;
+    const previous = document.activeElement as HTMLElement | null;
+    focusTraps.push(el);
+    if (focusTraps.length === 1) document.addEventListener("keydown", onTrapKey);
+    // Let an autoFocus child win; otherwise focus the dialog itself so screen
+    // readers announce its title.
+    if (!el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    return () => {
+      const i = focusTraps.indexOf(el);
+      if (i >= 0) focusTraps.splice(i, 1);
+      if (!focusTraps.length) document.removeEventListener("keydown", onTrapKey);
+      if (previous && previous.isConnected && previous !== document.body) {
+        window.setTimeout(() => previous.focus({ preventScroll: true }), 0);
+      }
+    };
+  }, [el, active]);
+}
+
 export function useScrollLock(active: boolean) {
   useEffect(() => {
     if (!active) return;
@@ -245,8 +300,11 @@ export function Sheet({
   width?: number;
 }) {
   const desktop = useMediaQuery("(min-width: 640px)");
+  const titleId = useId();
+  const [panel, setPanel] = useState<HTMLDivElement | null>(null);
   useEscape(onClose, open);
   useScrollLock(open);
+  useFocusTrap(panel, open);
   return (
     <AnimatePresence>
       {open && (
@@ -260,17 +318,22 @@ export function Sheet({
             onClick={onClose}
           />
           <motion.div
+            ref={setPanel}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
             initial={desktop ? { opacity: 0, scale: 0.97, y: 8 } : { y: "100%" }}
             animate={desktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
             exit={desktop ? { opacity: 0, scale: 0.98, y: 4 } : { y: "100%" }}
             transition={{ type: "spring", duration: 0.36, bounce: 0 }}
-            className="relative max-h-[88dvh] w-full overflow-y-auto rounded-t-[26px] bg-surface pb-[max(20px,env(safe-area-inset-bottom))] shadow-lift sm:rounded-[26px] sm:pb-5"
+            className="relative max-h-[88dvh] w-full overflow-y-auto overscroll-contain rounded-t-[26px] bg-surface pb-[max(20px,env(safe-area-inset-bottom))] shadow-lift outline-none sm:rounded-[26px] sm:pb-5"
             style={{ maxWidth: desktop ? width : undefined }}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between bg-surface/90 px-5 pb-3 pt-4 backdrop-blur">
-              <div className="text-[17px] font-semibold tracking-[-0.01em]">{title}</div>
+              <div id={titleId} role="heading" aria-level={2} className="min-w-0 text-[17px] font-semibold tracking-[-0.01em]">
+                {title}
+              </div>
               <CloseButton onClick={onClose} />
             </div>
             <div className="px-5">{children}</div>
