@@ -1,10 +1,12 @@
-import Link from "next/link";
+import { Hero } from "./hero";
 
-// Public landing page, shown to signed-out visitors at `/`.
+// Public landing page, shown to signed-out visitors at `/`. Static: no session,
+// no data. Sections are plain server components; only Kiwi and the chat mock
+// hydrate.
 export function Landing() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[1080px] flex-col items-center justify-center px-4">
-      <Link href="/login">Sign in</Link>
+    <main className="landing-page overflow-x-clip">
+      <Hero />
     </main>
   );
 }
