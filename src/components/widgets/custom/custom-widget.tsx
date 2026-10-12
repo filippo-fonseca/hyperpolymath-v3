@@ -6,6 +6,7 @@ import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "
 import { relativeTime } from "@/lib/format";
 import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
+import { KiwiWaiting } from "@/components/illustrations";
 import { Button } from "@/components/ui/primitives";
 import { IconGear } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
@@ -66,9 +67,15 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
         {widget.published_at ? (
           <Content kind={widget.kind} payload={widget.payload} compact size={size} />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            {owner && <BotAvatar bot={owner} size={28} className="opacity-60" />}
-            <p className="mt-2 text-[13px] leading-snug text-ink-3">Waiting for {ownerName(widget)} to publish</p>
+          <div
+            className={`flex h-full items-center justify-center ${size === "m" ? "gap-3" : "flex-col text-center"} ${size === "l" ? "gap-1" : ""}`}
+          >
+            {size === "s" ? (
+              owner && <BotAvatar bot={owner} size={28} className="opacity-60" />
+            ) : (
+              <KiwiWaiting size={size === "l" ? 132 : 76} className="shrink-0" />
+            )}
+            <p className={`text-[13px] leading-snug text-ink-3 ${size === "s" ? "mt-2" : ""}`}>Waiting for {ownerName(widget)} to publish</p>
           </div>
         )}
       </div>
@@ -129,7 +136,10 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
       {widget.published_at || viewing ? (
         <Content kind={widget.kind} payload={payload} compact={false} />
       ) : (
-        <div className="py-12 text-center text-[15px] text-ink-3">Waiting for {ownerName(widget)} to publish.</div>
+        <div className="flex flex-col items-center pb-8 text-center">
+          <KiwiWaiting size={148} />
+          <p className="mt-1 text-[15px] text-ink-3">Waiting for {ownerName(widget)} to publish.</p>
+        </div>
       )}
 
       <section className="mt-12">
