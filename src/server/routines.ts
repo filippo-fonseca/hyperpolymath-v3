@@ -211,9 +211,11 @@ export async function startRun(ctx: Ctx, idOrName: string) {
     routine: routine.name,
     run_id: run.id,
     widget,
-    instructions: widget
-      ? `Do the work, publish_widget to "${widget.title}", then finish_routine_run with a one-line summary.`
-      : "Do the work, then finish_routine_run with a one-line summary.",
+    instructions:
+      (widget
+        ? `Do the work, publish_widget to "${widget.title}", then finish_routine_run with a one-line summary.`
+        : "Do the work, then finish_routine_run with a one-line summary.") +
+      " Only message the owner if this run found something new or needs them; otherwise stay silent.",
   };
 }
 
