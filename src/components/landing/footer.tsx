@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logotype } from "@/components/ui/brand";
-import { AuthorPill, REPO_URL, SourceLink } from "./credits";
+import { AuthorBlock, REPO_URL, SourceLink } from "./credits";
 
 const LINKS = [
   { href: `${REPO_URL}/blob/HEAD/docs/WORKING-WITH-KIWI.md`, label: "Working with Kiwi" },
@@ -16,8 +16,8 @@ export function Footer() {
         <div>
           <Logotype className="text-[20px] leading-none" />
           <p className="mt-3 text-[13px] text-ink-3">A single-owner app.</p>
-          <div className="-ml-1 mt-3 flex flex-wrap items-center gap-x-4">
-            <AuthorPill quiet />
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <AuthorBlock compact />
             <SourceLink quiet />
           </div>
         </div>

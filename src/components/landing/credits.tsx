@@ -1,31 +1,77 @@
 import Image from "next/image";
 
-// Who made it: a small author pill with Filippo's portrait, linking to his site.
-// Used under the hero buttons and again, quieter, in the footer.
+// Who made it: Filippo's portrait, a line linking to his site, his school line
+// with a small drawn Yale mark, and icon links to LinkedIn and GitHub. Shown
+// under the hero buttons and again, smaller and left-aligned, in the footer.
 
 export const AUTHOR_URL = "https://filippofonseca.com";
+const LINKEDIN_URL = "https://linkedin.com/in/filippo-fonseca";
+const GITHUB_URL = "https://github.com/filippo-fonseca";
 
-export function AuthorPill({ quiet = false }: { quiet?: boolean }) {
+export function AuthorBlock({ compact = false }: { compact?: boolean }) {
+  const face = compact ? 32 : 40;
   return (
-    <a
-      href={AUTHOR_URL}
-      target="_blank"
-      rel="noopener"
-      className={`group inline-flex items-center gap-2 rounded-full pl-1 pr-3 font-medium transition-colors ${
-        quiet ? "h-7 text-[12px] text-ink-3 hover:text-ink" : "h-8 bg-surface text-[13px] text-ink-2 shadow-ring hover:text-ink"
-      }`}
+    <div className={`flex items-center text-left ${compact ? "gap-2.5" : "gap-3"}`}>
+      <a href={AUTHOR_URL} target="_blank" rel="noopener" tabIndex={-1} aria-hidden className="shrink-0">
+        <Image
+          src="/filippo.png"
+          alt=""
+          width={face}
+          height={face}
+          className={`rounded-full bg-gray-200 object-cover ring-1 ring-ink/10 ${compact ? "h-8 w-8" : "h-10 w-10"}`}
+        />
+      </a>
+      <div className={`leading-tight ${compact ? "text-[12px]" : "text-[13px]"}`}>
+        <p className="text-ink-2">
+          An open-source project by{" "}
+          <a
+            href={AUTHOR_URL}
+            target="_blank"
+            rel="noopener"
+            className="font-medium text-ink underline-offset-4 transition-colors hover:underline"
+          >
+            Filippo Fonseca
+          </a>
+        </p>
+        <div className="mt-1 flex items-center gap-1.5 text-ink-3">
+          <YaleMark />
+          <span>Yale MechE + EECS &apos;28</span>
+          <span aria-hidden className="mx-0.5 text-ink/20">
+            ·
+          </span>
+          <a href={LINKEDIN_URL} target="_blank" rel="noopener" aria-label="Filippo on LinkedIn" className={iconLink}>
+            <LinkedInMark />
+          </a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener" aria-label="Filippo on GitHub" className={iconLink}>
+            <GitHubMark size={13} />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const iconLink = "-m-1 rounded-[5px] p-1 text-ink-3 transition-colors hover:text-ink";
+
+/** A simple stand-in Yale mark (drawn here, not their logo file): a serif Y
+ * on a Yale Blue tile. */
+function YaleMark() {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-[#00356b] text-[12px] leading-none text-white"
+      style={{ fontFamily: "'EB Garamond', Georgia, serif", fontWeight: 600 }}
     >
-      <Image
-        src="/filippo.png"
-        alt=""
-        width={quiet ? 20 : 24}
-        height={quiet ? 20 : 24}
-        className={`shrink-0 rounded-full bg-gray-200 object-cover ring-1 ring-ink/10 ${quiet ? "h-5 w-5" : "h-6 w-6"}`}
-      />
-      <span>
-        An open-source project by <span className="text-ink">Filippo Fonseca</span>
-      </span>
-    </a>
+      Y
+    </span>
+  );
+}
+
+function LinkedInMark() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
   );
 }
 
