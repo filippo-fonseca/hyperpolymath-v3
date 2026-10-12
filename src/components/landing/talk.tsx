@@ -5,7 +5,7 @@ export function Talk() {
     <section className="bg-subtle px-4 py-20 sm:py-28">
       <div className="mx-auto grid max-w-[1080px] items-center gap-12 lg:grid-cols-2 lg:gap-20">
         <div className="mx-auto max-w-[460px] text-center lg:mx-0 lg:text-left">
-          <p className="text-[13px] font-medium text-accent">Talking to Kiwi</p>
+          <p className="text-[13px] font-medium text-accent">In Grok Bot</p>
           <h2 className="mt-3 text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
             Most days, you just text Kiwi
           </h2>
