@@ -1,405 +1,184 @@
 "use client";
 
-import { Suspense, use, useEffect, useMemo, useState } from "react";
-import type { CalendarAccount, CalendarData } from "@/lib/dashboard-types";
-import type { CalendarInfo } from "@/server/google/calendar";
-import { relativeTime } from "@/lib/format";
-import { listTokensAction, mintTokenAction, revokeTokenAction, setTimezoneAction } from "@/app/actions/settings";
-import { disconnectGoogleAction, listCalendarsAction, setCalendarsAction, setDefaultCalendarAction } from "@/app/actions/calendar";
-import { signOut } from "@/app/actions/auth";
-import { Button, Sheet, Switch, fieldClass } from "@/components/ui/primitives";
-import { IconCheck, IconChevronRight, IconCopy, IconPlus, IconSignOut } from "@/components/ui/icons";
-import { useToast } from "@/components/ui/toast";
+import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { settingsOverviewAction, type SettingsOverview } from "@/app/actions/status";
+import { Sheet, useMediaQuery } from "@/components/ui/primitives";
+import { IconCalendar, IconChevronLeft, IconChevronRight, IconGlobe, IconKey, IconMail } from "@/components/ui/icons";
+import type { SectionId, SectionProps } from "@/components/settings/shared";
+import { AccountSection } from "@/components/settings/account";
+import { PreferencesSection } from "@/components/settings/preferences";
+import { GrokBotSection } from "@/components/settings/grokbot";
+import { CalendarSection } from "@/components/settings/calendar";
 import { useDashboard } from "./context";
 
-type Token = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
+// Settings: a left nav with one section at a time on desktop, and an
+// iOS-style list that drills into a section on phones.
+
+type SectionDef = {
+  id: SectionId;
+  label: string;
+  icon: ComponentType<{ size?: number }>;
+  Body: ComponentType<SectionProps>;
+};
+
+const SECTIONS: SectionDef[] = [
+  { id: "account", label: "Account", icon: IconMail, Body: AccountSection },
+  { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
+  { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
+  { id: "calendar", label: "Calendar", icon: IconCalendar, Body: CalendarSection },
+];
+
+const HEADING_ID = "settings-section-heading";
 
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const desktop = useMediaQuery("(min-width: 640px)");
+  const [section, setSection] = useState<SectionId | null>(null);
+  const close = () => {
+    onClose();
+    setSection(null);
+  };
+  const def = SECTIONS.find((s) => s.id === section);
+
+  const title: ReactNode =
+    !desktop && def ? (
+      <span className="-ml-2 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setSection(null)}
+          aria-label="Back to all settings"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-150 active:scale-95"
+        >
+          <IconChevronLeft size={20} />
+        </button>
+        {def.label}
+      </span>
+    ) : (
+      "Settings"
+    );
+
   return (
-    <Sheet open={open} onClose={onClose} title="Settings" width={520}>
-      {open && (
-        <div className="flex flex-col gap-8 pb-3">
-          <TimezoneSection />
-          <McpSection />
-          <TeammatesSection />
-          <Suspense fallback={<Section title="Google Calendar"><div className="skeleton h-12 rounded-[14px]" /></Section>}>
-            <GoogleSection />
-          </Suspense>
-          <form action={signOut}>
-            <Button type="submit" variant="ghost" className="-ml-2 text-ink-2">
-              <IconSignOut size={16} /> Sign out
-            </Button>
-          </form>
-        </div>
-      )}
+    <Sheet open={open} onClose={close} title={title} width={800}>
+      {open && <SettingsBody desktop={desktop} section={section} setSection={setSection} />}
     </Sheet>
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section>
-      <h3 className="text-[15px] font-semibold">{title}</h3>
-      {hint && <p className="mt-0.5 text-[13px] leading-snug text-ink-3">{hint}</p>}
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Button
-      size="sm"
-      variant="soft"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1600);
-        } catch {
-          /* clipboard blocked; the text is selectable */
-        }
-      }}
-    >
-      {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-      {copied ? "Copied" : label}
-    </Button>
-  );
-}
-
-/* ---------------- Teammates ---------------- */
-
-function TeammatesSection() {
-  const { data, openTeammates } = useDashboard();
-  const paused = data.routines.filter((r) => !r.enabled).length;
-  return (
-    <Section title="Teammates and routines" hint="Edit your bots, and pause or resume the routines they run in Grok Bot.">
-      <button
-        type="button"
-        onClick={() => openTeammates()}
-        className="flex w-full items-center justify-between gap-3 rounded-[14px] bg-gray-100 px-3.5 py-3 text-left transition hover:bg-gray-150"
-      >
-        <span className="text-[14px] font-medium">
-          {data.bots.length} {data.bots.length === 1 ? "teammate" : "teammates"} · {data.routines.length}{" "}
-          {data.routines.length === 1 ? "routine" : "routines"}
-          {paused > 0 && <span className="font-normal text-ink-3"> ({paused} paused)</span>}
-        </span>
-        <IconChevronRight size={16} className="shrink-0 text-gray-500" />
-      </button>
-    </Section>
-  );
-}
-
-/* ---------------- Timezone ---------------- */
-
-function TimezoneSection() {
-  const { data, run } = useDashboard();
-  const zones = useMemo(() => {
-    try {
-      return Intl.supportedValuesOf("timeZone");
-    } catch {
-      return [data.tz];
-    }
-  }, [data.tz]);
-  const list = zones.includes(data.tz) ? zones : [data.tz, ...zones];
-  return (
-    <Section title="Timezone" hint="Today, habit days and reminder times follow this.">
-      <select
-        value={data.tz}
-        onChange={(e) => void run(setTimezoneAction(e.target.value), { success: `Timezone set to ${e.target.value.replace(/_/g, " ")}` })}
-        className={`${fieldClass} w-full appearance-none`}
-        aria-label="Timezone"
-      >
-        {list.map((z) => (
-          <option key={z} value={z}>
-            {z.replace(/_/g, " ")}
-          </option>
-        ))}
-      </select>
-    </Section>
-  );
-}
-
-/* ---------------- MCP ---------------- */
-
-function McpSection() {
-  const { run, nowMs } = useDashboard();
-  const [tokens, setTokens] = useState<Token[] | null>(null);
-  const [name, setName] = useState("Grok Bot");
-  const [fresh, setFresh] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [origin, setOrigin] = useState("");
+function SettingsBody({
+  desktop,
+  section,
+  setSection,
+}: {
+  desktop: boolean;
+  section: SectionId | null;
+  setSection: (s: SectionId | null) => void;
+}) {
+  const { run } = useDashboard();
+  const [overview, setOverview] = useState<SettingsOverview | null>(null);
+  const [version, setVersion] = useState(0);
+  const pendingFocus = useRef<string | null>(null);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setOrigin(window.location.origin), 0);
     let live = true;
-    void run(listTokensAction()).then((t) => {
-      if (live) setTokens(t ?? []);
-    });
-    return () => {
-      live = false;
-      window.clearTimeout(t);
-    };
-  }, [run]);
-
-  const reload = async () => {
-    const t = await run(listTokensAction());
-    if (t) setTokens(t);
-  };
-  const url = `${origin}/api/mcp`;
-
-  return (
-    <Section title="Grok Bot connection" hint="Add this MCP server in Grok Bot with an Authorization header: Bearer <token>.">
-      <div className="flex items-center gap-2 rounded-[14px] bg-gray-100 py-1.5 pl-3.5 pr-1.5">
-        <code className="min-w-0 flex-1 truncate font-mono text-[13px]">{url}</code>
-        <CopyButton text={url} />
-      </div>
-
-      {fresh && (
-        <div className="mt-3 rounded-[14px] bg-accent-soft p-3.5">
-          <p className="text-[13px] font-medium text-accent-hover">Copy this token now. It won&apos;t be shown again.</p>
-          <div className="mt-2 flex items-center gap-2 rounded-[10px] bg-white py-1.5 pl-3 pr-1.5">
-            <code className="min-w-0 flex-1 break-all font-mono text-[12.5px]">{fresh}</code>
-            <CopyButton text={fresh} />
-          </div>
-          <button type="button" className="mt-2 text-[12.5px] font-medium text-accent-hover hover:underline" onClick={() => setFresh(null)}>
-            I&apos;ve saved it
-          </button>
-        </div>
-      )}
-
-      <form
-        className="mt-3 flex gap-2"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const t = await run(mintTokenAction(name));
-          if (t) {
-            setFresh(t.token);
-            void reload();
-          }
-        }}
-      >
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Token name" maxLength={60} className={`${fieldClass} flex-1`} aria-label="Token name" />
-        <Button type="submit" variant="dark" className="shrink-0">
-          <IconPlus size={15} /> New token
-        </Button>
-      </form>
-
-      <ul className="mt-3 divide-y divide-gray-150">
-        {tokens === null && <li className="skeleton my-2 h-10 rounded-[12px]" />}
-        {tokens?.length === 0 && <li className="py-2 text-[13px] text-ink-3">No tokens yet.</li>}
-        {tokens?.map((t) => (
-          <li key={t.id} className="flex items-center gap-3 py-2.5">
-            <div className="min-w-0 flex-1">
-              <div className={`text-[14px] font-medium ${t.revoked_at ? "text-ink-3 line-through" : ""}`}>{t.name}</div>
-              <div className="text-[12.5px] text-gray-500">
-                <code className="font-mono">{t.prefix}…</code> · {t.last_used_at ? `used ${relativeTime(t.last_used_at, nowMs)}` : "never used"}
-              </div>
-            </div>
-            {t.revoked_at ? (
-              <span className="rounded-full bg-gray-150 px-2 py-0.5 text-[11.5px] font-medium text-gray-600">Revoked</span>
-            ) : confirmId === t.id ? (
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>
-                  Keep
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={async () => {
-                    setConfirmId(null);
-                    const ok = await run(revokeTokenAction(t.id), { success: "Token revoked" });
-                    if (ok) void reload();
-                  }}
-                >
-                  Revoke
-                </Button>
-              </div>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={() => setConfirmId(t.id)}>
-                Revoke
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-/* ---------------- Google ---------------- */
-
-function GoogleSection() {
-  const { calendar, run } = useDashboard();
-  const cal: CalendarData = use(calendar);
-  const [calendars, setCalendars] = useState<CalendarInfo[] | null>(null);
-  const [defaultKey, setDefaultKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!cal.accounts.length) return;
-    let live = true;
-    void run(listCalendarsAction(), { quiet: true }).then((c) => {
-      if (live) setCalendars(c ?? []);
+    void run(settingsOverviewAction(), { quiet: true }).then((o) => {
+      if (live && o) setOverview(o);
     });
     return () => {
       live = false;
     };
-  }, [cal, run]);
+  }, [run, version]);
 
-  if (!cal.configured && !cal.accounts.length) {
+  const reloadOverview = useCallback(() => setVersion((v) => v + 1), []);
+
+  const go = useCallback(
+    (id: SectionId, focusId?: string) => {
+      pendingFocus.current = focusId ?? HEADING_ID;
+      setSection(id);
+    },
+    [setSection],
+  );
+
+  // Move focus to the section (or a specific control in it) after a jump.
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    pendingFocus.current = null;
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(target);
+      el?.focus({ preventScroll: true });
+      el?.scrollIntoView({ block: target === HEADING_ID ? "nearest" : "center", behavior: "smooth" });
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [section]);
+
+  const props: SectionProps = { overview, reloadOverview, go };
+  const active = SECTIONS.find((s) => s.id === section) ?? (desktop ? SECTIONS[0] : null);
+
+  if (!desktop) {
+    if (!active) return <PhoneList go={go} />;
     return (
-      <Section title="Google Calendar">
-        <p className="text-[13.5px] text-ink-3">Google isn&apos;t configured on this deployment.</p>
-      </Section>
+      <div className="pb-3">
+        <h3 id={HEADING_ID} tabIndex={-1} className="sr-only">
+          {active.label}
+        </h3>
+        <active.Body {...props} />
+      </div>
     );
   }
 
-  const keyOf = (c: CalendarInfo) => `${c.account_id}|${c.id}`;
-  const current = defaultKey ?? (calendars?.find((c) => c.is_default) ? keyOf(calendars.find((c) => c.is_default)!) : "");
-
   return (
-    <Section title="Google Calendar" hint="Connect as many accounts as you like. Switch an account off to hide it without disconnecting.">
-      <div className="flex flex-col gap-4">
-        {cal.accounts.length > 0 && calendars && calendars.length > 0 && (
-          <label className="flex flex-col gap-1.5 text-[13px] text-ink-2">
-            New events go to
-            <select
-              value={current}
-              onChange={async (e) => {
-                const v = e.target.value;
-                const [accountId, calendarId] = [v.slice(0, v.indexOf("|")), v.slice(v.indexOf("|") + 1)];
-                setDefaultKey(v);
-                const ok = await run(setDefaultCalendarAction(accountId, calendarId), { success: "Default calendar updated" });
-                if (!ok) setDefaultKey(null);
-              }}
-              className="h-10 w-full appearance-none rounded-[12px] bg-white px-3 text-[14px] text-ink shadow-ring outline-none"
-            >
-              {cal.accounts.map((a) => (
-                <optgroup key={a.id} label={a.email}>
-                  {calendars
-                    .filter((c) => c.account_id === a.id)
-                    .map((c) => (
-                      <option key={keyOf(c)} value={keyOf(c)}>
-                        {c.name}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-        )}
-        {cal.accounts.map((a) => (
-          <AccountCard
-            key={a.id}
-            account={a}
-            isDefault={current ? current.startsWith(`${a.id}|`) : a.is_default}
-            calendars={calendars?.filter((c) => c.account_id === a.id) ?? null}
-          />
-        ))}
-        <a
-          href="/api/google/connect"
-          className="inline-flex h-9 items-center gap-1.5 self-start rounded-full bg-gray-150 px-3.5 text-[13px] font-medium transition hover:bg-gray-200"
-        >
-          <IconPlus size={14} /> {cal.accounts.length ? "Connect another account" : "Connect Google Calendar"}
-        </a>
-      </div>
-    </Section>
-  );
-}
-
-function AccountCard({
-  account,
-  isDefault,
-  calendars,
-}: {
-  account: CalendarAccount;
-  isDefault: boolean;
-  calendars: CalendarInfo[] | null;
-}) {
-  const { run } = useDashboard();
-  const toast = useToast();
-  const [confirm, setConfirm] = useState(false);
-  const [shown, setShown] = useState<string[] | null>(null);
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const on = enabled ?? account.enabled;
-  const shownIds = shown ?? calendars?.filter((c) => c.shown).map((c) => c.id) ?? [];
-
-  const toggle = async (id: string) => {
-    const next = shownIds.includes(id) ? shownIds.filter((x) => x !== id) : [...shownIds, id];
-    if (!next.length) {
-      toast.error("Keep at least one calendar visible, or switch the account off.");
-      return;
-    }
-    setShown(next);
-    const ok = await run(setCalendarsAction(account.id, { calendar_ids: next }));
-    if (!ok) setShown(null);
-  };
-
-  const setAccountOn = async (next: boolean) => {
-    if (!next && isDefault) {
-      toast.error("New events go to this account. Pick another default first.");
-      return;
-    }
-    setEnabled(next);
-    const ok = await run(setCalendarsAction(account.id, { enabled: next }), {
-      success: next ? "Account shown" : "Account hidden",
-    });
-    if (!ok) setEnabled(null);
-  };
-
-  return (
-    <div className="rounded-[16px] bg-gray-50 p-3.5 shadow-ring">
-      <div className="flex items-center gap-2.5">
-        <Switch checked={on} onChange={setAccountOn} label={`Show ${account.email}`} />
-        <span className={`min-w-0 flex-1 truncate text-[14px] font-medium ${on ? "" : "text-ink-3"}`}>{account.email}</span>
-        {isDefault && (
-          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11.5px] font-medium text-accent">Default</span>
-        )}
-        {confirm ? (
-          <>
-            <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>
-              Keep
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => run(disconnectGoogleAction(account.id), { success: "Disconnected" })}>
-              Disconnect
-            </Button>
-          </>
-        ) : (
-          <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
-            Disconnect
-          </Button>
-        )}
-      </div>
-      {calendars === null ? (
-        <div className="skeleton mt-3 h-8 rounded-[10px]" />
-      ) : calendars.length === 0 ? (
-        <p className="mt-2 text-[13px] text-ink-3">Couldn&apos;t load calendars for this account.</p>
-      ) : (
-        <ul className={`mt-2 transition-opacity ${on ? "" : "pointer-events-none opacity-40"}`}>
-          {calendars.map((c) => {
-            const shownOn = shownIds.includes(c.id);
+    <div className="grid min-h-[min(560px,68dvh)] grid-cols-[176px_minmax(0,1fr)] gap-7 pb-3">
+      <nav aria-label="Settings sections" className="sticky top-[68px] self-start">
+        <ul className="flex flex-col gap-0.5">
+          {SECTIONS.map((s) => {
+            const on = s.id === active?.id;
             return (
-              <li key={c.id}>
-                <label className="flex cursor-pointer items-center gap-2.5 py-1.5">
-                  <input type="checkbox" checked={shownOn} onChange={() => toggle(c.id)} className="sr-only" />
-                  <span
-                    className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] text-white transition"
-                    style={{
-                      background: shownOn ? (c.color ?? "var(--accent)") : "transparent",
-                      boxShadow: shownOn ? undefined : "inset 0 0 0 1.5px var(--gray-400)",
-                    }}
-                  >
-                    {shownOn && <IconCheck size={12} strokeWidth={3} />}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[14px]">{c.name}</span>
-                  {c.primary && <span className="text-[11.5px] text-ink-3">primary</span>}
-                </label>
+              <li key={s.id}>
+                <button
+                  type="button"
+                  aria-current={on ? "page" : undefined}
+                  onClick={() => go(s.id)}
+                  className={`flex h-9 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[14px] transition ${
+                    on ? "bg-gray-150 font-medium text-ink" : "text-ink-2 hover:bg-gray-100 hover:text-ink"
+                  }`}
+                >
+                  <s.icon size={16} />
+                  {s.label}
+                </button>
               </li>
             );
           })}
         </ul>
-      )}
+      </nav>
+      <div className="min-w-0">
+        {active && (
+          <>
+            <h3 id={HEADING_ID} tabIndex={-1} className="mb-5 text-[20px] font-semibold tracking-[-0.015em] outline-none">
+              {active.label}
+            </h3>
+            <active.Body key={active.id} {...props} />
+          </>
+        )}
+      </div>
     </div>
+  );
+}
+
+function PhoneList({ go }: { go: (id: SectionId) => void }) {
+  return (
+    <nav aria-label="Settings sections" className="pb-3">
+      <ul className="overflow-hidden rounded-[16px] bg-gray-50 shadow-ring">
+        {SECTIONS.map((s, i) => (
+          <li key={s.id} className={i ? "border-t border-gray-150" : ""}>
+            <button type="button" onClick={() => go(s.id)} className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left transition active:bg-gray-150">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-white text-ink-2 shadow-ring">
+                <s.icon size={15} />
+              </span>
+              <span className="min-w-0 flex-1 text-[15px]">{s.label}</span>
+              <IconChevronRight size={16} className="shrink-0 text-gray-400" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
