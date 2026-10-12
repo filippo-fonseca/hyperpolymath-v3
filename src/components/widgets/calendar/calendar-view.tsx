@@ -7,8 +7,9 @@ import { safeHref } from "@/lib/markdown";
 import { longDate, shortDate, weekdayName } from "@/lib/format";
 import { createEventAction, deleteEventAction, listEventsAction } from "@/app/actions/calendar";
 import { Button, IconButton, Segmented, fieldClass } from "@/components/ui/primitives";
-import { IconCalendar, IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from "@/components/ui/icons";
+import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { KiwiStargazing } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { useProjects } from "../projects/use-projects";
 import {
@@ -122,13 +123,11 @@ function CalendarViewInner() {
     return (
       <div>
         <ExpandedHeader eyebrow={`${weekdayName(data.today)}, ${longDate(data.today)}`} title="Calendar" />
-        <div className="flex flex-col items-center py-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <IconCalendar size={22} />
-          </div>
+        <div className="flex flex-col items-center pb-14 pt-4 text-center">
+          <KiwiStargazing size={156} />
           {cal.configured ? (
             <>
-              <p className="mt-4 max-w-[320px] text-[15px] leading-relaxed text-ink-2">
+              <p className="mt-2 max-w-[320px] text-[15px] leading-relaxed text-ink-2">
                 Connect Google Calendar to see your agenda here and let Kiwi add events for you.
               </p>
               <a
@@ -139,7 +138,7 @@ function CalendarViewInner() {
               </a>
             </>
           ) : (
-            <p className="mt-4 max-w-[340px] text-[14px] leading-relaxed text-ink-3">
+            <p className="mt-2 max-w-[340px] text-[14px] leading-relaxed text-ink-3">
               Google Calendar isn&apos;t configured on this deployment yet.
             </p>
           )}

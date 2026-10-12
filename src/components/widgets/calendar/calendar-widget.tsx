@@ -6,6 +6,7 @@ import type { WidgetSize } from "@/lib/widgets";
 import { dayOfMonth, shortDate, weekdayName } from "@/lib/format";
 import { IconCalendar, IconPlus } from "@/components/ui/icons";
 import { stop, useFitCount } from "@/components/ui/primitives";
+import { KiwiStargazing } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { eventDate, eventTime, groupByDay, isNow, remainingToday } from "./calendar-utils";
 
@@ -185,7 +186,12 @@ function ConnectState({ size, configured, error }: { size: WidgetSize; configure
   return (
     <div className={`flex h-full ${size === "m" ? "flex-row gap-5" : "flex-col"}`}>
       <DateBlock today={data.today} big={size !== "s"} />
-      <div className={`flex min-w-0 flex-1 flex-col ${size === "m" ? "justify-center" : "mt-auto"}`}>
+      {size === "l" && (
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <KiwiStargazing size={136} />
+        </div>
+      )}
+      <div className={`flex min-w-0 flex-1 flex-col ${size === "m" ? "justify-center" : size === "l" ? "flex-none" : "mt-auto"}`}>
         {configured ? (
           <>
             {size !== "s" && <p className="mb-2.5 text-[13.5px] leading-snug text-ink-2">See your day at a glance.</p>}
@@ -204,6 +210,7 @@ function ConnectState({ size, configured, error }: { size: WidgetSize; configure
           </p>
         )}
       </div>
+      {size === "m" && <KiwiStargazing size={104} className="shrink-0 self-center max-sm:hidden" />}
     </div>
   );
 }
