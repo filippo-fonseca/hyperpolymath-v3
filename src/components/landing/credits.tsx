@@ -93,10 +93,10 @@ export function SourceLink({ quiet = false }: { quiet?: boolean }) {
       target="_blank"
       rel="noopener"
       className={`inline-flex items-center gap-1.5 rounded-full font-medium transition-colors ${
-        quiet ? "h-7 text-[12px] text-ink-3 hover:text-ink" : "h-8 bg-surface px-3 text-[13px] text-ink-2 shadow-ring hover:text-ink"
+        quiet ? "h-7 text-[12px] text-ink-3 hover:text-ink" : "h-12 px-4 text-[15px] text-ink-2 hover:bg-gray-100 hover:text-ink"
       }`}
     >
-      <GitHubMark size={quiet ? 13 : 14} className="shrink-0 text-ink" />
+      <GitHubMark size={quiet ? 13 : 16} className="shrink-0 text-ink" />
       View source
     </a>
   );

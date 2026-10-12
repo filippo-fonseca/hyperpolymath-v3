@@ -64,7 +64,7 @@ export function Hero() {
           Kiwi and the other bots you keep in Grok Bot.
         </p>
 
-        <div className="landing-rise mt-10 flex flex-wrap items-center justify-center gap-3" style={rise(620)}>
+        <div className="landing-rise mt-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-3 sm:gap-3" style={rise(620)}>
           <Link
             href="/login"
             className="group inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-medium text-white transition-colors hover:bg-gray-800"
@@ -79,11 +79,11 @@ export function Hero() {
             See how it&apos;s wired
             <IconChevronDown size={16} className="text-ink-3 transition-transform duration-300 ease-out group-hover:translate-y-0.5" />
           </a>
+          <SourceLink />
         </div>
 
-        <div className="landing-rise mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-3" style={rise(700)}>
+        <div className="landing-rise mt-8" style={rise(700)}>
           <AuthorBlock />
-          <SourceLink />
         </div>
       </div>
 
