@@ -17,9 +17,9 @@ export function Footer() {
         <div>
           <Logotype className="text-[20px] leading-none" />
           <p className="mt-3 text-[13px] text-ink-3">
-            Private, single-owner app.{" "}
+            A single-owner app.{" "}
             <a href={REPO} target="_blank" rel="noopener noreferrer" className={link}>
-              Open source on GitHub
+              Source on GitHub
             </a>
             .
           </p>
