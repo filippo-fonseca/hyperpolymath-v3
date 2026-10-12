@@ -1,5 +1,6 @@
 import { Hero } from "./hero";
 import { HowItWorks } from "./how-it-works";
+import { Talk } from "./talk";
 
 // Public landing page, shown to signed-out visitors at `/`. Static: no session,
 // no data. Sections are plain server components; only Kiwi and the chat mock
@@ -9,6 +10,7 @@ export function Landing() {
     <main className="landing-page overflow-x-clip">
       <Hero />
       <HowItWorks />
+      <Talk />
     </main>
   );
 }
