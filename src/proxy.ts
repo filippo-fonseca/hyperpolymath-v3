@@ -1,15 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isOwnerEmail } from "@/lib/supabase/env";
 
-// Refreshes the Supabase session cookie on every page request and sends
-// signed-out visitors to /login. This is an optimistic check only: every
-// Server Component and Server Action re-verifies the session itself.
+// Refreshes the Supabase session cookie on every page request, sends
+// signed-out visitors from the app to /login, and sends a signed-in owner
+// away from /login. This is an optimistic check only: every Server Component
+// and Server Action re-verifies the session itself. Unknown paths pass
+// through so they render the 404 page.
 
-const PUBLIC_PATHS = ["/login", "/auth/"];
+/** Routes that need a session. Everything else is public or a 404. */
+const PRIVATE = (pathname: string) => pathname === "/" || pathname.startsWith("/api/google/");
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+  const isPublic = !PRIVATE(pathname);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -33,13 +37,16 @@ export async function proxy(request: NextRequest) {
 
   // Must run before anything else so a refreshed token is written back.
   const { data } = await supabase.auth.getClaims();
-  const signedIn = !!data?.claims;
+  const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
+  const signedIn = !!data?.claims && isOwnerEmail(email);
 
-  if (!signedIn && !isPublic) {
-    const redirect = NextResponse.redirect(new URL("/login", request.url));
+  const go = (path: string) => {
+    const redirect = NextResponse.redirect(new URL(path, request.url));
     for (const c of response.cookies.getAll()) redirect.cookies.set(c);
     return redirect;
-  }
+  };
+  if (!signedIn && !isPublic) return go("/login");
+  if (signedIn && pathname === "/login") return go("/");
   return response;
 }
 
