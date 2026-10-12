@@ -1,4 +1,5 @@
 import { Diagram } from "./diagram";
+import { Steps } from "./steps";
 
 export function HowItWorks() {
   return (
@@ -16,6 +17,9 @@ export function HowItWorks() {
         </header>
         <div className="mt-14 sm:mt-16">
           <Diagram />
+        </div>
+        <div className="mt-16 sm:mt-20">
+          <Steps />
         </div>
       </div>
     </section>
