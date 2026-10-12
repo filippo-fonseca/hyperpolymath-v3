@@ -52,7 +52,12 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
       <span className="-ml-2 flex items-center gap-1">
         <button
           type="button"
-          onClick={() => setSection(null)}
+          onClick={() => {
+            const from = def.id;
+            setSection(null);
+            // Return focus to the row the section was opened from.
+            window.setTimeout(() => document.getElementById(`settings-row-${from}`)?.focus(), 60);
+          }}
           aria-label="Back to all settings"
           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-150 active:scale-95"
         >
@@ -190,7 +195,12 @@ function PhoneList({ go }: { go: (id: SectionId) => void }) {
       <ul className="overflow-hidden rounded-[16px] bg-gray-50 shadow-ring">
         {SECTIONS.filter((s) => s.id !== "setup").map((s, i) => (
           <li key={s.id} className={i ? "border-t border-gray-150" : ""}>
-            <button type="button" onClick={() => go(s.id)} className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left transition active:bg-gray-150">
+            <button
+              id={`settings-row-${s.id}`}
+              type="button"
+              onClick={() => go(s.id)}
+              className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left transition active:bg-gray-150"
+            >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-white text-ink-2 shadow-ring">
                 <s.icon size={15} />
               </span>
