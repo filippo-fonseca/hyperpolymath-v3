@@ -17,6 +17,15 @@ export async function currentUserId(): Promise<string | null> {
   return data.claims.sub;
 }
 
+/** The signed-in owner's email, or null. */
+export async function currentEmail(): Promise<string | null> {
+  if (!hasSupabaseEnv()) return null;
+  const supabase = await supabaseServer();
+  const { data } = await supabase.auth.getClaims();
+  const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
+  return isOwnerEmail(email) ? email : null;
+}
+
 /** Resolve the owner's id or redirect to /login. */
 export async function requireUser(): Promise<string> {
   const userId = await currentUserId();
