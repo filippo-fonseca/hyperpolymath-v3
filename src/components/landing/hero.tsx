@@ -4,6 +4,7 @@ import { Logotype } from "@/components/ui/brand";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { KiwiBuilding, KiwiReading, KiwiStargazing, KiwiTeam, KiwiWatering } from "@/components/illustrations";
 import { IconArrowRight, IconChevronDown } from "@/components/ui/icons";
+import { AuthorPill } from "./credits";
 
 const rise = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
@@ -56,6 +57,10 @@ export function Hero() {
             <IconChevronDown size={16} className="text-ink-3 transition-transform duration-300 ease-out group-hover:translate-y-0.5" />
           </a>
         </div>
+
+        <div className="landing-rise mt-6 flex flex-wrap items-center justify-center gap-2" style={rise(320)}>
+          <AuthorPill />
+        </div>
       </div>
 
       <Scenes />
@@ -72,7 +77,7 @@ function Scenes() {
     <div
       aria-hidden
       className="landing-rise relative mx-auto mt-2 flex max-w-[1000px] items-end justify-center gap-3 sm:mt-4 lg:gap-6"
-      style={rise(360)}
+      style={rise(400)}
     >
       <div className="mb-[18px] hidden h-[118px] w-[118px] lg:block">
         <KiwiReading className={scene} />

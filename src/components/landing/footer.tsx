@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logotype } from "@/components/ui/brand";
+import { AuthorPill } from "./credits";
 
 const REPO = "https://github.com/filippo-fonseca/hyperpolymath-v3";
 
@@ -23,6 +24,9 @@ export function Footer() {
             </a>
             .
           </p>
+          <div className="-ml-1 mt-3">
+            <AuthorPill quiet />
+          </div>
         </div>
         <nav aria-label="Guides" className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
           {LINKS.map((l) => (
