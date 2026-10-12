@@ -82,11 +82,19 @@ export function Features() {
   );
 }
 
-function ColumnHeader({ title, note }: { title: string; note: string }) {
+function ColumnHeader({ title, note, casual = false }: { title: string; note: string; casual?: boolean }) {
   return (
-    <div className="mb-5 flex items-baseline justify-between gap-3">
-      <h3 className="text-[20px] font-semibold tracking-[-0.02em]">{title}</h3>
-      <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3">{note}</p>
+    <div className={`mb-5 flex justify-between gap-x-4 gap-y-1 ${casual ? "flex-col sm:flex-row sm:items-baseline" : "items-baseline"}`}>
+      <h3 className="shrink-0 text-[20px] font-semibold tracking-[-0.02em]">{title}</h3>
+      <p
+        className={
+          casual
+            ? "text-pretty text-[13px] leading-snug text-ink-3 sm:max-w-[250px] sm:text-right"
+            : "text-[12px] font-medium uppercase tracking-[0.08em] text-ink-3"
+        }
+      >
+        {note}
+      </p>
     </div>
   );
 }
@@ -133,7 +141,7 @@ const HOW_CUSTOM = [
 function CustomColumn() {
   return (
     <div className="rounded-[26px] border-[1.5px] border-dashed border-ink/30 p-5 sm:p-7">
-      <ColumnHeader title="Made by your bots" note="On request" />
+      <ColumnHeader title="Made by your bots" note="You just have to ask your coordinator to make a new widget!" casual />
       <p className="-mt-2 mb-5 text-[14px] leading-relaxed text-ink-2">
         A bot can publish a digest, list, stat or table to a widget of its own. It only ever sends data, so it can&apos;t
         break the page.
