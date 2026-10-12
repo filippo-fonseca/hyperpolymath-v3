@@ -41,7 +41,7 @@ export function Organized() {
         <header className="mx-auto max-w-[640px] text-center">
           <p className="text-[13px] font-medium text-accent">How it&apos;s organized</p>
           <h2 className="mt-3 text-balance text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[42px]">
-            Areas hold projects. Projects hold the work.
+            Everything lives under a life area
           </h2>
         </header>
 
@@ -75,7 +75,8 @@ export function Organized() {
         </div>
 
         <p className="mx-auto mt-10 max-w-[600px] text-pretty text-center text-[15px] leading-relaxed text-ink-2">
-          Kiwi files a task or capture under a project only when it clearly fits, and tells you where it put it:{" "}
+          Kiwi only files something under a project when it obviously belongs there. Otherwise it goes to the inbox.
+          Either way, it tells you where it went:{" "}
           <span className="whitespace-nowrap rounded-full bg-gray-200 px-2.5 py-0.5 text-[14px] text-ink">Added to Fluid Mechanics.</span>
         </p>
       </div>
@@ -93,7 +94,7 @@ function Legend() {
           <span className="rounded-full px-2.5 py-1 shadow-ring sm:px-3">{s}</span>
         </span>
       ))}
-      <span className="basis-full text-center text-ink-3 sm:ml-2 sm:basis-auto">Classes are projects too. Habits belong to areas.</span>
+      <span className="basis-full text-center text-ink-3 sm:ml-2 sm:basis-auto">Classes count as projects. Habits attach to an area.</span>
     </div>
   );
 }
