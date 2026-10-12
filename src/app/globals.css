@@ -271,3 +271,55 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     animation: none;
   }
 }
+
+/* Kiwi loader: blink, glance, ink sweep (black/white inversion), painted ring. */
+@keyframes kl-blink {
+  0%, 38%, 46%, 100% { transform: scaleY(1); }
+  42% { transform: scaleY(0.12); }
+}
+@keyframes kl-glance {
+  0%, 20% { transform: translateX(0); }
+  30%, 48% { transform: translateX(-2.2px); }
+  58%, 76% { transform: translateX(2.2px); }
+  86%, 100% { transform: translateX(0); }
+}
+@keyframes kl-ink {
+  0% { clip-path: inset(0 100% 0 0 round 999px); }
+  45% { clip-path: inset(0 0 0 0 round 999px); }
+  55% { clip-path: inset(0 0 0 0 round 999px); }
+  100% { clip-path: inset(0 0 0 100% round 999px); }
+}
+@keyframes kl-brush {
+  0% { stroke-dasharray: 0 100; stroke-dashoffset: 0; }
+  45% { stroke-dasharray: 100 100; stroke-dashoffset: 0; }
+  100% { stroke-dasharray: 100 100; stroke-dashoffset: -100; }
+}
+.kl-blink {
+  animation: kl-blink 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.kl-glance {
+  animation: kl-glance 4.8s ease-in-out infinite;
+}
+.kl-ink {
+  animation: kl-ink 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.kl-brush {
+  animation: kl-brush 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  transform-origin: 50% 50%;
+}
+.kl-brush-2 {
+  animation-delay: -0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kl-blink,
+  .kl-glance,
+  .kl-ink,
+  .kl-brush {
+    animation: none;
+  }
+  .kl-ink {
+    clip-path: inset(0 50% 0 0 round 999px);
+  }
+}
