@@ -62,6 +62,21 @@ Once the MCP is connected and the Reminder relay is set up, send Kiwi something 
 
 Kiwi will ask before deleting anything. Check the Activity view afterwards; anything wrong is one Revert away.
 
+## Projects: how filing works
+
+Life areas hold projects; classes are projects too. Tasks and captures can belong to one project, habits to an area.
+
+When you give Kiwi a task or a thought, it files it under a project **only when it clearly fits** (same class, same initiative, an obvious keyword). If nothing fits well, or two projects fit equally, it leaves it unfiled in the inbox instead of guessing, and it never creates a project just to hold one item. Either way it confirms in one line:
+
+> Added to Machine Elements.
+> Added, not filed under a project.
+
+Say "move it to Rover" or "undo" to fix it. Kiwi also keeps project status current (active, paused, done) as things move on.
+
+## Quiet by default
+
+Scheduled runs only message you when they found something new or need you: a message to answer, a change, a decision, an error to fix. A run with nothing new finishes silently (it still shows on the Teammates page as "nothing new"). Widgets work the same way: republishing identical content doesn't add history or activity entries. The Reminder relay is the exception, since nudging you is its job.
+
 ## Widgets from routines
 
 Ask for it explicitly: *"...and show it on Hyperpolymath."* The bot creates one widget (a digest, list, stat, timeline, table or markdown) and republishes it at the end of every run. Old versions are kept, so expanding the widget shows past runs. If a run is missed the widget greys out after its staleness window.
