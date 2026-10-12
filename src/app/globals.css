@@ -272,6 +272,34 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Spot illustrations: a sleeping Kiwi's z's drift up one after another. */
+@keyframes illo-z-drift {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.illo-zs .illo-z {
+  animation: illo-z-drift 3.6s ease-in-out infinite;
+  transform-box: fill-box;
+}
+.illo-zs .illo-z:nth-child(2) {
+  animation-delay: 0.6s;
+}
+.illo-zs .illo-z:nth-child(3) {
+  animation-delay: 1.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .illo-zs .illo-z {
+    animation: none;
+  }
+}
+
 /* Kiwi loader: blink, glance, ink sweep (black/white inversion), painted ring. */
 @keyframes kl-blink {
   0%, 38%, 46%, 100% { transform: scaleY(1); }
