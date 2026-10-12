@@ -200,3 +200,9 @@ export const IconDots = (p: P) => (
     <path d="M6 12h.01M12 12h.01M18 12h.01" strokeWidth={2.8} />
   </svg>
 );
+export const IconInfo = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5M12 7.6v.1" />
+  </svg>
+);
