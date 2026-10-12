@@ -15,6 +15,7 @@ import { Button, IconButton, Sheet, fieldClass } from "@/components/ui/primitive
 import { IconArchive, IconChevronDown, IconDots, IconPlus, IconTrash, IconUndo } from "@/components/ui/icons";
 import { ConfirmCard } from "@/components/teammates/form";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { KiwiBuilding } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { Emoji, EmojiButton, Layer, StatusPill } from "./project-bits";
 import { ProjectCard } from "./project-card";
@@ -97,8 +98,9 @@ export function ProjectsView() {
 
         <div className="flex min-w-0 flex-col gap-8">
           {areas.length === 0 && unsorted.length === 0 && !addingArea && (
-            <div className="py-10 text-center">
-              <div className="text-[15px] font-medium">No areas yet</div>
+            <div className="flex flex-col items-center pb-10 text-center">
+              <KiwiBuilding size={148} />
+              <div className="mt-1 text-[15px] font-medium">No areas yet</div>
               <p className="mx-auto mt-1 max-w-[320px] text-[14px] text-ink-3">
                 Areas are the big buckets of your life, like School, Work or Health. Projects live inside them.
               </p>

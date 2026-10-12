@@ -5,6 +5,7 @@ import type { WidgetSize } from "@/lib/widgets";
 import { progressOf } from "@/lib/projects";
 import { Eyebrow, useFitCount } from "@/components/ui/primitives";
 import { IconPlus } from "@/components/ui/icons";
+import { KiwiBuilding } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { Ring } from "../habits/ring";
 import { Emoji } from "./project-bits";
@@ -89,9 +90,12 @@ export function ProjectsWidget({ size, widgetId }: { size: WidgetSize; widgetId:
       </div>
       <div ref={listRef} className="mt-1.5 min-h-0 flex-1 overflow-hidden">
         {rows.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="text-[15px] font-medium">No active projects</div>
-            <div className="mt-0.5 text-[13px] text-ink-3">Group your work into areas like School or Health.</div>
+          <div className={`flex h-full items-center justify-center ${size === "l" ? "flex-col gap-1 text-center" : "gap-3"}`}>
+            <KiwiBuilding size={size === "l" ? 132 : 80} className="shrink-0" />
+            <div>
+              <div className="text-[15px] font-medium">No active projects</div>
+              <div className="mt-0.5 text-[13px] text-ink-3">Group your work into areas like School or Health.</div>
+            </div>
           </div>
         ) : (
           <ul className="flex flex-col">
