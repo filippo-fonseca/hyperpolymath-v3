@@ -1,19 +1,19 @@
 const STEPS = [
   {
-    title: "Tell Kiwi in plain words.",
-    body: "In Grok Bot's chat, by voice or from your phone. No forms, no syntax.",
+    title: "You message Kiwi",
+    body: "Type or talk to it in Grok Bot, on your laptop or your phone. \u201cfinished laundry\u201d is a complete instruction.",
   },
   {
-    title: "The team acts through MCP.",
-    body: "Kiwi and its teammates call Hyperpolymath's MCP tools, filing each thing under the right project.",
+    title: "A bot calls the MCP tools",
+    body: "Kiwi, or whichever bot owns the job, calls Hyperpolymath's tools to add the task or move the event, and files it under a project if one fits.",
   },
   {
-    title: "The screen updates at once.",
-    body: "Every change, yours or a bot's, lands in an activity log with a Revert button.",
+    title: "The dashboard updates",
+    body: "Usually within a second. The change also goes into the activity log with a Revert button, whether you made it or a bot did.",
   },
   {
-    title: "It comes back when it matters.",
-    body: "Reminders return through Kiwi until they're done, and routines publish to widgets only when there's something new.",
+    title: "Reminders come back through Kiwi",
+    body: "The app checks for due reminders every five minutes and Kiwi messages you. Reply \u201cdone\u201d and they stop.",
   },
 ];
 

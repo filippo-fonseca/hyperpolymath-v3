@@ -39,7 +39,7 @@ function YouNode() {
       </svg>
       <div>
         <p className="text-[15px] font-semibold">You</p>
-        <p className="mt-0.5 text-[13px] leading-snug text-ink-2">Chat, voice or phone, in plain words.</p>
+        <p className="mt-0.5 text-[13px] leading-snug text-ink-2">Type or talk to Kiwi, on any device.</p>
       </div>
     </div>
   );
@@ -76,7 +76,7 @@ function GrokBotNode() {
         <KiwiBlob size={38} title="Kiwi" />
         <div className="min-w-0">
           <p className="text-[15px] font-semibold">Kiwi</p>
-          <p className="text-[13px] text-ink-2">Coordinator. Talks to you, runs the team.</p>
+          <p className="text-[13px] text-ink-2">Talks to you and hands jobs to the other bots.</p>
         </div>
       </div>
       <ul className="ml-[18px] mt-1.5">
@@ -113,7 +113,7 @@ function McpNode() {
   return (
     <div className={`${box} p-4 lg:p-5`}>
       <Caption>Hyperpolymath MCP</Caption>
-      <p className="mt-2 text-[15px] font-semibold">One source of truth</p>
+      <p className="mt-2 text-[15px] font-semibold">One database for every bot</p>
       <ul className="mt-3 flex flex-wrap gap-1.5">
         {TOOLS.map((t) => (
           <li key={t} className="rounded-full border border-ink/15 px-2.5 py-1 text-[12px] text-ink-2">
@@ -121,7 +121,7 @@ function McpNode() {
           </li>
         ))}
       </ul>
-      <p className="mt-3 font-mono text-[11px] text-ink-3">every write logged, revertible</p>
+      <p className="mt-3 font-mono text-[11px] text-ink-3">every write is logged and revertible</p>
     </div>
   );
 }
@@ -153,7 +153,7 @@ function DashboardNode() {
           <span className="block h-1.5 w-1/2 rounded-full bg-gray-200" />
         </div>
       </div>
-      <p className="mt-3 text-[13px] leading-snug text-ink-2">Updates the moment a bot acts.</p>
+      <p className="mt-3 text-[13px] leading-snug text-ink-2">Shows a bot&apos;s change within a second.</p>
     </div>
   );
 }
