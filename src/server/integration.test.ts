@@ -144,6 +144,10 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     await publishWidget(ctx, "slack", { sections: [{ title: "#general", items: [{ text: "Standup moved" }] }] });
     await publishWidget(ctx, w.id, { summary: "Quiet night", sections: [] });
     expect(await widgetHistory(ctx, w.id)).toHaveLength(2);
+    // Republishing identical content stays quiet: no new history.
+    const again = await publishWidget(ctx, w.id, { sections: [], summary: "Quiet night" });
+    expect(again.changed).toBe(false);
+    expect(await widgetHistory(ctx, w.id)).toHaveLength(2);
   });
 
   it("routines: register, pause from the app, and runs respect it", async () => {

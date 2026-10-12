@@ -160,6 +160,18 @@ export async function updateWidget(
   return after;
 }
 
+/** JSON with sorted keys, so equal payloads compare equal regardless of key order. */
+function stableJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableJson).join(",")}]`;
+  if (v && typeof v === "object") {
+    return `{${Object.keys(v as object)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stableJson((v as Record<string, unknown>)[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(v);
+}
+
 async function snapshot(ctx: Ctx, widgetId: string, payload: unknown) {
   await ctx.db.from("widget_snapshots").insert({
     user_id: ctx.userId,
@@ -176,6 +188,12 @@ export async function publishWidget(ctx: Ctx, idOrTitle: string, payload: unknow
   const parsed = payloadSchemas[before.kind].safeParse(payload);
   if (!parsed.success) {
     throw new AppError(`Payload doesn't match kind "${before.kind}": ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  }
+  // Same content as last time: refresh the timestamp (it isn't stale) but
+  // keep history and the activity log quiet.
+  if (before.published_at && stableJson(before.payload) === stableJson(parsed.data)) {
+    await ctx.db.from("widgets").update({ published_at: ctx.now.toISOString() }).eq("id", before.id).eq("user_id", ctx.userId);
+    return { widget: before.title, published_at: ctx.now.toISOString(), changed: false };
   }
   const after = must(
     await ctx.db
@@ -195,7 +213,7 @@ export async function publishWidget(ctx: Ctx, idOrTitle: string, payload: unknow
     after,
     summary: `Published to "${before.title}"`,
   });
-  return { widget: after.title, published_at: after.published_at };
+  return { widget: after.title, published_at: after.published_at, changed: true };
 }
 
 export async function removeWidget(ctx: Ctx, idOrTitle: string) {
