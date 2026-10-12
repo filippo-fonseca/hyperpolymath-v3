@@ -4,6 +4,7 @@ import type { Habit } from "@/lib/dashboard-types";
 import type { WidgetSize } from "@/lib/widgets";
 import { WEEKDAY_LETTERS } from "@/lib/format";
 import { Eyebrow, stop } from "@/components/ui/primitives";
+import { KiwiWatering } from "@/components/illustrations";
 import { Ring } from "./ring";
 import { useHabits } from "./use-habits";
 
@@ -18,10 +19,17 @@ export function HabitsWidget({ size }: { size: WidgetSize }) {
     return (
       <div className="flex h-full flex-col">
         <Eyebrow>Habits</Eyebrow>
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <Ring size={size === "s" ? 64 : 72} stroke={8} value={0} />
-          <div className="mt-2 text-[13px] text-ink-3">Tap to add your first habit</div>
-        </div>
+        {size === "s" ? (
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <Ring size={64} stroke={8} value={0} />
+            <div className="mt-2 text-[13px] text-ink-3">Tap to add your first habit</div>
+          </div>
+        ) : (
+          <div className={`flex flex-1 items-center justify-center ${size === "l" ? "flex-col gap-1 text-center" : "gap-3"}`}>
+            <KiwiWatering size={size === "l" ? 132 : 84} className="shrink-0" />
+            <div className="text-[13px] text-ink-3">Tap to add your first habit</div>
+          </div>
+        )}
       </div>
     );
   }

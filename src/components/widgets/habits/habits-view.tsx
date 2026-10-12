@@ -7,6 +7,7 @@ import { createHabitAction, updateHabitAction } from "@/app/actions/habits";
 import { Button, IconButton, Segmented, WeekdayPicker, fieldClass } from "@/components/ui/primitives";
 import { IconPencil, IconPlus } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { KiwiWatering } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { Ring } from "./ring";
 import { useHabits } from "./use-habits";
@@ -50,8 +51,9 @@ export function HabitsView() {
       />
       {adding && <HabitForm onDone={() => setAdding(false)} />}
       {habits.length === 0 && !adding && (
-        <div className="py-12 text-center">
-          <div className="text-[15px] font-medium">No habits yet</div>
+        <div className="flex flex-col items-center pb-10 text-center">
+          <KiwiWatering size={148} />
+          <div className="mt-1 text-[15px] font-medium">No habits yet</div>
           <p className="mt-1 text-[14px] text-ink-3">Add one, then tap its ring to log progress in quarters to done.</p>
         </div>
       )}
