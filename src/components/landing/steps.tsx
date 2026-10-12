@@ -12,7 +12,7 @@ const STEPS = [
     body: "Usually within a second. The change also goes into the activity log with a Revert button, whether you made it or a bot did.",
   },
   {
-    title: "Reminders come back through Kiwi",
+    title: "Kiwi nags you",
     body: "The app checks for due reminders every five minutes and Kiwi messages you. Reply \u201cdone\u201d and they stop.",
   },
 ];
