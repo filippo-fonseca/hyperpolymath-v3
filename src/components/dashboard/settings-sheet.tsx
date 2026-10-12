@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { settingsOverviewAction, type SettingsOverview } from "@/app/actions/status";
 import { Sheet, useMediaQuery } from "@/components/ui/primitives";
-import { IconCalendar, IconChevronLeft, IconChevronRight, IconGlobe, IconKey, IconMail } from "@/components/ui/icons";
+import { IconCalendar, IconChevronLeft, IconChevronRight, IconGlobe, IconKey, IconMail, IconSparkle } from "@/components/ui/icons";
 import type { SectionId, SectionProps } from "@/components/settings/shared";
+import { SetupSection } from "@/components/settings/setup";
 import { AccountSection } from "@/components/settings/account";
 import { PreferencesSection } from "@/components/settings/preferences";
 import { GrokBotSection } from "@/components/settings/grokbot";
@@ -22,6 +23,7 @@ type SectionDef = {
 };
 
 const SECTIONS: SectionDef[] = [
+  { id: "setup", label: "Setup", icon: IconSparkle, Body: SetupSection },
   { id: "account", label: "Account", icon: IconMail, Body: AccountSection },
   { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
   { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
@@ -74,20 +76,26 @@ function SettingsBody({
 }) {
   const { run } = useDashboard();
   const [overview, setOverview] = useState<SettingsOverview | null>(null);
+  const [overviewFailed, setOverviewFailed] = useState(false);
   const [version, setVersion] = useState(0);
   const pendingFocus = useRef<string | null>(null);
 
   useEffect(() => {
     let live = true;
     void run(settingsOverviewAction(), { quiet: true }).then((o) => {
-      if (live && o) setOverview(o);
+      if (!live) return;
+      if (o) setOverview(o);
+      setOverviewFailed(!o);
     });
     return () => {
       live = false;
     };
   }, [run, version]);
 
-  const reloadOverview = useCallback(() => setVersion((v) => v + 1), []);
+  const reloadOverview = useCallback(() => {
+    setOverviewFailed(false);
+    setVersion((v) => v + 1);
+  }, []);
 
   const go = useCallback(
     (id: SectionId, focusId?: string) => {
@@ -110,11 +118,18 @@ function SettingsBody({
     return () => window.clearTimeout(t);
   }, [section]);
 
-  const props: SectionProps = { overview, reloadOverview, go };
+  const props: SectionProps = { overview, overviewFailed, reloadOverview, go };
   const active = SECTIONS.find((s) => s.id === section) ?? (desktop ? SECTIONS[0] : null);
 
   if (!desktop) {
-    if (!active) return <PhoneList go={go} />;
+    if (!active) {
+      return (
+        <div className="flex flex-col gap-6 pb-3">
+          <SetupSection {...props} />
+          <PhoneList go={go} />
+        </div>
+      );
+    }
     return (
       <div className="pb-3">
         <h3 id={HEADING_ID} tabIndex={-1} className="sr-only">
@@ -165,9 +180,9 @@ function SettingsBody({
 
 function PhoneList({ go }: { go: (id: SectionId) => void }) {
   return (
-    <nav aria-label="Settings sections" className="pb-3">
+    <nav aria-label="Settings sections">
       <ul className="overflow-hidden rounded-[16px] bg-gray-50 shadow-ring">
-        {SECTIONS.map((s, i) => (
+        {SECTIONS.filter((s) => s.id !== "setup").map((s, i) => (
           <li key={s.id} className={i ? "border-t border-gray-150" : ""}>
             <button type="button" onClick={() => go(s.id)} className="flex min-h-12 w-full items-center gap-3 px-3.5 text-left transition active:bg-gray-150">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-white text-ink-2 shadow-ring">
