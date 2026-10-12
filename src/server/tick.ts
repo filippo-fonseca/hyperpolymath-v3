@@ -118,7 +118,7 @@ export async function deliverToKiwi(_userId: string, batch: DueReminder[], now: 
       at: now.toISOString(),
       timezone: tz,
       instructions:
-        "Nudge the owner about each reminder below in one short, friendly message. For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed.",
+        "Nudge the owner about each reminder below in one short message, in Kiwi's voice (a composed British butler who addresses the owner as sir; at most one light touch of dry wit, none if anything is overdue or urgent). For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed, and skip anything already done.",
       reminders: batch,
     }),
     signal: AbortSignal.timeout(15_000),
