@@ -17,14 +17,15 @@ export function Hero() {
         </div>
 
         <h1
-          className="landing-rise mt-10 text-balance text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[64px]"
+          className="landing-rise mt-10 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
           style={rise(90)}
         >
-          Your life, run by a team of Grok&nbsp;Bots.
+          A personal <span className="whitespace-nowrap">life-OS</span> for people who refuse to specialize.
         </h1>
 
         <p className="landing-rise mt-6 max-w-[560px] text-pretty text-[17px] leading-relaxed text-ink-2 sm:text-[19px]" style={rise(180)}>
-          A calm, one-screen dashboard for tasks, calendar, habits, projects and captures, operated by AI teammates you talk to.
+          A one-screen dashboard for your tasks, calendar, habits, projects and notes that you mostly run by talking to
+          Kiwi and the other bots you keep in Grok Bot.
         </p>
 
         <div className="landing-rise mt-10 flex flex-wrap items-center justify-center gap-3" style={rise(270)}>
@@ -39,7 +40,7 @@ export function Hero() {
             href="#how"
             className="group inline-flex h-12 items-center gap-1.5 rounded-full px-5 text-[15px] font-medium text-ink shadow-ring transition-colors hover:bg-gray-100"
           >
-            How it works
+            See how it&apos;s wired
             <IconChevronDown size={16} className="text-ink-3 transition-transform duration-300 ease-out group-hover:translate-y-0.5" />
           </a>
         </div>

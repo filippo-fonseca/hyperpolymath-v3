@@ -8,7 +8,7 @@ import { Landing } from "@/components/landing/landing";
 export const metadata: Metadata = {
   title: { absolute: "Hyperpolymath" },
   description:
-    "A calm, one-screen dashboard for tasks, calendar, habits, projects and captures, run by a team of Grok Bots over MCP.",
+    "A one-screen dashboard for tasks, calendar, habits, projects and notes. You mostly run it by messaging Kiwi and a few other Grok Bot teammates, which edit it over MCP.",
 };
 
 export default function WelcomePage() {
