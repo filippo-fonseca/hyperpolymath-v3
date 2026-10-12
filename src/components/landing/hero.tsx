@@ -4,7 +4,7 @@ import { Logotype } from "@/components/ui/brand";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { KiwiBuilding, KiwiReading, KiwiStargazing, KiwiTeam, KiwiWatering } from "@/components/illustrations";
 import { IconArrowRight, IconChevronDown } from "@/components/ui/icons";
-import { AuthorPill } from "./credits";
+import { AuthorPill, SourceLink } from "./credits";
 
 const rise = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
@@ -60,6 +60,7 @@ export function Hero() {
 
         <div className="landing-rise mt-6 flex flex-wrap items-center justify-center gap-2" style={rise(320)}>
           <AuthorPill />
+          <SourceLink />
         </div>
       </div>
 
