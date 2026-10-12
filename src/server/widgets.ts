@@ -1,6 +1,7 @@
 import "server-only";
 import { AppError, asJson, must, type Ctx, type DB, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
+import { recordPublish } from "./routines";
 import { isCustomKind, normalizeWidgetIcon, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
 
 export type Widget = Row<"widgets">;
@@ -193,6 +194,7 @@ export async function publishWidget(ctx: Ctx, idOrTitle: string, payload: unknow
   // keep history and the activity log quiet.
   if (before.published_at && stableJson(before.payload) === stableJson(parsed.data)) {
     await ctx.db.from("widgets").update({ published_at: ctx.now.toISOString() }).eq("id", before.id).eq("user_id", ctx.userId);
+    await recordPublish(ctx, before, false);
     return { widget: before.title, published_at: ctx.now.toISOString(), changed: false };
   }
   const after = must(
@@ -213,6 +215,7 @@ export async function publishWidget(ctx: Ctx, idOrTitle: string, payload: unknow
     after,
     summary: `Published to "${before.title}"`,
   });
+  await recordPublish(ctx, before, true);
   return { widget: after.title, published_at: after.published_at, changed: true };
 }
 

@@ -89,7 +89,20 @@ export async function registerRoutine(ctx: Ctx, input: RoutineInput & { bot?: st
     .ilike("name", escapeLike(name))
     .is("deleted_at", null)
     .maybeSingle();
-  if (existing) return updateRoutine(ctx, existing.id, { ...input, name });
+  if (existing) return updateRoutine(ctx, existing.id, { ...input, name }, { source: "registered" });
+  // A routine the app already inferred from this widget's publishes: adopt it.
+  if (widget_id) {
+    const { data: inferred } = await ctx.db
+      .from("routines")
+      .select()
+      .eq("user_id", ctx.userId)
+      .eq("widget_id", widget_id)
+      .eq("source", "inferred")
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (inferred) return updateRoutine(ctx, inferred.id, { ...input, name }, { source: "registered", bot_id: botId });
+  }
 
   const routine = must(
     await ctx.db
@@ -119,9 +132,14 @@ export async function registerRoutine(ctx: Ctx, input: RoutineInput & { bot?: st
   return routine;
 }
 
-export async function updateRoutine(ctx: Ctx, idOrName: string, input: Partial<RoutineInput>) {
+export async function updateRoutine(
+  ctx: Ctx,
+  idOrName: string,
+  input: Partial<RoutineInput>,
+  internal: { source?: "registered" | "inferred"; bot_id?: string } = {},
+) {
   const before = await findRoutine(ctx, idOrName);
-  const values: Update<"routines"> = {};
+  const values: Update<"routines"> = { ...internal };
   if (input.name !== undefined) values.name = input.name.trim();
   if (input.description !== undefined) values.description = input.description;
   if (input.schedule !== undefined) values.schedule = input.schedule;
@@ -174,7 +192,15 @@ export async function removeRoutine(ctx: Ctx, idOrName: string) {
  * the routine in the app; the bot must then stop.
  */
 export async function startRun(ctx: Ctx, idOrName: string) {
-  const routine = await findRoutine(ctx, idOrName);
+  let routine: Routine;
+  try {
+    routine = await findRoutine(ctx, idOrName);
+  } catch (e) {
+    // First check-in from a routine nobody registered: register it now so it
+    // shows up in the app.
+    if (!(e instanceof AppError && e.code === "not_found" && ctx.actor.kind === "bot")) throw e;
+    routine = await registerRoutine(ctx, { name: idOrName });
+  }
   if (!routine.enabled) {
     await ctx.db.from("routine_runs").insert({
       user_id: ctx.userId,
@@ -258,4 +284,79 @@ export async function listRuns(ctx: Ctx, routineId: string, limit = 20) {
       .limit(limit),
     "routine runs",
   );
+}
+
+const RUN_GAP_MS = 20 * 60_000;
+
+/**
+ * Called when a bot publishes to a widget. Makes sure some routine owns the
+ * widget (inferring one if the bot never registered it), and records the
+ * publish as a run unless the bot already reported a run in the last few
+ * minutes.
+ */
+export async function recordPublish(ctx: Ctx, widget: { id: string; title: string }, changed: boolean) {
+  if (ctx.actor.kind !== "bot") return;
+  const botId = ctx.actor.botId;
+  let { data: routine } = await ctx.db
+    .from("routines")
+    .select()
+    .eq("user_id", ctx.userId)
+    .eq("widget_id", widget.id)
+    .is("deleted_at", null)
+    .order("source", { ascending: false }) // prefer registered over inferred
+    .limit(1)
+    .maybeSingle();
+  if (!routine) {
+    // Link a same-named routine of this bot if there is one, else infer a new one.
+    const { data: named } = await ctx.db
+      .from("routines")
+      .select()
+      .eq("user_id", ctx.userId)
+      .eq("bot_id", botId)
+      .ilike("name", escapeLike(widget.title))
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (named) {
+      routine = must(
+        await ctx.db.from("routines").update({ widget_id: widget.id }).eq("id", named.id).select().single(),
+        "link routine",
+      );
+    } else {
+      routine = must(
+        await ctx.db
+          .from("routines")
+          .insert({
+            user_id: ctx.userId,
+            bot_id: botId,
+            name: widget.title,
+            description: "Found from its widget updates. Ask the bot to register it to add the schedule and details.",
+            widget_id: widget.id,
+            source: "inferred",
+          })
+          .select()
+          .single(),
+        "infer routine",
+      );
+    }
+  }
+  const { data: recent } = await ctx.db
+    .from("routine_runs")
+    .select("id")
+    .eq("routine_id", routine.id)
+    .gte("started_at", new Date(ctx.now.getTime() - RUN_GAP_MS).toISOString())
+    .limit(1);
+  if (recent?.length) return;
+  const summary = changed ? `Updated the "${widget.title}" widget` : "Nothing new";
+  await ctx.db.from("routine_runs").insert({
+    user_id: ctx.userId,
+    routine_id: routine.id,
+    status: "ok",
+    started_at: ctx.now.toISOString(),
+    finished_at: ctx.now.toISOString(),
+    summary,
+  });
+  await ctx.db
+    .from("routines")
+    .update({ last_run_at: ctx.now.toISOString(), last_status: "ok", last_summary: summary, run_count: routine.run_count + 1 })
+    .eq("id", routine.id);
 }
