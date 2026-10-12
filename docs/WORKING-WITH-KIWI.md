@@ -83,6 +83,10 @@ Ask for it explicitly: *"...and show it on Hyperpolymath."* The bot creates one 
 
 Widgets can have an icon: an emoji, an https image, or the domain of the site the routine covers ("slack.com" uses Slack's favicon). Bots set it with `create_widget` / `update_widget`; you can change it in the widget's settings.
 
+## Naming your assistant
+
+Kiwi is the default name because kiwis are cute. Call yours whatever you want: in **Settings → Assistant** pick which bot is the main one and rename it. If you rename a bot in Grok Bot instead, it notices its registered name no longer matches and calls `rename_bot` itself on its next message, so its history, routines and widgets carry over. Everything in the app and in the bots' instructions follows the new name.
+
 ## Limits worth knowing
 
 - **Reminder delivery needs the relay.** Until `KIWI_WEBHOOK_URL` and `KIWI_WEBHOOK_TOKEN` are set, reminders are saved and shown in the app but not delivered. They retry every 5 minutes and fire once the relay works.
