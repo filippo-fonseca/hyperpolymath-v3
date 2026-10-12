@@ -624,6 +624,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .landing-flow {
   animation: landing-flow-y 3.6s var(--ease-out) infinite;
+  animation-delay: var(--flow-delay, 0s);
 }
 @media (min-width: 1024px) {
   .landing-flow {
@@ -637,16 +638,89 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* Landing scroll reveals (reveal-observer.tsx): fade and a 12px rise, once.
-   Only hidden after the observer arms the page, and never with reduced motion. */
+   Only hidden after the observer arms the page, and never with reduced motion.
+   Transitions apply only on the way in, so arming hides things instantly. */
 @media (prefers-reduced-motion: no-preference) {
-  .reveal-armed [data-reveal] {
-    transition:
-      opacity 700ms var(--ease-out),
-      transform 700ms var(--ease-out);
+  .reveal-armed [data-reveal][data-shown] {
+    transition-property: opacity, transform;
+    transition-duration: 700ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     transition-delay: var(--reveal-delay, 0ms);
   }
   .reveal-armed [data-reveal]:not([data-shown]) {
     opacity: 0;
     transform: translateY(12px);
+  }
+}
+
+/* Diagram draw-in: once the diagram is revealed, its boxes appear left to
+   right (top to bottom on phones) and each connector draws itself between
+   them, then the arrowheads and label settle in and the dots start running. */
+@media (prefers-reduced-motion: no-preference) {
+  .diagram-flow > :nth-child(1) {
+    --i: 0;
+  }
+  .diagram-flow > :nth-child(2) {
+    --i: 1;
+  }
+  .diagram-flow > :nth-child(3) {
+    --i: 2;
+  }
+  .diagram-flow > :nth-child(4) {
+    --i: 3;
+  }
+  .diagram-flow > :nth-child(5) {
+    --i: 4;
+  }
+  .diagram-flow > :nth-child(6) {
+    --i: 5;
+  }
+  .diagram-flow > :nth-child(7) {
+    --i: 6;
+  }
+  .reveal-armed [data-shown] .diagram-flow > *,
+  .reveal-armed [data-shown] .diagram-line,
+  .reveal-armed [data-shown] .diagram-tip,
+  .reveal-armed [data-shown] .diagram-label {
+    transition-property: opacity, transform;
+    transition-duration: 520ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--i) * 190ms + 150ms);
+  }
+  .reveal-armed [data-shown] .diagram-line {
+    transition-duration: 420ms;
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    transform-origin: 50% 0%;
+  }
+  .reveal-armed [data-shown] .diagram-tip,
+  .reveal-armed [data-shown] .diagram-label {
+    transition-delay: calc(var(--i) * 190ms + 500ms);
+  }
+  .reveal-armed .diagram-flow .landing-flow {
+    animation-delay: calc(var(--flow-delay, 0s) + 1.6s);
+    animation-fill-mode: backwards;
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) .diagram-flow > :nth-child(odd) {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) .diagram-line {
+    transform: scaleY(0);
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) .diagram-tip,
+  .reveal-armed [data-reveal]:not([data-shown]) .diagram-label {
+    opacity: 0;
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) .landing-flow {
+    animation: none;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
+  .reveal-armed .diagram-line {
+    transform-origin: 0% 50%;
+  }
+  .reveal-armed [data-reveal]:not([data-shown]) .diagram-line {
+    transform: scaleX(0);
   }
 }

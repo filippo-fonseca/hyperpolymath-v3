@@ -12,7 +12,7 @@ const box = "relative rounded-[18px] border-[1.5px] border-ink bg-surface";
 export function Diagram() {
   return (
     <figure className="mx-auto w-full max-w-[420px] lg:max-w-none" aria-label="How a message flows from you to the dashboard">
-      <div className="flex flex-col items-stretch lg:grid lg:grid-cols-[minmax(0,0.78fr)_68px_minmax(0,1.5fr)_68px_minmax(0,1.2fr)_68px_minmax(0,0.95fr)] lg:items-center">
+      <div className="diagram-flow flex flex-col items-stretch lg:grid lg:grid-cols-[minmax(0,0.78fr)_68px_minmax(0,1.5fr)_68px_minmax(0,1.2fr)_68px_minmax(0,0.95fr)] lg:items-center">
         <YouNode />
         <Connector label="Plain words" index={0} />
         <GrokBotNode />
@@ -158,20 +158,22 @@ function DashboardNode() {
   );
 }
 
-/** A two-way link: arrowheads at both ends, a label, and a travelling dot. */
+/** A two-way link: arrowheads at both ends, a label, and a travelling dot.
+ * The line draws itself in when the diagram scrolls into view (globals.css). */
 function Connector({ label, index }: { label: string; index: number }) {
-  const delay: CSSProperties = { animationDelay: `${index * 0.9}s` };
+  const delay = { "--flow-delay": `${index * 0.9}s` } as CSSProperties;
   return (
     <div className="relative flex h-16 items-center justify-center lg:h-auto lg:self-stretch" aria-hidden>
-      <div className="relative h-full w-[1.5px] bg-ink lg:h-[1.5px] lg:w-full">
-        <Arrowhead className="-top-px left-1/2 -translate-x-1/2 -rotate-90 lg:left-0 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 lg:rotate-180" />
-        <Arrowhead className="-bottom-px left-1/2 -translate-x-1/2 rotate-90 lg:bottom-auto lg:left-auto lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 lg:rotate-0" />
+      <div className="relative h-full w-[1.5px] lg:h-[1.5px] lg:w-full">
+        <span className="diagram-line absolute inset-0 bg-ink" />
+        <Arrowhead className="diagram-tip -top-px left-1/2 -translate-x-1/2 -rotate-90 lg:left-0 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 lg:rotate-180" />
+        <Arrowhead className="diagram-tip -bottom-px left-1/2 -translate-x-1/2 rotate-90 lg:bottom-auto lg:left-auto lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 lg:rotate-0" />
         <span
           className="landing-flow absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_0_3px_rgb(16_132_254/0.15)] lg:left-0 lg:top-1/2"
           style={delay}
         />
       </div>
-      <span className="absolute left-1/2 top-1/2 ml-4 -translate-y-1/2 whitespace-nowrap text-[11px] font-medium text-ink-3 lg:left-1/2 lg:top-auto lg:bottom-1/2 lg:mb-2.5 lg:ml-0 lg:-translate-x-1/2 lg:translate-y-0 lg:whitespace-normal lg:text-center lg:leading-tight">
+      <span className="diagram-label absolute left-1/2 top-1/2 ml-4 -translate-y-1/2 whitespace-nowrap text-[11px] font-medium text-ink-3 lg:left-1/2 lg:top-auto lg:bottom-1/2 lg:mb-2.5 lg:ml-0 lg:-translate-x-1/2 lg:translate-y-0 lg:whitespace-normal lg:text-center lg:leading-tight">
         {label}
       </span>
     </div>
