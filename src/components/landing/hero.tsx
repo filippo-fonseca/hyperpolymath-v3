@@ -8,7 +8,7 @@ const rise = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
 export function Hero() {
   return (
-    <section className="relative px-4 pb-20 pt-[max(56px,env(safe-area-inset-top))] sm:pb-28 sm:pt-24">
+    <section className="relative px-4 pb-12 pt-[max(56px,env(safe-area-inset-top))] sm:pb-16 sm:pt-24">
       <Glow />
       <div className="relative mx-auto flex max-w-[760px] flex-col items-center text-center">
         <div className="landing-rise flex items-center gap-2.5" style={rise(0)}>

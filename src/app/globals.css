@@ -377,3 +377,49 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     scroll-behavior: smooth;
   }
 }
+
+/* Landing diagram: a blue dot runs down each connector on phones and across
+   it on wide screens, one connector after another. */
+@keyframes landing-flow-y {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  10%,
+  40% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+@keyframes landing-flow-x {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  10%,
+  40% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+.landing-flow {
+  animation: landing-flow-y 3.6s var(--ease-out) infinite;
+}
+@media (min-width: 1024px) {
+  .landing-flow {
+    animation-name: landing-flow-x;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-flow {
+    display: none;
+  }
+}
