@@ -3,6 +3,7 @@ import { HowItWorks } from "./how-it-works";
 import { Talk } from "./talk";
 import { Organized } from "./organized";
 import { Features } from "./features";
+import { Closing } from "./closing";
 import { Footer } from "./footer";
 
 // Public landing page, shown to signed-out visitors at `/`. Static: no session,
@@ -17,6 +18,7 @@ export function Landing() {
         <Talk />
         <Organized />
         <Features />
+        <Closing />
       </main>
       <Footer />
     </>
