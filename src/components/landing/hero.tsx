@@ -12,24 +12,24 @@ export function Hero() {
     <section className="relative px-4 pb-4 pt-[max(56px,env(safe-area-inset-top))] sm:pb-6 sm:pt-24">
       <Glow />
       <div className="relative mx-auto flex max-w-[760px] flex-col items-center text-center">
-        <div className="landing-rise flex items-center gap-2.5" style={rise(0)}>
-          <KiwiBlob size={40} title="Kiwi, the coordinator bot" />
-          <Logotype className="text-[26px] leading-none" />
+        <div className="landing-rise flex flex-col items-center" style={rise(0)}>
+          <div className="flex items-center gap-2.5">
+            <KiwiBlob size={40} title="Kiwi, the coordinator bot" />
+            <Logotype className="text-[26px] leading-none" />
+          </div>
+          <a
+            href="https://docs.x.ai/grok-bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-full bg-surface pl-1 pr-2.5 text-[12px] font-medium text-ink-2 shadow-ring transition-colors hover:text-ink"
+          >
+            <GrokBotMark />
+            Powered by Grok Bot
+          </a>
         </div>
 
-        <a
-          href="https://docs.x.ai/grok-bot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="landing-rise mt-9 inline-flex h-8 items-center gap-2 rounded-full bg-surface pl-1.5 pr-3 text-[13px] font-medium text-ink-2 shadow-ring transition-colors hover:text-ink"
-          style={rise(45)}
-        >
-          <GrokBotMark />
-          Powered by Grok Bot
-        </a>
-
         <h1
-          className="landing-rise mt-6 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
+          className="landing-rise mt-9 text-balance text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[60px]"
           style={rise(90)}
         >
           A personal <span className="whitespace-nowrap">life-OS</span> for people who refuse to specialize.
