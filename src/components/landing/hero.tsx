@@ -2,13 +2,14 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Logotype } from "@/components/ui/brand";
 import { KiwiBlob } from "@/components/ui/kiwi-blob";
+import { KiwiBuilding, KiwiReading, KiwiStargazing, KiwiTeam, KiwiWatering } from "@/components/illustrations";
 import { IconArrowRight, IconChevronDown } from "@/components/ui/icons";
 
 const rise = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
 
 export function Hero() {
   return (
-    <section className="relative px-4 pb-12 pt-[max(56px,env(safe-area-inset-top))] sm:pb-16 sm:pt-24">
+    <section className="relative px-4 pb-4 pt-[max(56px,env(safe-area-inset-top))] sm:pb-6 sm:pt-24">
       <Glow />
       <div className="relative mx-auto flex max-w-[760px] flex-col items-center text-center">
         <div className="landing-rise flex items-center gap-2.5" style={rise(0)}>
@@ -56,7 +57,39 @@ export function Hero() {
           </a>
         </div>
       </div>
+
+      <Scenes />
     </section>
+  );
+}
+
+// A row of Kiwi scenes under the buttons, one bot per pursuit, with the team in
+// the middle, ground lines aligned. Phones get only the team; tablets add the two nearest scenes.
+const scene = "h-full w-full";
+
+function Scenes() {
+  return (
+    <div
+      aria-hidden
+      className="landing-rise relative mx-auto mt-2 flex max-w-[1000px] items-end justify-center gap-3 sm:mt-4 lg:gap-6"
+      style={rise(360)}
+    >
+      <div className="mb-[18px] hidden h-[118px] w-[118px] lg:block">
+        <KiwiReading className={scene} />
+      </div>
+      <div className="mb-[14px] hidden h-[140px] w-[140px] sm:block">
+        <KiwiBuilding className={scene} />
+      </div>
+      <div className="h-[190px] w-[190px] sm:h-[210px] sm:w-[210px]">
+        <KiwiTeam className={scene} />
+      </div>
+      <div className="mb-[14px] hidden h-[140px] w-[140px] sm:block">
+        <KiwiWatering className={scene} />
+      </div>
+      <div className="mb-[18px] hidden h-[118px] w-[118px] lg:block">
+        <KiwiStargazing className={scene} />
+      </div>
+    </div>
   );
 }
 
