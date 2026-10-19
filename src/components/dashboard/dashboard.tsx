@@ -21,6 +21,7 @@ import { saveLayoutAction } from "@/app/actions/widgets";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { IconCopy, IconDots, IconGear } from "@/components/ui/icons";
 import { Menu } from "@/components/ui/menu";
+import { useMediaQuery } from "@/components/ui/primitives";
 import { longDate, weekdayName } from "@/lib/format";
 import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
 import { AppBar, FeatureStrip } from "./app-bar";
@@ -150,6 +151,18 @@ function Home({
   const [page, setPage] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Rows custom widgets need for their content (they never grow past their size).
+  const [fitRows, setFitRows] = useState<Record<string, number | null>>({});
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const setFit = useCallback(
+    (id: string, rows: number | null) => setFitRows((m) => (m[id] === rows ? m : { ...m, [id]: rows })),
+    [],
+  );
+  const maxRows = (w: LocalWidget) => (w.size === "l" ? 4 : w.size === "w" ? (desktop ? 3 : 4) : 2);
+  const rowsFor = (w: LocalWidget) => {
+    const need = isCustomKind(w.kind) ? fitRows[w.id] : null;
+    return need && need < maxRows(w) ? need : null;
+  };
   const scroller = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -297,6 +310,8 @@ function Home({
                       editing={editing}
                       expanded={expanded?.id === w.id}
                       removable={isCustomKind(w.kind)}
+                      rows={rowsFor(w)}
+                      span={rowsFor(w) ?? maxRows(w)}
                       onOpen={() => openWidget(w)}
                       onEdit={() => setSheetId(w.id)}
                       onLongPress={() => setEditing(true)}
@@ -309,6 +324,7 @@ function Home({
                           resize: (size) => resize(w.id, size),
                           settings: () => setSheetId(w.id),
                           editLayout: () => setEditing(true),
+                          fit: isCustomKind(w.kind) ? (rows) => setFit(w.id, rows) : undefined,
                         }}
                       >
                         <WidgetBody widget={w} size={w.size} />

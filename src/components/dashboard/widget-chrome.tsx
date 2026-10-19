@@ -19,6 +19,8 @@ type Frame = {
   resize: (s: WidgetSize) => void;
   settings: () => void;
   editLayout: () => void;
+  /** Custom widgets report the rows their content needs (null: the size's own). */
+  fit?: (rows: number | null) => void;
 };
 
 const FrameCtx = createContext<Frame | null>(null);
@@ -102,7 +104,9 @@ export function WidgetHeader({
     <div className={`flex h-7 min-w-0 shrink-0 items-center gap-2 ${className}`}>
       {icon ?? (w && <KindIcon widget={w} size={15} />)}
       <span className="min-w-0 truncate text-[13px] font-semibold text-ink-2">{title ?? w?.title}</span>
-      <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1 text-[12px] font-medium tabular-nums text-gray-500">{meta}</span>
+      <span className="ml-auto flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[12px] font-medium tabular-nums text-gray-500">
+        {meta}
+      </span>
       {frame && (
         <span
           className="-mr-1.5 flex max-w-0 shrink-0 items-center overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-focus-within/card:max-w-[132px] group-focus-within/card:opacity-100 group-hover/card:max-w-[132px] group-hover/card:opacity-100 [@media(hover:none)]:max-w-[132px] [@media(hover:none)]:opacity-100"
