@@ -19,11 +19,15 @@ import type { CalendarData, DashboardData, WidgetRow } from "@/lib/dashboard-typ
 import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { saveLayoutAction } from "@/app/actions/widgets";
 import { ToastProvider, useToast } from "@/components/ui/toast";
-import { Logotype, Monogram } from "@/components/ui/brand";
-import { IconGear } from "@/components/ui/icons";
-import { IconButton } from "@/components/ui/primitives";
+import { IconCopy, IconDots, IconGear } from "@/components/ui/icons";
+import { Menu } from "@/components/ui/menu";
 import { longDate, weekdayName } from "@/lib/format";
 import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
+import { AppBar, FeatureStrip } from "./app-bar";
+import { TodaySummary } from "./today-summary";
+import { viewKeyFor, widgetForView } from "./features";
+import { useView } from "./use-view";
+import { CommandPalette } from "./command-palette";
 import { CardSurface, WidgetCard } from "./widget-card";
 import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
@@ -31,7 +35,7 @@ import { SettingsSheet } from "./settings-sheet";
 import { RealtimeRefresh } from "./realtime";
 import { AddProjectsOffer } from "./add-projects-offer";
 import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
-import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
+import { WidgetBody, WidgetExpanded, isWideView } from "@/components/widgets/registry";
 import { TeammatesView } from "@/components/teammates/teammates-view";
 
 type LocalWidget = WidgetRow & { size: WidgetSize };
@@ -41,14 +45,19 @@ function toLocal(ws: WidgetRow[]): LocalWidget[] {
 }
 
 export function Dashboard({ data, calendar }: { data: DashboardData; calendar: Promise<CalendarData> }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { view, openView, closeView } = useView();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [teammates, setTeammates] = useState<{ focus: TeammatesFocus; key: number } | null>(null);
-  const open = useCallback((id: string) => {
-    setTeammates(null);
-    setExpandedId(id);
-  }, []);
+  const open = useCallback(
+    (id: string) => {
+      const w = data.widgets.find((x) => x.id === id);
+      if (!w) return;
+      setTeammates(null);
+      openView(viewKeyFor(w));
+    },
+    [data.widgets, openView],
+  );
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const openTeammates = useCallback((focus: TeammatesFocus = {}) => {
     setSettingsOpen(false);
@@ -68,8 +77,9 @@ export function Dashboard({ data, calendar }: { data: DashboardData; calendar: P
         openWidgetSettings={openWidgetSettings}
       >
         <Home
-          expandedId={expandedId}
-          setExpandedId={setExpandedId}
+          view={view}
+          openView={openView}
+          closeView={closeView}
           sheetId={sheetId}
           setSheetId={setSheetId}
           overlayOpen={!!teammates}
@@ -116,26 +126,32 @@ function greeting(nowMs: number, tz: string) {
 }
 
 function Home({
-  expandedId,
-  setExpandedId,
+  view,
+  openView,
+  closeView,
   sheetId,
   setSheetId,
   overlayOpen,
 }: {
-  expandedId: string | null;
-  setExpandedId: (id: string | null) => void;
+  view: string | null;
+  openView: (key: string) => void;
+  closeView: () => void;
   sheetId: string | null;
   setSheetId: (id: string | null) => void;
   overlayOpen: boolean;
 }) {
-  const { data, nowMs, run, openSettings } = useDashboard();
+  const { data, nowMs, run, openSettings, openWidgetSettings } = useDashboard();
   const [widgets, setWidgets] = useState<LocalWidget[]>(() => toLocal(data.widgets));
   const [serverWidgets, setServerWidgets] = useState(data.widgets);
   const [editing, setEditing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const openSearch = useCallback(() => setSearchOpen(true), []);
 
   // Adopt fresh server data (realtime refreshes) unless mid-drag.
   if (data.widgets !== serverWidgets && !dragId) {
@@ -145,7 +161,8 @@ function Home({
 
   const pages = useMemo(() => groupPages(widgets), [widgets]);
   const pageCount = Math.max(1, pages.length);
-  const expanded = widgets.find((w) => w.id === expandedId) ?? null;
+  const expanded = widgetForView(widgets, view);
+  const openWidget = useCallback((w: WidgetRow) => openView(viewKeyFor(w)), [openView]);
   const sheetWidget = widgets.find((w) => w.id === sheetId) ?? null;
   const dragWidget = widgets.find((w) => w.id === dragId) ?? null;
 
@@ -181,6 +198,30 @@ function Home({
     el?.scrollTo({ left: p * el.clientWidth, behavior: "smooth" });
   };
 
+  // Cmd/Ctrl+K anywhere, or "/" when not typing, opens search.
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const typing = (e.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable=true]");
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      } else if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+
+  // The app bar picks up a hairline once the page scrolls under it.
+  useEffect(() => {
+    const h = () => setScrolled(window.scrollY > 4);
+    h();
+    window.addEventListener("scroll", h, { passive: true });
+    return () => window.removeEventListener("scroll", h);
+  }, []);
+
   useEffect(() => {
     if (!editing) return;
     const h = (e: KeyboardEvent) => {
@@ -191,34 +232,35 @@ function Home({
   }, [editing, sheetId, addOpen, overlayOpen]);
 
   return (
-    <div className="mx-auto w-full max-w-[1168px] pb-32">
-      <header className="flex items-start justify-between px-4 pt-[max(18px,env(safe-area-inset-top))] sm:px-6 sm:pt-8">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-ink">
-            <Monogram size={24} className="min-[360px]:hidden" />
-            <Logotype className="text-[19px] leading-none max-[359px]:hidden" />
-          </div>
-          <div className="mt-7 text-[13px] font-semibold">
-            <span className="text-accent">{weekdayName(data.today)}</span>
-            <span className="text-gray-500">, {longDate(data.today)}</span>
-          </div>
-          <h1 className="mt-0.5 text-[30px] font-semibold leading-tight tracking-[-0.025em]">{greeting(nowMs, data.tz)}</h1>
-        </div>
-        <div className="flex items-center gap-1">
-          {!editing && (
+    <div className="min-h-dvh pb-32">
+      <AppBar
+        widgets={widgets}
+        current={null}
+        scrolled={scrolled}
+        onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onOpen={openWidget}
+        onSearch={openSearch}
+        onSettings={openSettings}
+        trailing={
+          !editing && (
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="h-8 rounded-full px-3 text-[13.5px] font-medium text-ink-2 transition hover:bg-gray-150 hover:text-ink"
+              className="h-9 rounded-full px-3 text-[13.5px] font-medium text-ink-2 transition hover:bg-gray-150 hover:text-ink"
             >
               Edit
             </button>
-          )}
-          <IconButton label="Settings" onClick={openSettings}>
-            <IconGear size={19} />
-          </IconButton>
+          )
+        }
+      />
+      <section className="mx-auto max-w-[1168px] px-4 pt-5 sm:px-6 sm:pt-8" aria-label="Today">
+        <div className="text-[13px] font-semibold">
+          <span className="text-accent">{weekdayName(data.today)}</span>
+          <span className="text-gray-500">, {longDate(data.today)}</span>
         </div>
-      </header>
+        <h1 className="mt-0.5 text-[30px] font-semibold leading-tight tracking-[-0.025em]">{greeting(nowMs, data.tz)}</h1>
+        <TodaySummary widgets={widgets} onOpen={openWidget} />
+      </section>
 
       <DndContext
         sensors={sensors}
@@ -230,7 +272,7 @@ function Home({
         <div
           ref={scroller}
           onScroll={onScroll}
-          className="no-scrollbar mt-6 flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+          className="no-scrollbar mx-auto mt-3 flex max-w-[1168px] snap-x snap-mandatory overflow-x-auto overscroll-x-contain sm:mt-5"
         >
           {(pages.length ? pages : [[]]).map((items, p) => (
             <section
@@ -247,9 +289,9 @@ function Home({
                       size={w.size}
                       index={i}
                       editing={editing}
-                      expanded={expandedId === w.id}
+                      expanded={expanded?.id === w.id}
                       removable={isCustomKind(w.kind)}
-                      onOpen={() => setExpandedId(w.id)}
+                      onOpen={() => openWidget(w)}
                       onEdit={() => setSheetId(w.id)}
                       onLongPress={() => setEditing(true)}
                     >
@@ -329,8 +371,43 @@ function Home({
           <ExpandedView
             key={expanded.id}
             id={expanded.id}
-            onClose={() => setExpandedId(null)}
+            onClose={closeView}
             escapeActive={!sheetId && !overlayOpen}
+            wide={isWideView(expanded)}
+            bar={(barScrolled) => (
+              <>
+                <AppBar
+                  widgets={widgets}
+                  current={expanded}
+                  scrolled={barScrolled}
+                  onHome={closeView}
+                  onOpen={openWidget}
+                  onSearch={openSearch}
+                  onSettings={openSettings}
+                  trailing={
+                    <Menu
+                      label="More"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-150"
+                      items={[
+                        {
+                          label: "Copy link",
+                          icon: <IconCopy size={15} />,
+                          onSelect: () => {
+                            void navigator.clipboard?.writeText(window.location.href).then(() => toast.show("Link copied"));
+                          },
+                        },
+                        { label: "Widget settings", icon: <IconGear size={15} />, onSelect: () => openWidgetSettings(expanded.id) },
+                      ]}
+                    >
+                      <IconDots size={19} />
+                    </Menu>
+                  }
+                />
+                <div className="mx-auto max-w-[1168px] px-4 pt-3 md:hidden">
+                  <FeatureStrip widgets={widgets} current={expanded} onHome={closeView} onOpen={openWidget} />
+                </div>
+              </>
+            )}
           >
             <WidgetExpanded widget={expanded} />
           </ExpandedView>
@@ -353,6 +430,17 @@ function Home({
         }}
       />
       <AddWidgetSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <CommandPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        widgets={widgets}
+        onHome={closeView}
+        onOpen={openWidget}
+        onEditLayout={() => {
+          closeView();
+          setEditing(true);
+        }}
+      />
     </div>
   );
 }

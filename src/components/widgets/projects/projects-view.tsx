@@ -79,7 +79,7 @@ export function ProjectsView() {
 
       <div className="flex flex-col gap-6 sm:grid sm:grid-cols-[188px_minmax(0,1fr)] sm:gap-8">
         {/* Area list: a filter column on desktop, wrapping pills on phones */}
-        <nav aria-label="Areas" className="flex flex-wrap gap-1.5 sm:sticky sm:top-0 sm:flex-col sm:flex-nowrap sm:gap-0.5 sm:self-start">
+        <nav aria-label="Areas" className="flex flex-wrap gap-1.5 sm:sticky sm:top-[76px] sm:flex-col sm:flex-nowrap sm:gap-0.5 sm:self-start">
           <AreaTab active={filter === ALL} onClick={() => setFilter(ALL)} label="All areas" count={activeCount} />
           {areas.map((a) => (
             <AreaTab

@@ -1,55 +1,60 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { CloseButton, useEscape, useMediaQuery, useScrollLock } from "@/components/ui/primitives";
+import { useEscape, useScrollLock } from "@/components/ui/primitives";
 
 /**
- * Full-screen view a widget morphs into (shared layoutId with its card).
+ * Full-page view a widget morphs into (shared layoutId with its card). It
+ * covers the dashboard, carries the app bar, and scrolls on its own.
  * Rendered inside AnimatePresence by the dashboard.
  */
 export function ExpandedView({
   id,
   onClose,
   escapeActive = true,
+  wide = false,
+  bar,
   children,
 }: {
   id: string;
   onClose: () => void;
   /** False while something is layered on top (a sheet, Teammates), so Esc closes only that. */
   escapeActive?: boolean;
+  /** Calendar-style views that want the full container width. */
+  wide?: boolean;
+  /** The app bar, given whether the page has scrolled. */
+  bar: (scrolled: boolean) => ReactNode;
   children: ReactNode;
 }) {
-  const desktop = useMediaQuery("(min-width: 640px)");
+  const [scrolled, setScrolled] = useState(false);
   useEscape(onClose, escapeActive);
   useScrollLock(true);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-6">
-      <motion.div
-        className="absolute inset-0 bg-[rgb(252_252_252/0.8)] backdrop-blur-[12px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0, transition: { duration: 0.24 } }}
-        transition={{ duration: 0.28 }}
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50" role="region" aria-label="Full view">
       <motion.div
         layoutId={`widget-${id}`}
         transition={{ type: "spring", duration: 0.38, bounce: 0 }}
-        role="dialog"
-        aria-modal="true"
-        className="relative flex h-full w-full flex-col overflow-hidden bg-surface shadow-lift sm:h-[min(880px,calc(100dvh-48px))] sm:max-w-[980px]"
-        style={{ borderRadius: desktop ? 28 : 0 }}
+        className="absolute inset-0 overflow-hidden bg-bg"
+        style={{ borderRadius: 0 }}
       >
-        <CloseButton onClick={onClose} className="absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-20 sm:right-5 sm:top-5" />
         <motion.div
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="h-full overflow-y-auto overscroll-contain"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.24 } }}
+          animate={{ opacity: 1, transition: { delay: 0.1, duration: 0.22 } }}
           exit={{ opacity: 0, transition: { duration: 0.1 } }}
+          onScroll={(e) => {
+            const s = e.currentTarget.scrollTop > 4;
+            if (s !== scrolled) setScrolled(s);
+          }}
         >
-          <div className="mx-auto w-full max-w-[860px] px-5 pb-16 pt-[max(20px,env(safe-area-inset-top))] sm:px-10 sm:pt-9">
+          {bar(scrolled)}
+          <div
+            className={`mx-auto w-full px-4 pb-[max(64px,env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-8 ${
+              wide ? "max-w-[1168px]" : "max-w-[960px]"
+            }`}
+          >
             {children}
           </div>
         </motion.div>
@@ -63,16 +68,18 @@ export function ExpandedHeader({
   eyebrow,
   title,
   aside,
+  className = "",
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   aside?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 pr-12">
+    <div className={`mb-6 flex flex-wrap items-end justify-between gap-3 ${className}`}>
       <div className="min-w-0">
         {eyebrow && <div className="mb-1 text-[13px] font-semibold text-gray-500">{eyebrow}</div>}
-        <h2 className="truncate text-[28px] font-bold leading-tight tracking-[-0.02em]">{title}</h2>
+        <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.025em]">{title}</h1>
       </div>
       {aside}
     </div>
