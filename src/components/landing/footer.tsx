@@ -15,7 +15,7 @@ export function Footer() {
       <div className="mx-auto flex max-w-[1080px] flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Logotype className="text-[20px] leading-none" />
-          <p className="mt-3 text-[13px] text-ink-3">A single-owner app.</p>
+          <p className="mt-3 text-[13px] text-ink-3">Every account is private.</p>
           <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
             <AuthorBlock compact />
             <SourceLink quiet />
@@ -29,6 +29,9 @@ export function Footer() {
           ))}
           <Link href="/login" className={link}>
             Sign in
+          </Link>
+          <Link href="/login?mode=sign_up" className={link}>
+            Create an account
           </Link>
         </nav>
       </div>
