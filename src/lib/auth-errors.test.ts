@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   asLoginError,
   isRateLimited,
+  passwordProblem,
   reasonFromAuthError,
   reasonFromParams,
   retryAfterSeconds,
@@ -70,5 +71,16 @@ describe("safeNextPath", () => {
   it("never loops back into the auth routes", () => {
     expect(safeNextPath("/login")).toBe("/");
     expect(safeNextPath("/auth/callback?code=1")).toBe("/");
+  });
+});
+
+describe("passwordProblem", () => {
+  it("wants at least 8 characters", () => {
+    expect(passwordProblem("short")).toMatch(/at least 8/);
+    expect(passwordProblem("long enough")).toBeNull();
+  });
+  it("rejects blank and over-long passwords", () => {
+    expect(passwordProblem("        ")).toMatch(/spaces/);
+    expect(passwordProblem("é".repeat(40))).toMatch(/too long/);
   });
 });
