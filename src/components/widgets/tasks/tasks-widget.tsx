@@ -188,14 +188,22 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
 
 type LaidRow = { kind: "heading"; key: string; title: string; tone?: "danger" } | { kind: "task"; task: Task };
 
-/** Flatten sections into rows that fit, keeping a line for "N more" and never ending on a bare heading. */
+/**
+ * Flatten sections into rows that fit, keeping a line for "N more" and never
+ * ending on a bare heading. When space is tight, coming up goes first, then
+ * the headings, so the rows go to tasks.
+ */
 function layoutSections(sections: Section[], fit: number) {
-  const all: LaidRow[] = sections
-    .filter((s) => s.tasks.length)
-    .flatMap((s) => [
-      ...(s.title ? [{ kind: "heading" as const, key: `h:${s.key}`, title: s.title, tone: s.tone }] : []),
-      ...s.tasks.map((task) => ({ kind: "task" as const, task })),
-    ]);
+  const flatten = (ss: Section[], headings: boolean): LaidRow[] =>
+    ss
+      .filter((s) => s.tasks.length)
+      .flatMap((s) => [
+        ...(headings && s.title ? [{ kind: "heading" as const, key: `h:${s.key}`, title: s.title, tone: s.tone }] : []),
+        ...s.tasks.map((task) => ({ kind: "task" as const, task })),
+      ]);
+  const trimmed = sections.length > 1 ? sections.filter((s) => s.key !== "upcoming") : sections;
+  const options = [flatten(sections, true), flatten(trimmed, true), flatten(trimmed, false)];
+  const all = options.find((r) => r.length <= fit) ?? options[2];
   const total = all.filter((r) => r.kind === "task").length;
   let rows = all.length > fit ? all.slice(0, Math.max(1, fit - 1)) : all;
   while (rows.length && rows[rows.length - 1].kind === "heading") rows = rows.slice(0, -1);

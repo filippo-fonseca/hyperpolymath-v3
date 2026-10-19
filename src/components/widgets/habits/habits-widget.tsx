@@ -15,6 +15,7 @@ export function HabitsWidget({ size }: { size: WidgetSize }) {
   const { habits, scheduled, today, progressOn, cycle } = useHabits();
   const frame = useWidgetFrame();
   const [listRef, fit] = useFitCount<HTMLUListElement>(36, 4);
+  const [rowsRef, rowFit] = useFitCount<HTMLUListElement>(34, 3);
   const total = scheduled.length * 3;
   const sum = scheduled.reduce((a, h) => a + progressOn(h, today), 0);
   const doneCount = scheduled.filter((h) => progressOn(h, today) >= 3).length;
@@ -81,12 +82,21 @@ export function HabitsWidget({ size }: { size: WidgetSize }) {
       <div className="flex h-full flex-col">
         <WidgetHeader meta={meta} actions={addAction} />
         <div className="flex min-h-0 flex-1 items-center gap-5">
-          {aggregate(104)}
-          <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
-            {list.slice(0, 3).map((h) => (
-              <MiniRow key={h.id} habit={h} progress={progressOn(h, today)} onCycle={() => cycle(h)} />
-            ))}
-            {list.length > 3 && <li className="pl-[38px] text-[12px] text-gray-500">{list.length - 3} more</li>}
+          {aggregate(96)}
+          {/* As many rows as the card has room for, with a line for the rest. */}
+          <ul ref={rowsRef} className="flex h-full min-h-0 min-w-0 flex-1 flex-col justify-center gap-1.5 overflow-hidden">
+            {(() => {
+              const room = Math.max(1, rowFit);
+              const shown = list.length > room ? list.slice(0, Math.max(1, room - 1)) : list;
+              return (
+                <>
+                  {shown.map((h) => (
+                    <MiniRow key={h.id} habit={h} progress={progressOn(h, today)} onCycle={() => cycle(h)} />
+                  ))}
+                  {list.length > shown.length && <li className="pl-[38px] text-[12px] text-gray-500">{list.length - shown.length} more</li>}
+                </>
+              );
+            })()}
           </ul>
         </div>
       </div>
