@@ -90,7 +90,11 @@ export function ProjectsWidget({ size, widgetId }: { size: WidgetSize; widgetId:
         {groups.length === 0 ? (
           emptyState
         ) : (
-          <div ref={listRef} className="mt-2 grid min-h-0 flex-1 grid-cols-2 gap-3 lg:grid-cols-4">
+          <div
+            ref={listRef}
+            className="mt-2 grid min-h-0 flex-1 gap-3"
+            style={{ gridTemplateColumns: `repeat(${Math.max(2, Math.min(groups.length, areaCols))}, minmax(0, 1fr))` }}
+          >
             {groups.slice(0, areaCols).map((g) => {
               const room = Math.max(1, fit - 1);
               const shown = g.projects.length > room ? g.projects.slice(0, room - 1) : g.projects;

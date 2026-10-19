@@ -4,7 +4,7 @@ import type { Capture } from "@/lib/dashboard-types";
 import type { WidgetSize } from "@/lib/widgets";
 import { relativeTime } from "@/lib/format";
 import { createCaptureAction } from "@/app/actions/captures";
-import { stop, useFitCount } from "@/components/ui/primitives";
+import { stop, useFitCount, useMediaQuery } from "@/components/ui/primitives";
 import { KiwiReading } from "@/components/illustrations";
 import { IconLink, IconPencil } from "@/components/ui/icons";
 import { useDashboard } from "@/components/dashboard/context";
@@ -30,6 +30,8 @@ function sourceLabel(c: Capture) {
 export function CaptureWidget({ size }: { size: WidgetSize }) {
   const { data, nowMs, run } = useDashboard();
   const [listRef, fit] = useFitCount<HTMLDivElement>(ROW_H, size === "l" ? 6 : 2);
+  // Wide shows two rows of cards: four across on desktop, two below.
+  const cardCols = useMediaQuery("(min-width: 1024px)") ? 4 : 2;
   const meta = data.captures.length ? `${data.captures.length} in inbox` : "";
   const add = (content: string) => run(createCaptureAction(content), { success: "Captured" });
 
@@ -56,7 +58,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
   const recent = data.captures.filter((c) => !resurfacing.some((r) => r.id === c.id));
 
   if (size === "w") {
-    const cards = [...resurfacing.map((c) => ({ c, back: true })), ...recent.map((c) => ({ c, back: false }))].slice(0, 8);
+    const cards = [...resurfacing.map((c) => ({ c, back: true })), ...recent.map((c) => ({ c, back: false }))].slice(0, cardCols * 2);
     return (
       <div className="flex h-full flex-col">
         <WidgetHeader meta={meta} />
@@ -67,7 +69,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
             <p className="max-w-[260px] text-[13.5px] text-ink-3">Thoughts, links, ideas. Drop them here and sort them later.</p>
           </div>
         ) : (
-          <ul className="mt-3 grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2.5 overflow-hidden lg:grid-cols-4">
+          <ul className="mt-3 grid min-h-0 flex-1 grid-cols-2 grid-rows-[repeat(2,minmax(0,1fr))] gap-2.5 overflow-hidden lg:grid-cols-4">
             {cards.map(({ c, back }) => (
               <CaptureCard key={c.id} capture={c} back={back} nowMs={nowMs} />
             ))}
@@ -143,7 +145,7 @@ function CaptureCard({ capture, back, nowMs }: { capture: Capture; back: boolean
     <li
       className={`flex min-h-0 min-w-0 flex-col rounded-[14px] p-3 ${back ? "bg-accent-soft" : "bg-gray-50 shadow-[inset_0_0_0_1px_rgb(20_20_20/0.04)]"}`}
     >
-      <p className="line-clamp-3 min-h-0 text-[13.5px] leading-snug">{capture.content}</p>
+      <p className="line-clamp-3 min-h-0 text-[13.5px] leading-snug [overflow-wrap:anywhere]">{capture.content}</p>
       <div className="mt-auto flex min-w-0 items-center gap-2 pt-2 text-[11.5px] text-gray-500">
         {domain && url ? (
           <a
