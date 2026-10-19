@@ -100,7 +100,7 @@ export function WidgetCard({
     transform: CSS.Translate.toString(transform),
     transition: transition ?? undefined,
     zIndex: isDragging ? 0 : undefined,
-    ...(rows ? { gridRowEnd: `span ${rows}` } : {}),
+    ...(rows ? { gridRow: `span ${rows}` } : {}),
   };
 
   return (
