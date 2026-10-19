@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isOwnerEmail } from "@/lib/supabase/env";
 
 // Refreshes the Supabase session cookie on every page request, shows
 // signed-out visitors to `/` the public landing page (a rewrite to /welcome,
 // so the URL stays `/`), sends them from the rest of the app to /login, and
-// sends a signed-in owner away from /login. This is an optimistic check only:
+// sends a signed-in account away from /login. This is an optimistic check only:
 // every Server Component and Server Action re-verifies the session itself.
 // Unknown paths pass through so they render the 404 page.
 
@@ -43,8 +42,7 @@ export async function proxy(request: NextRequest) {
 
   // Must run before anything else so a refreshed token is written back.
   const { data } = await supabase.auth.getClaims();
-  const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
-  const signedIn = !!data?.claims && isOwnerEmail(email);
+  const signedIn = !!data?.claims?.sub;
 
   const go = (path: string) => {
     const redirect = NextResponse.redirect(new URL(path, request.url));
