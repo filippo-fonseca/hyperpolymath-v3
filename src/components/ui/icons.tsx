@@ -206,3 +206,44 @@ export const IconInfo = (p: P) => (
     <path d="M12 11v5.5M12 7.6v.1" />
   </svg>
 );
+export const IconHome = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 01-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 014 19z" />
+  </svg>
+);
+export const IconExpand = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+  </svg>
+);
+export const IconCheckCircle = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M8.3 12.3l2.6 2.6 4.8-5.3" />
+  </svg>
+);
+export const IconTarget = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4.5" />
+    <path d="M12 12h.01" strokeWidth={2.6} />
+  </svg>
+);
+export const IconActivity = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 12h4l2.5-6 5 12 2.5-6h4" />
+  </svg>
+);
+export const IconInbox = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3.5 13.5l2.6-7.2A2 2 0 018 5h8a2 2 0 011.9 1.3l2.6 7.2V18a2 2 0 01-2 2h-13a2 2 0 01-2-2z" />
+    <path d="M3.5 13.5H8l1.5 2.5h5l1.5-2.5h4.5" />
+  </svg>
+);
+export const IconWidgets = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+    <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+    <rect x="3.5" y="13.5" width="17" height="7" rx="2" />
+  </svg>
+);
