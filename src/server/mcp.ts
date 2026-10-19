@@ -16,7 +16,7 @@ import { finishRun, listRoutines, registerRoutine, removeRoutine, startRun, upda
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
-import { CUSTOM_KINDS, PAYLOAD_DOCS } from "@/lib/widgets";
+import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
 import { isLocalDate, isLocalTime } from "@/lib/time";
 
 const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
@@ -352,7 +352,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     {
       kind: z.enum(CUSTOM_KINDS),
       title: z.string().min(1).max(60),
-      size: z.enum(["s", "m", "l"]).optional().describe("s = 1x1, m = 2x1, l = 2x2"),
+      size: z.enum(WIDGET_SIZES).optional().describe("s = 1x1, m = 2x1, l = 2x2, w = full row. Leave out for a sensible default per kind"),
       stale_after_hours: z.number().int().min(1).max(24 * 30).optional().describe("Dim the widget if not republished within this many hours"),
       icon: z.string().max(500).optional().describe("An emoji, an https image URL, or the domain of the site it covers (e.g. slack.com) to use its favicon"),
       payload: z.record(z.string(), z.unknown()).optional(),

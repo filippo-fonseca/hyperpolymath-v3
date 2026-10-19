@@ -168,6 +168,16 @@ select {
   grid-column: span 4;
   grid-row: span 4;
 }
+/* W takes the whole row: 4 cells tall on phones and tablets, 3 on desktop. */
+.size-w {
+  grid-column: 1 / -1;
+  grid-row: span 4;
+}
+@media (min-width: 1024px) {
+  .size-w {
+    grid-row: span 3;
+  }
+}
 
 /* Edit mode wiggle. */
 @keyframes wiggle {

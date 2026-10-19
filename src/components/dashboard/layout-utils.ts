@@ -43,6 +43,4 @@ export function moveToPage<T extends LayoutItem>(items: T[], id: string, page: n
   return normalizeLayout(items.map((w) => (w.id === id ? { ...w, page, position: last + 1 } : w)));
 }
 
-export function asWidgetSize(s: string): WidgetSize {
-  return s === "s" || s === "l" ? s : "m";
-}
+export { asWidgetSize } from "@/lib/widgets";

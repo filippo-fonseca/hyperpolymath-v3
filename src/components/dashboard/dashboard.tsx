@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { CalendarData, DashboardData, WidgetRow } from "@/lib/dashboard-types";
-import { isCustomKind } from "@/lib/widgets";
+import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { saveLayoutAction } from "@/app/actions/widgets";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Logotype, Monogram } from "@/components/ui/brand";
@@ -34,7 +34,7 @@ import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "
 import { WidgetBody, WidgetExpanded } from "@/components/widgets/registry";
 import { TeammatesView } from "@/components/teammates/teammates-view";
 
-type LocalWidget = WidgetRow & { size: "s" | "m" | "l" };
+type LocalWidget = WidgetRow & { size: WidgetSize };
 
 function toLocal(ws: WidgetRow[]): LocalWidget[] {
   return normalizeLayout(ws.map((w) => ({ ...w, size: asWidgetSize(w.size) })));

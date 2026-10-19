@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
+import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
+import { defaultSizeFor } from "@/lib/widgets";
 
 const w = (id: string, page: number, position: number) => ({ id, page, position, size: "m" as const });
 
@@ -25,5 +26,16 @@ describe("layout", () => {
     expect(groupPages(moved).map((p) => p.map((x) => x.id))).toEqual([["b"], ["a"]]);
     const back = moveToPage(moved, "a", 0);
     expect(groupPages(back).map((p) => p.map((x) => x.id))).toEqual([["b", "a"]]);
+  });
+});
+
+describe("sizes", () => {
+  it("accepts the four sizes and falls back to medium", () => {
+    expect(["s", "m", "l", "w", "xl", ""].map(asWidgetSize)).toEqual(["s", "m", "l", "w", "m", "m"]);
+  });
+  it("picks a default per kind", () => {
+    expect(defaultSizeFor("tasks")).toBe("l");
+    expect(defaultSizeFor("stat")).toBe("s");
+    expect(defaultSizeFor("digest")).toBe("m");
   });
 });
