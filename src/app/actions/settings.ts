@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { listTokens, mintToken, revokeToken } from "@/server/tokens";
 import { setTimezone } from "@/server/settings";
+import { clearRelay, setRelay } from "@/server/relay";
 import { asUser, readAsUser } from "./run";
 
 export async function listTokensAction() {
@@ -23,4 +24,14 @@ export async function revokeTokenAction(tokenId: string) {
 
 export async function setTimezoneAction(tz: string) {
   return asUser((ctx) => setTimezone(ctx, z.string().min(1).max(80).parse(tz)));
+}
+
+/** Save this account's Reminder relay webhook. The key is never sent back. */
+export async function setRelayAction(input: { url: string; token: string }) {
+  const schema = z.object({ url: z.string().min(1).max(500), token: z.string().min(1).max(500) });
+  return asUser((ctx) => setRelay(ctx, schema.parse(input)), { write: false });
+}
+
+export async function clearRelayAction() {
+  return asUser((ctx) => clearRelay(ctx), { write: false });
 }

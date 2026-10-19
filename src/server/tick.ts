@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { adminDb, userTimezone, type DB, type Row } from "./ctx";
 import { advance, type DueReminder } from "./reminders";
 import { describeSchedule, scheduleSchema } from "@/lib/schedule";
+import { getRelay } from "./relay";
 
 // The reminder tick. Runs every few minutes: claims due reminders, batches
 // them per user into ONE webhook call to the coordinator bot's "Reminder
@@ -102,13 +103,14 @@ export async function runTick(
 }
 
 /**
- * POST the batch to the coordinator's Grok Bot routine webhook. The JSON body
- * becomes the routine run's input, so it carries plain-language instructions.
+ * POST the batch to this account's own Grok Bot "Reminder relay" webhook. The
+ * JSON body becomes the routine run's input, so it carries plain-language
+ * instructions.
  */
-export async function deliverToKiwi(_userId: string, batch: DueReminder[], now: Date, tz: string) {
-  const url = process.env.KIWI_WEBHOOK_URL;
-  const token = process.env.KIWI_WEBHOOK_TOKEN;
-  if (!url || !token) throw new Error("KIWI_WEBHOOK_URL / KIWI_WEBHOOK_TOKEN not configured");
+export async function deliverToKiwi(userId: string, batch: DueReminder[], now: Date, tz: string) {
+  const relay = await getRelay(adminDb(), userId);
+  if (!relay) throw new Error("No reminder relay set up. Add the Reminder relay webhook in Settings, Reminders.");
+  const { url, token } = relay;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
