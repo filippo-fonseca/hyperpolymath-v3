@@ -6,7 +6,9 @@ Stack: Next.js on Vercel, Supabase (Postgres, Auth, Realtime, pg_cron, Vault). T
 
 1. Create a project and apply every file in `supabase/migrations/` in order (Supabase MCP `apply_migration`, the SQL editor, or `supabase db push`).
 2. **Auth → URL configuration:** Site URL = the app URL. Redirect URLs: `https://<app>/**`, `http://localhost:3000/**`, and your Vercel preview pattern.
-3. **Reminder tick:** the migration creates a `pg_cron` job and a Vault secret `cron_secret` (generated in the database, never copied by hand). Point the job at the app once it's deployed:
+3. **Auth → Sign in / Providers → Email:** enabled, with new sign-ups allowed. People sign in with an email and a password; set the minimum password length to 8. With **Confirm email** on, new accounts get a confirmation link first. Supabase's built-in mailer only sends a couple of emails an hour, so either add custom SMTP (Auth → SMTP, e.g. Resend) or turn confirmation off. Password reset emails need a working mailer too.
+4. **Accounts:** anyone can sign up. Each account is a row in `auth.users`, mirrored into `public.profiles` by a trigger. Every table carries `user_id`; RLS lets a signed-in account read only its own rows, and all writes go through the server.
+5. **Reminder tick:** the migration creates a `pg_cron` job and a Vault secret `cron_secret` (generated in the database, never copied by hand). Point the job at the app once it's deployed:
    ```sql
    select vault.create_secret('https://<app>/api/cron/tick', 'tick_url');
    ```
@@ -19,10 +21,10 @@ Stack: Next.js on Vercel, Supabase (Postgres, Auth, Realtime, pg_cron, Vault). T
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel + local | Public |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Vercel + local | Public by design (RLS protects data) |
 | `SUPABASE_SECRET_KEY` | Vercel + local | **Secret.** Server only |
-| `OWNER_EMAIL` | Vercel + local | Only this email can sign in |
+| `OWNER_EMAIL` | Vercel + local | Optional. The one account allowed to use the `KIWI_WEBHOOK_*` relay below |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Vercel + local | Calendar. See below |
-| `GOOGLE_TOKEN_KEY` | Vercel + local | **Secret.** `openssl rand -base64 32`. Changing it disconnects Google accounts |
-| `KIWI_WEBHOOK_URL`, `KIWI_WEBHOOK_TOKEN` | Vercel | **Secret.** From the Grok Bot "Reminder relay" routine |
+| `GOOGLE_TOKEN_KEY` | Vercel + local | **Secret.** `openssl rand -base64 32`. Encrypts Google tokens and reminder relay keys; changing it disconnects both |
+| `KIWI_WEBHOOK_URL`, `KIWI_WEBHOOK_TOKEN` | Vercel | **Secret.** Optional fallback relay for `OWNER_EMAIL` only. Everyone else (and you, if you like) sets their own relay in **Settings → Reminders** |
 
 Locally, `./scripts/pull-env.sh <project-ref> <owner-email>` writes the Supabase ones into `.env.local`. On Vercel: `vercel env add <NAME> production` (paste the value when prompted), then redeploy.
 

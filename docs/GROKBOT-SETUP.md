@@ -41,12 +41,7 @@ Hyperpolymath checks for due reminders every 5 minutes and sends **one** webhook
 
 1. Ask Kiwi: *"Create a routine called 'Reminder relay' with a webhook trigger. When it runs, the input is a JSON batch of due Hyperpolymath reminders; follow its `instructions` field and message me."*
 2. Grok Bot gives you a webhook URL (`https://api2.cursor.sh/automations/webhook/<routine-id>`) and a bearer key (`crsr_...`).
-3. Add both to the app's environment (never commit them):
-   ```
-   KIWI_WEBHOOK_URL=https://api2.cursor.sh/automations/webhook/<routine-id>
-   KIWI_WEBHOOK_TOKEN=crsr_...
-   ```
-   On Vercel: Project → Settings → Environment Variables (Production), then redeploy.
+3. In the app, open **Settings → Reminders** and paste both under **Use my own webhook**. The key is stored encrypted and only ever used to send your own reminders. (Whoever runs the server can instead set `KIWI_WEBHOOK_URL` and `KIWI_WEBHOOK_TOKEN` in the environment; that relay only serves the `OWNER_EMAIL` account.)
 
 Reply "done" to a nudge and Kiwi completes the task, which stops every until-done reminder for it.
 
