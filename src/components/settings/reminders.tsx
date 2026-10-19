@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { relativeTime } from "@/lib/format";
+import { clearRelayAction, setRelayAction } from "@/app/actions/settings";
 import { useDashboard } from "@/components/dashboard/context";
+import { Button, fieldClass } from "@/components/ui/primitives";
 import { DOCS, DocLink, Dot, InfoRow, OverviewPending, Section, cardClass, type SectionProps } from "./shared";
 
 /** The pg_cron tick runs every 5 minutes; this long without one means it stopped. */
@@ -9,7 +12,7 @@ const TICK_STALE_MS = 20 * 60_000;
 
 export function RemindersSection({ overview, overviewFailed, reloadOverview }: SectionProps) {
   const { data, nowMs } = useDashboard();
-  const hint = "Every 5 minutes the app batches due reminders into one webhook to Kiwi, who nudges you in Grok Bot. Reply “done” and they stop.";
+  const hint = "Every 5 minutes the app batches due reminders into one webhook to your Kiwi, who nudges you in Grok Bot. Reply “done” and they stop.";
 
   if (!overview) {
     return (
@@ -33,7 +36,7 @@ export function RemindersSection({ overview, overviewFailed, reloadOverview }: S
           <InfoRow label="Relay to Kiwi">
             <span className="inline-flex items-center gap-2">
               <Dot tone={relay.configured ? "ok" : "off"} />
-              {relay.configured ? "Configured" : "Not configured"}
+              {relay.configured ? (relay.source === "env" ? `Server default (${relay.host})` : relay.host) : "Not set up"}
             </span>
           </InfoRow>
           <InfoRow label="Last check">
@@ -56,10 +59,11 @@ export function RemindersSection({ overview, overviewFailed, reloadOverview }: S
 
         {!relay.configured && (
           <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
-            Reminders are saved but nothing delivers them yet. Create the Reminder relay routine in Grok Bot and add its URL and key to the app&apos;s
-            environment: <DocLink href={DOCS.relay}>relay guide</DocLink>.
+            Reminders are saved but nothing delivers them yet. Create the Reminder relay routine in Grok Bot, then paste its webhook URL and key
+            below: <DocLink href={DOCS.relay}>relay guide</DocLink>.
           </p>
         )}
+        <RelayForm source={relay.source} onSaved={reloadOverview} />
         {relay.configured && !ticking && (
           <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
             The scheduled check hasn&apos;t run recently, so nothing is being sent. Point the database cron job at this app:{" "}
@@ -88,5 +92,92 @@ export function RemindersSection({ overview, overviewFailed, reloadOverview }: S
         </Section>
       )}
     </div>
+  );
+}
+
+/** This account's own relay webhook. The key is write-only: it's never shown again. */
+function RelayForm({ source, onSaved }: { source: "account" | "env" | null; onSaved: () => void }) {
+  const { run } = useDashboard();
+  const [editing, setEditing] = useState(source === null);
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const res = await run(setRelayAction({ url, token }), { success: "Relay saved" });
+    setBusy(false);
+    if (res) {
+      setUrl("");
+      setToken("");
+      setEditing(false);
+      onSaved();
+    }
+  };
+  const remove = async () => {
+    setBusy(true);
+    const res = await run(clearRelayAction(), { success: "Relay removed" });
+    setBusy(false);
+    if (res) onSaved();
+  };
+
+  if (!editing) {
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => setEditing(true)}>
+          {source === "account" ? "Change webhook" : "Use my own webhook"}
+        </Button>
+        {source === "account" && (
+          <Button size="sm" variant="ghost" onClick={remove} disabled={busy} className="text-ink-2">
+            Remove
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={save} className="mt-4 flex flex-col gap-2">
+      <label htmlFor="relay-url" className="text-[13px] font-medium text-ink-2">
+        Webhook URL
+      </label>
+      <input
+        id="relay-url"
+        type="url"
+        required
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="https://api2.cursor.sh/automations/webhook/..."
+        autoComplete="off"
+        spellCheck={false}
+        className={fieldClass}
+      />
+      <label htmlFor="relay-token" className="mt-1 text-[13px] font-medium text-ink-2">
+        Webhook key
+      </label>
+      <input
+        id="relay-token"
+        type="password"
+        required
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder="crsr_..."
+        autoComplete="off"
+        spellCheck={false}
+        className={fieldClass}
+      />
+      <p className="text-[12.5px] text-ink-3">Stored encrypted and only used to send your reminders. You won&apos;t see the key again.</p>
+      <div className="mt-1 flex gap-2">
+        <Button type="submit" size="sm" variant="dark" disabled={busy || !url || !token}>
+          Save relay
+        </Button>
+        {source !== null && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)} className="text-ink-2">
+            Cancel
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }
