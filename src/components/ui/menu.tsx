@@ -157,7 +157,7 @@ function Panel({
               it.danger ? "text-[#d61a2f]" : "text-ink"
             }`}
           >
-            {it.icon !== undefined && <span className="flex w-4 shrink-0 justify-center text-gray-600">{it.icon}</span>}
+            {it.icon !== undefined && <span className="flex min-w-4 shrink-0 justify-center text-gray-600">{it.icon}</span>}
             <span className="min-w-0 flex-1 truncate">{it.label}</span>
             {it.hint && <span className="shrink-0 text-[12px] text-ink-3">{it.hint}</span>}
             {it.checked && <IconCheck size={15} strokeWidth={2.2} className="shrink-0 text-accent" />}

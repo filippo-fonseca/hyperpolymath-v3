@@ -29,8 +29,8 @@ export function CardSurface({
 }) {
   return (
     <div
-      className={`relative h-full w-full overflow-hidden bg-surface ${cardPadding(size)} ${
-        lifted ? "shadow-lift" : "shadow-widget"
+      className={`group/card relative h-full w-full overflow-hidden bg-surface transition-shadow duration-200 ${cardPadding(size)} ${
+        lifted ? "shadow-lift" : "shadow-widget [@media(hover:hover)]:hover:shadow-widget-hover"
       } ${className}`}
       style={{ borderRadius: 22, ...style }}
     >

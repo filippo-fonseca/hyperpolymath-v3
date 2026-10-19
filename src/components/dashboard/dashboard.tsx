@@ -28,6 +28,7 @@ import { TodaySummary } from "./today-summary";
 import { viewKeyFor, widgetForView } from "./features";
 import { useView } from "./use-view";
 import { CommandPalette } from "./command-palette";
+import { WidgetFrame } from "./widget-chrome";
 import { CardSurface, WidgetCard } from "./widget-card";
 import { ExpandedView } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
@@ -174,6 +175,11 @@ function Home({
     [run],
   );
 
+  const resize = useCallback(
+    (id: string, size: WidgetSize) => persist(widgets.map((w) => (w.id === id ? { ...w, size } : w))),
+    [persist, widgets],
+  );
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 8 } }),
@@ -295,7 +301,18 @@ function Home({
                       onEdit={() => setSheetId(w.id)}
                       onLongPress={() => setEditing(true)}
                     >
-                      <WidgetBody widget={w} size={w.size} />
+                      <WidgetFrame
+                        value={{
+                          widget: w,
+                          size: w.size,
+                          open: () => openWidget(w),
+                          resize: (size) => resize(w.id, size),
+                          settings: () => setSheetId(w.id),
+                          editLayout: () => setEditing(true),
+                        }}
+                      >
+                        <WidgetBody widget={w} size={w.size} />
+                      </WidgetFrame>
                     </WidgetCard>
                   ))}
                 </div>
@@ -418,7 +435,7 @@ function Home({
         widget={sheetWidget}
         pageCount={pageCount}
         onClose={() => setSheetId(null)}
-        onResize={(size) => sheetWidget && persist(widgets.map((w) => (w.id === sheetWidget.id ? { ...w, size } : w)))}
+        onResize={(size) => sheetWidget && resize(sheetWidget.id, size)}
         onMove={(p) => {
           if (!sheetWidget) return;
           persist(moveToPage(widgets, sheetWidget.id, p));
