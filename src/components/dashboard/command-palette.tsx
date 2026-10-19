@@ -218,7 +218,7 @@ function Palette({
             aria-expanded="true"
             aria-controls={listId}
             aria-activedescendant={items[current] ? `${listId}-${current}` : undefined}
-            className="h-14 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-ink-3"
+            className="h-14 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-ink-3 focus-visible:outline-none"
           />
           <kbd className="shrink-0 rounded-[6px] bg-gray-100 px-1.5 py-px font-sans text-[11.5px] font-medium text-ink-3 max-sm:hidden">esc</kbd>
         </div>
