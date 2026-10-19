@@ -38,7 +38,7 @@ export function OwnerPill({
       title={`Made by ${bot.name}`}
       aria-label={`Made by ${bot.name}. Open in Teammates.`}
       className={`inline-flex h-[22px] min-w-0 shrink items-center gap-1.5 rounded-full bg-gray-100 text-[11.5px] font-medium text-gray-600 transition hover:bg-gray-150 hover:text-ink ${
-        compact ? "w-[22px] justify-center" : "max-w-[60%] pl-[2px] pr-2"
+        compact ? "w-[22px] justify-center" : "max-w-[200px] pl-[2px] pr-2"
       }`}
     >
       <BotAvatar bot={bot} size={18} />
