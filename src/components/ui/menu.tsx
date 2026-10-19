@@ -48,7 +48,8 @@ export function Menu({
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
-          setAnchor((a) => (a ? null : e.currentTarget.getBoundingClientRect()));
+          const rect = e.currentTarget.getBoundingClientRect();
+          setAnchor((a) => (a ? null : rect));
         }}
         className={className}
       >
