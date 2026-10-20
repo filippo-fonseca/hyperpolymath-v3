@@ -392,6 +392,27 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_sign_in_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          last_sign_in_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_sign_in_at?: string | null
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           archived_at: string | null
@@ -459,6 +480,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reminder_relays: {
+        Row: {
+          token_enc: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          token_enc: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          token_enc?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       reminders: {
         Row: {

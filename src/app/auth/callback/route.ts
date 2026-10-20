@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabase/server";
-import { hasSupabaseEnv, isOwnerEmail } from "@/lib/supabase/env";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { reasonFromAuthError, reasonFromParams, safeNextPath, type LoginErrorReason } from "@/lib/auth-errors";
 
-// Magic link landing. Supports the PKCE `code` flow and the `token_hash` flow
-// (depending on how the email template is configured), plus the error params
-// Supabase appends when a link fails before it reaches us. Redirects only to
-// same-origin paths.
+// Landing for the links Supabase emails: confirming a new account and
+// resetting a password. Supports the PKCE `code` flow and the `token_hash`
+// flow (depending on how the email template is configured), plus the error
+// params Supabase appends when a link fails before it reaches us. Redirects
+// only to same-origin paths. A password reset lands on /reset-password.
 
 const OTP_TYPES = new Set<EmailOtpType>(["magiclink", "email", "signup", "invite", "recovery", "email_change"]);
 
@@ -21,12 +22,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = await supabaseServer();
 
-  /** An old or reused link is harmless when the owner is already signed in. */
+  /** An old or reused link is harmless when someone is already signed in. */
   const alreadySignedIn = async () => {
     try {
       const { data } = await supabase.auth.getClaims();
-      const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
-      return isOwnerEmail(email);
+      return !!data?.claims?.sub;
     } catch {
       return false;
     }
@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const rawType = searchParams.get("type");
-  let email: string | null | undefined = null;
 
   try {
     if (code) {
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
         console.warn("[auth] code exchange failed", error.code ?? error.name, error.status);
         return fail(reasonFromAuthError(error));
       }
-      email = data.user?.email;
+      if (!data.user) return fail("link_invalid");
     } else if (tokenHash && rawType && OTP_TYPES.has(rawType as EmailOtpType)) {
       const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: rawType as EmailOtpType });
       if (error) {
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
         console.warn("[auth] otp verify failed", error.code ?? error.name, error.status);
         return fail(reasonFromAuthError(error));
       }
-      email = data.user?.email;
+      if (!data.user) return fail("link_invalid");
     } else {
       if (await alreadySignedIn()) return to(next);
       return fail("link_invalid");
@@ -71,9 +70,6 @@ export async function GET(request: NextRequest) {
     return fail(name === "AuthPKCECodeVerifierMissingError" ? "link_other_browser" : "auth_unavailable");
   }
 
-  if (!isOwnerEmail(email)) {
-    await supabase.auth.signOut().catch(() => {});
-    return fail("not_allowed");
-  }
-  return to(next);
+  // Reset emails carry next=/reset-password; a bare recovery token goes there too.
+  return to(rawType === "recovery" ? "/reset-password" : next);
 }

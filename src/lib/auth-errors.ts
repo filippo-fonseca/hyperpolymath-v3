@@ -13,19 +13,19 @@ export type LoginErrorReason =
 export const LOGIN_ERROR_TEXT: Record<LoginErrorReason, { title: string; body: string }> = {
   link_expired: {
     title: "That link has expired",
-    body: "Sign-in links work once, for a limited time. Request a fresh one below.",
+    body: "Email links work once, for a limited time. Sign in below, or ask for a new reset link.",
   },
   link_invalid: {
     title: "That link didn't work",
-    body: "It may have been used already or copied incompletely. Request a fresh one below.",
+    body: "It may have been used already or copied incompletely. Try signing in below.",
   },
   link_other_browser: {
-    title: "Open the link in this browser",
-    body: "Sign-in links only work in the browser that requested them. Request a new one here, or open the email on the device you used.",
+    title: "Open links in the browser you started in",
+    body: "If you were confirming a new account, it's confirmed now, so just sign in below. For a password reset, ask for a new link from here.",
   },
   not_allowed: {
-    title: "That account can't sign in here",
-    body: "This dashboard is private to its owner.",
+    title: "That account can't sign in",
+    body: "It may have been blocked or removed.",
   },
   auth_unavailable: {
     title: "Sign-in is having a moment",
@@ -33,7 +33,7 @@ export const LOGIN_ERROR_TEXT: Record<LoginErrorReason, { title: string; body: s
   },
   unknown: {
     title: "Something went wrong",
-    body: "Request a fresh sign-in link and try again.",
+    body: "Try signing in again.",
   },
 };
 
@@ -104,7 +104,7 @@ export function reasonFromAuthError(err: ErrorLike): LoginErrorReason {
   return r === "unknown" ? "link_invalid" : r;
 }
 
-/** True when signInWithOtp was refused for sending too often. */
+/** True when an auth call was refused for sending or trying too often. */
 export function isRateLimited(err: ErrorLike): boolean {
   return err.status === 429 || err.code === "over_email_send_rate_limit" || err.code === "over_request_rate_limit";
 }
@@ -133,6 +133,16 @@ export function safeNextPath(next: string | null | undefined): string {
   } catch {
     return "/";
   }
+}
+
+export const PASSWORD_MIN = 8;
+
+/** Why a new password won't do, or null when it's fine. Supabase caps bcrypt input at 72 bytes. */
+export function passwordProblem(password: string): string | null {
+  if (password.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`;
+  if (new TextEncoder().encode(password).length > 72) return "That's too long. Keep it under 72 characters.";
+  if (password.trim() === "") return "A password can't be only spaces.";
+  return null;
 }
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

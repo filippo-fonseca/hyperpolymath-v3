@@ -1,6 +1,7 @@
 import "server-only";
 import { adminDb, asJson, must, type Ctx, type DB } from "./ctx";
 import { googleConfigured, listAccounts } from "./google/oauth";
+import { relayStatus, type RelayStatus } from "./relay";
 
 // Health and setup state for the Settings page, plus a full data export.
 
@@ -14,7 +15,7 @@ export async function recordTickHeartbeat(db: DB, result: unknown) {
 export type SetupStatus = {
   mcp: { tokens: number; last_used_at: string | null };
   kiwi: { connected: boolean; name: string | null; last_seen_at: string | null };
-  relay: { configured: boolean; last_tick_at: string | null; failing: { count: number; last_error: string | null } };
+  relay: RelayStatus & { last_tick_at: string | null; failing: { count: number; last_error: string | null } };
   google: { configured: boolean; accounts: number };
   counts: { tasks: number; projects: number; habits: number; captures: number; bots: number; routines: number };
 };
@@ -29,11 +30,12 @@ export async function setupStatus(ctx: Ctx): Promise<SetupStatus> {
     const { count: n } = await q;
     return n ?? 0;
   };
-  const [tokens, kiwi, tick, failing, accounts, tasks, projects, habits, captures, bots, routines] = await Promise.all([
+  const [tokens, kiwi, tick, failing, relay, accounts, tasks, projects, habits, captures, bots, routines] = await Promise.all([
     db.from("mcp_tokens").select("last_used_at").eq("user_id", uid).is("revoked_at", null).order("last_used_at", { ascending: false, nullsFirst: false }),
     db.from("bots").select("name, last_seen_at").eq("user_id", uid).eq("is_coordinator", true).maybeSingle(),
     adminDb().from("system_state").select("value, updated_at").eq("key", "tick").maybeSingle(),
     db.from("reminders").select("last_error, updated_at").eq("user_id", uid).eq("active", true).not("last_error", "is", null).order("updated_at", { ascending: false }),
+    relayStatus(db, uid).catch((): RelayStatus => ({ configured: false, source: null, host: null })),
     listAccounts(db, uid).catch(() => []),
     count("tasks"),
     count("projects", "archived_at"),
@@ -47,7 +49,7 @@ export async function setupStatus(ctx: Ctx): Promise<SetupStatus> {
     mcp: { tokens: tokenRows.length, last_used_at: tokenRows[0]?.last_used_at ?? null },
     kiwi: { connected: !!kiwi.data, name: kiwi.data?.name ?? null, last_seen_at: kiwi.data?.last_seen_at ?? null },
     relay: {
-      configured: !!(process.env.KIWI_WEBHOOK_URL && process.env.KIWI_WEBHOOK_TOKEN),
+      ...relay,
       last_tick_at: tick.data?.updated_at ?? null,
       failing: { count: failing.data?.length ?? 0, last_error: failing.data?.[0]?.last_error ?? null },
     },

@@ -66,10 +66,10 @@ export function Hero() {
 
         <div className="landing-rise mt-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-3 sm:gap-3" style={rise(620)}>
           <Link
-            href="/login"
+            href="/login?mode=sign_up"
             className="group inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-medium text-white transition-colors hover:bg-gray-800"
           >
-            Sign in
+            Create an account
             <IconArrowRight size={16} className="transition-transform duration-300 ease-out group-hover:translate-x-0.5" />
           </Link>
           <a

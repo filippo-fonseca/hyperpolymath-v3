@@ -16,7 +16,10 @@ export function hasSupabaseEnv(): boolean {
   return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 }
 
-/** True when `email` is the single allowed owner (case-insensitive). */
+/**
+ * True when `email` is OWNER_EMAIL (case-insensitive). Sign-in is open to
+ * everyone; this only decides who may use the relay set in env vars.
+ */
 export function isOwnerEmail(email: string | null | undefined): boolean {
   const owner = process.env.OWNER_EMAIL?.trim().toLowerCase();
   if (!owner || !email) return false;
