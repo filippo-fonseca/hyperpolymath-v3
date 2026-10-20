@@ -37,23 +37,31 @@ export function useClamp(body: HTMLElement | null, inner: HTMLElement | null, ke
         }
         return top + el.offsetHeight;
       };
-      const limit = room - MORE_H;
-      const visible: HTMLElement[] = [];
-      let hidden = 0;
-      for (const el of items) {
-        if (bottomOf(el) <= limit) {
-          visible.push(el);
-        } else {
-          hide(el);
-          if (el.dataset.clamp !== "heading") hidden++;
+      const place = (limit: number) => {
+        const visible: HTMLElement[] = [];
+        const hidden: HTMLElement[] = [];
+        for (const el of items) (bottomOf(el) <= limit ? visible : hidden).push(el);
+        // Never end on a section heading with nothing under it.
+        while (visible.length && visible[visible.length - 1].dataset.clamp === "heading") hidden.unshift(visible.pop()!);
+        return { visible, hidden };
+      };
+      const isItem = (el: HTMLElement) => el.dataset.clamp !== "heading";
+      // Leave a line for "N more"; on a tiny card, give that line to the first
+      // item instead, and keep at least one item even if it has to be cut.
+      let { visible, hidden } = place(room - MORE_H);
+      if (!visible.some(isItem)) ({ visible, hidden } = place(room));
+      if (!visible.some(isItem)) {
+        const first = hidden.findIndex(isItem);
+        if (first >= 0) {
+          visible = [...visible, ...hidden.slice(0, first + 1)];
+          hidden = hidden.slice(first + 1);
         }
       }
-      // Never end on a section heading with nothing under it.
-      while (visible.length && visible[visible.length - 1].dataset.clamp === "heading") {
-        hide(visible.pop()!);
-      }
+      for (const el of hidden) hide(el);
       const top = visible.length ? Math.max(...visible.map(bottomOf)) : 0;
-      setState((s) => (s.more === hidden && s.top === top ? s : { more: hidden, top }));
+      // Only offer "N more" where it has room to sit; the card opens in full either way.
+      const more = top + MORE_H <= room ? hidden.filter(isItem).length : 0;
+      setState((s) => (s.more === more && s.top === top ? s : { more, top }));
     };
     measure();
     const ro = new ResizeObserver(measure);
