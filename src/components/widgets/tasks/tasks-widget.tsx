@@ -143,7 +143,7 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
     .filter(Boolean)
     .join(" · ");
   const showAdd = size === "l" || adding;
-  const listFit = Math.max(1, footer ? fit - 1 : fit);
+  const listFit = Math.max(1, fit);
   const { rows, more } = layoutSections(sections, listFit);
   const empty = !due.length && !upcoming.length;
 
