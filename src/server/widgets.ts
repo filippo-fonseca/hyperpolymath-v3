@@ -2,13 +2,13 @@ import "server-only";
 import { AppError, asJson, must, type Ctx, type DB, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { recordPublish } from "./routines";
-import { isCustomKind, normalizeWidgetIcon, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
+import { defaultSizeFor, isCustomKind, normalizeWidgetIcon, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
 
 export type Widget = Row<"widgets">;
 
 const DEFAULT_LAYOUT: { kind: Widget["kind"]; title: string; size: WidgetSize }[] = [
   { kind: "tasks", title: "Today", size: "l" },
-  { kind: "calendar", title: "Calendar", size: "m" },
+  { kind: "calendar", title: "Calendar", size: "l" },
   { kind: "habits", title: "Habits", size: "m" },
   { kind: "capture", title: "Capture", size: "m" },
   { kind: "kiwi", title: "Kiwi", size: "m" },
@@ -78,7 +78,7 @@ export async function createWidget(
         user_id: ctx.userId,
         kind: input.kind,
         title,
-        size: input.size ?? "m",
+        size: input.size ?? defaultSizeFor(input.kind),
         stale_after_hours: input.stale_after_hours ?? null,
         icon: icon(input.icon),
         owner_bot_id: ctx.actor.kind === "bot" ? ctx.actor.botId : null,

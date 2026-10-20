@@ -14,7 +14,29 @@ export const CUSTOM_KINDS = ["digest", "list", "stat", "timeline", "markdown", "
 export type FixedKind = (typeof FIXED_KINDS)[number];
 export type CustomKind = (typeof CUSTOM_KINDS)[number];
 export type WidgetKind = FixedKind | CustomKind;
-export type WidgetSize = "s" | "m" | "l";
+export const WIDGET_SIZES = ["s", "m", "l", "w"] as const;
+/** s = 1x1 unit, m = 2x1, l = 2x2, w = the full row (3 units tall on desktop, like l on phones). */
+export type WidgetSize = (typeof WIDGET_SIZES)[number];
+
+export const SIZE_LABELS: Record<WidgetSize, string> = { s: "Small", m: "Medium", l: "Large", w: "Wide" };
+
+/** The size a new widget starts at when nobody picked one. */
+export function defaultSizeFor(kind: WidgetKind): WidgetSize {
+  switch (kind) {
+    case "tasks":
+    case "calendar":
+    case "table":
+      return "l";
+    case "stat":
+      return "s";
+    default:
+      return "m";
+  }
+}
+
+export function asWidgetSize(s: string | null | undefined): WidgetSize {
+  return (WIDGET_SIZES as readonly string[]).includes(s ?? "") ? (s as WidgetSize) : "m";
+}
 
 const item = z.object({
   text: z.string().max(500),

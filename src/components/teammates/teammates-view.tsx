@@ -70,6 +70,7 @@ export function TeammatesView({ focus, onClose }: { focus: TeammatesFocus; onClo
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto w-full max-w-[760px] px-4 pb-16 pt-[max(20px,env(safe-area-inset-top))] sm:px-10 sm:pt-9">
             <ExpandedHeader
+              className="pr-12"
               eyebrow="Kiwi and teammates"
               title="Teammates"
               aside={

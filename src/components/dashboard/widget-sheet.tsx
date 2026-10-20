@@ -5,12 +5,13 @@ import type { WidgetRow } from "@/lib/dashboard-types";
 import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { scheduleInWords } from "@/lib/cron-words";
 import { removeWidgetAction, updateWidgetAction } from "@/app/actions/widgets";
-import { Button, Segmented, Sheet, fieldClass } from "@/components/ui/primitives";
+import { Button, Sheet, fieldClass } from "@/components/ui/primitives";
 import { WidgetIcon } from "@/components/ui/widget-icon";
 import { IconChevronRight, IconPlus } from "@/components/ui/icons";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { selectClass, selectStyle } from "@/components/teammates/form";
 import { useDashboard } from "./context";
+import { SizePicker } from "./size-picker";
 
 const STALE_OPTIONS = [
   { hours: 1, label: "1 hour" },
@@ -181,15 +182,7 @@ function SheetBody({
         )}
       </form>
       <Row label="Size">
-        <Segmented<WidgetSize>
-          value={widget.size}
-          onChange={onResize}
-          options={[
-            { value: "s", label: "Small" },
-            { value: "m", label: "Medium" },
-            { value: "l", label: "Large" },
-          ]}
-        />
+        <SizePicker value={widget.size} onChange={onResize} />
       </Row>
       <Row label="Page">
         <div className="flex flex-wrap gap-1.5">

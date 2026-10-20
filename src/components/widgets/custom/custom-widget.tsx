@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { Snapshot, WidgetRow } from "@/lib/dashboard-types";
 import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
 import { relativeTime } from "@/lib/format";
 import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { KiwiWaiting } from "@/components/illustrations";
-import { Button } from "@/components/ui/primitives";
+import { Button, stop } from "@/components/ui/primitives";
 import { IconGear } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
+import { WidgetHeader, useWidgetFrame } from "@/components/dashboard/widget-chrome";
+import { useClamp } from "./clamp";
 import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
 import { WidgetIcon } from "@/components/ui/widget-icon";
 import { DigestView, ListView, MarkdownView, StatView, TableView, TimelineView } from "./renderers";
@@ -30,13 +32,13 @@ function Content({ kind, payload, compact, size }: { kind: CustomKind; payload: 
     case "list":
       return <ListView p={p as never} compact={compact} />;
     case "stat":
-      return <StatView p={p as never} compact={compact} large={size === "l"} />;
+      return <StatView p={p as never} compact={compact} large={size === "l" || size === "w"} />;
     case "timeline":
       return <TimelineView p={p as never} compact={compact} />;
     case "markdown":
       return <MarkdownView markdown={(p as { markdown: string }).markdown} compact={compact} />;
     case "table":
-      return <TableView p={p as never} compact={compact} />;
+      return <TableView p={p as never} compact={compact} size={size} />;
   }
 }
 
@@ -44,44 +46,94 @@ function ownerName(w: WidgetRow) {
   return w.owner?.name ?? "a bot";
 }
 
+/** Rows the card needs for its content: at least two, so the grid stays tidy. */
+function rowsFor(card: HTMLElement, natural: number) {
+  const grid = card.parentElement;
+  const span = Number(card.dataset.rows) || 0;
+  if (!grid || !span) return null;
+  const gap = parseFloat(getComputedStyle(grid).rowGap) || 0;
+  const row = (card.offsetHeight - (span - 1) * gap) / span;
+  if (!(row > 0)) return null;
+  return Math.max(2, Math.ceil((natural + gap) / (row + gap) - 0.02));
+}
+
 /** Bot-published widget on the grid. */
 export function CustomWidget({ widget, size }: { widget: WidgetRow; size: WidgetSize }) {
   const { data, nowMs } = useDashboard();
+  const frame = useWidgetFrame();
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  const [inner, setInner] = useState<HTMLDivElement | null>(null);
+  const clamp = useClamp(body, inner, widget.payload);
+  const fit = frame?.fit;
+
+  // Tell the grid how tall the content really is, so short content gets a
+  // shorter card instead of a blank band (large and wide only shrink).
+  useLayoutEffect(() => {
+    if (!fit || !root || !body || !inner) return;
+    const card = root.closest<HTMLElement>("[data-rows]");
+    if (!card) return;
+    const report = () => {
+      const pad = card.firstElementChild ? card.offsetHeight - root.offsetHeight : 0;
+      const natural = root.offsetHeight - body.clientHeight + inner.offsetHeight + Math.max(0, pad);
+      fit(rowsFor(card, natural));
+    };
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [fit, root, body, inner, size]);
+
   if (!isCustomKind(widget.kind)) return null;
   const stale = isStale(widget, nowMs);
   const owner = widgetOwner(widget, data.bots);
-  const when = widget.published_at && size !== "s" ? relativeTime(widget.published_at, nowMs) : null;
+  const when = widget.published_at ? relativeTime(widget.published_at, nowMs) : null;
 
   return (
-    <div className={`flex h-full flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
-      <div className="flex min-w-0 items-center gap-2">
-        <WidgetIcon icon={widget.icon} size={16} />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-gray-500">{widget.title}</span>
-        {owner ? (
-          <OwnerPill bot={owner} meta={when} compact={size === "s"} />
-        ) : (
-          when && <span className="shrink-0 text-[11.5px] text-ink-3">{when}</span>
-        )}
-      </div>
-      <div className="mt-2 min-h-0 flex-1 overflow-hidden">
+    <div ref={setRoot} className={`flex h-full min-w-0 flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
+      <WidgetHeader
+        icon={<WidgetIcon icon={widget.icon} size={15} />}
+        meta={
+          owner ? (
+            <OwnerPill bot={owner} meta={size === "s" ? null : when} compact={size === "s"} />
+          ) : (
+            when && <span className="text-[11.5px] font-normal text-ink-3">{when}</span>
+          )
+        }
+      />
+      {size === "s" && owner && when && <div className="-mt-0.5 text-[11.5px] text-ink-3">{stale ? `Stale · ${when}` : `Updated ${when}`}</div>}
+      <div ref={setBody} className="relative mt-1.5 min-h-0 min-w-0 flex-1 overflow-hidden">
         {widget.published_at ? (
-          <Content kind={widget.kind} payload={widget.payload} compact size={size} />
+          <div ref={setInner} className={size === "s" && widget.kind === "stat" ? "h-full" : ""}>
+            <Content kind={widget.kind} payload={widget.payload} compact size={size} />
+          </div>
         ) : (
           <div
-            className={`flex h-full items-center justify-center ${size === "m" ? "gap-3" : "flex-col text-center"} ${size === "l" ? "gap-1" : ""}`}
+            className={`flex h-full items-center justify-center ${size === "m" ? "gap-3" : "flex-col text-center"} ${size === "l" || size === "w" ? "gap-1" : ""}`}
           >
             {size === "s" ? (
               owner && <BotAvatar bot={owner} size={28} className="opacity-60" />
             ) : (
-              <KiwiWaiting size={size === "l" ? 132 : 76} className="shrink-0" />
+              <KiwiWaiting size={size === "m" ? 76 : 132} className="shrink-0" />
             )}
             <p className={`text-[13px] leading-snug text-ink-3 ${size === "s" ? "mt-2" : ""}`}>Waiting for {ownerName(widget)} to publish</p>
           </div>
         )}
+        {clamp.more > 0 && (
+          <button
+            type="button"
+            onPointerDown={stop}
+            onClick={(e) => {
+              e.stopPropagation();
+              frame?.open();
+            }}
+            className="absolute left-0 flex h-6 items-center rounded-full text-[12.5px] font-medium text-gray-500 transition hover:text-accent"
+            style={{ top: clamp.top + 2 }}
+          >
+            {clamp.more} more
+          </button>
+        )}
       </div>
-      {size === "s" && widget.published_at && (
-        <div className="mt-1 text-[11.5px] text-ink-3">updated {relativeTime(widget.published_at, nowMs)}</div>
-      )}
     </div>
   );
 }

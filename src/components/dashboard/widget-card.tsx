@@ -29,8 +29,8 @@ export function CardSurface({
 }) {
   return (
     <div
-      className={`relative h-full w-full overflow-hidden bg-surface ${cardPadding(size)} ${
-        lifted ? "shadow-lift" : "shadow-widget"
+      className={`group/card relative h-full w-full overflow-hidden bg-surface transition-shadow duration-200 ${cardPadding(size)} ${
+        lifted ? "shadow-lift" : "shadow-widget [@media(hover:hover)]:hover:shadow-widget-hover"
       } ${className}`}
       style={{ borderRadius: 22, ...style }}
     >
@@ -46,6 +46,8 @@ export function WidgetCard({
   editing,
   expanded,
   removable,
+  rows,
+  span,
   onOpen,
   onEdit,
   onLongPress,
@@ -57,6 +59,10 @@ export function WidgetCard({
   editing: boolean;
   expanded: boolean;
   removable: boolean;
+  /** Rows the content needs, when that's fewer than the size's own (custom widgets). */
+  rows?: number | null;
+  /** Rows the card spans right now, for widgets measuring themselves. */
+  span: number;
   onOpen: () => void;
   onEdit: () => void;
   onLongPress: () => void;
@@ -94,13 +100,15 @@ export function WidgetCard({
     transform: CSS.Translate.toString(transform),
     transition: transition ?? undefined,
     zIndex: isDragging ? 0 : undefined,
+    ...(rows ? { gridRow: `span ${rows}` } : {}),
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative size-${size} ${editing ? "touch-manipulation" : ""}`}
+      data-rows={span}
+      className={`relative min-w-0 size-${size} ${editing ? "touch-manipulation" : ""}`}
       {...(editing ? attributes : {})}
       {...(editing ? listeners : {})}
     >

@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { listWidgets, removeWidget, saveLayout, updateWidget, widgetHistory } from "@/server/widgets";
-import { isCustomKind } from "@/lib/widgets";
+import { isCustomKind, WIDGET_SIZES, type WidgetSize } from "@/lib/widgets";
 import { AppError } from "@/server/ctx";
 import { asUser, readAsUser } from "./run";
 
@@ -13,12 +13,12 @@ const layout = z
       id,
       page: z.number().int().min(0).max(20),
       position: z.number().int().min(0).max(1000),
-      size: z.enum(["s", "m", "l"]).optional(),
+      size: z.enum(WIDGET_SIZES).optional(),
     }),
   )
   .max(200);
 
-export async function saveLayoutAction(items: { id: string; page: number; position: number; size?: "s" | "m" | "l" }[]) {
+export async function saveLayoutAction(items: { id: string; page: number; position: number; size?: WidgetSize }[]) {
   // Layout tweaks are frequent and local state is already correct, so skip
   // the router refresh.
   return asUser((ctx) => saveLayout(ctx, layout.parse(items)), { write: false });
