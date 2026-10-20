@@ -272,10 +272,13 @@ export function planColumns(p: TablePayload, count: number) {
   });
   const textCols = cols.map((c, j) => ({ c, j })).filter(({ c }) => !c.numeric);
   const primary = (textCols.length ? textCols : cols.map((c, j) => ({ c, j }))).reduce((a, b) => (b.c.avg > a.c.avg ? b : a)).j;
+  // On a narrow card only one other column stays: the first numeric one, else the first.
+  const others = cols.map((_, j) => j).filter((j) => j !== primary);
+  const second = others.find((j) => cols[j].numeric) ?? others[0];
   const template = cols
     .map((c, j) => (j === primary ? "minmax(0,1fr)" : `fit-content(${Math.min(c.longest + 1, c.numeric ? 14 : 18)}ch)`))
     .join(" ");
-  return { cols, primary, template };
+  return { cols, primary, second, template };
 }
 
 export function TableView({ p, compact, size }: { p: TablePayload; compact: boolean; size?: WidgetSize }) {
@@ -308,33 +311,36 @@ export function TableView({ p, compact, size }: { p: TablePayload; compact: bool
     );
   }
 
-  const { cols, primary, template } = planColumns(p, size === "s" ? 2 : size === "w" ? 6 : 3);
+  const { cols, primary, second, template } = planColumns(p, size === "s" ? 2 : size === "w" ? 6 : 3);
   const align = (j: number) => (cols[j].numeric && j !== primary ? "text-right tabular-nums" : "");
+  const narrow = (j: number) => (j !== primary && j !== second ? "@max-[400px]:hidden" : "");
   return (
-    <div className="grid gap-x-3 text-[13px]" style={{ gridTemplateColumns: template }}>
-      <div data-clamp className="col-span-full grid grid-cols-subgrid pb-1">
-        {cols.map((c, j) => (
-          <div key={j} className={`truncate text-[12px] font-semibold text-gray-500 ${align(j)}`} title={c.title}>
-            {c.title}
+    <div className="@container">
+      <div className="grid gap-x-3 text-[13px]" style={{ gridTemplateColumns: template }}>
+        <div data-clamp="heading" className="col-span-full grid grid-cols-subgrid pb-1">
+          {cols.map((c, j) => (
+            <div key={j} className={`truncate text-[12px] font-semibold text-gray-500 ${align(j)} ${narrow(j)}`} title={c.title}>
+              {c.title}
+            </div>
+          ))}
+        </div>
+        {p.rows.map((r, i) => (
+          <div key={i} data-clamp className="col-span-full grid grid-cols-subgrid border-t border-gray-150 py-[5px] leading-[1.35]">
+            {cols.map((_, j) => {
+              const v = r[j] ?? "";
+              return (
+                <div
+                  key={j}
+                  title={String(v)}
+                  className={`min-w-0 ${j === primary ? `line-clamp-2 font-medium ${WRAP}` : `line-clamp-2 text-ink-2 ${WRAP}`} ${align(j)} ${narrow(j)}`}
+                >
+                  {v}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
-      {p.rows.map((r, i) => (
-        <div key={i} data-clamp className="col-span-full grid grid-cols-subgrid border-t border-gray-150 py-[5px] leading-[1.35]">
-          {cols.map((_, j) => {
-            const v = r[j] ?? "";
-            return (
-              <div
-                key={j}
-                title={String(v)}
-                className={`min-w-0 ${j === primary ? `line-clamp-2 font-medium ${WRAP}` : `line-clamp-2 text-ink-2 ${WRAP}`} ${align(j)}`}
-              >
-                {v}
-              </div>
-            );
-          })}
-        </div>
-      ))}
     </div>
   );
 }

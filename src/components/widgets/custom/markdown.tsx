@@ -65,7 +65,7 @@ export function Markdown({ source, compact = false }: { source: string; compact?
                   ? "text-[18px]"
                   : "text-[16px]";
             return (
-              <div key={i} {...clamp} role="heading" aria-level={b.level + 2} className={`font-semibold leading-snug ${size} ${i && !compact ? "pt-2" : ""}`}>
+              <div key={i} {...(compact ? { "data-clamp": "heading" } : {})} role="heading" aria-level={b.level + 2} className={`font-semibold leading-snug ${size} ${i && !compact ? "pt-2" : ""}`}>
                 <Inlines nodes={b.c} />
               </div>
             );
