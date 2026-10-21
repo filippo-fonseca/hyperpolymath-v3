@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   requestPasswordReset,
@@ -336,6 +337,16 @@ function FormView({
             </>
           )}
         </button>
+
+        {mode === "sign_up" && (
+          <p className="mt-1 text-center text-[12.5px] leading-snug text-ink-3">
+            By creating an account you agree to the{" "}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-ink-2">
+              terms and privacy policy
+            </Link>
+            .
+          </p>
+        )}
 
         {mode === "forgot" && (
           <button

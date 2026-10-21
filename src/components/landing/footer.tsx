@@ -33,6 +33,9 @@ export function Footer() {
           <Link href="/login?mode=sign_up" className={link}>
             Create an account
           </Link>
+          <Link href="/terms" className={link}>
+            Terms and privacy
+          </Link>
         </nav>
       </div>
     </footer>
