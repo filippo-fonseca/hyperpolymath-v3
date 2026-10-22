@@ -23,6 +23,7 @@ export function Menu({
   children,
   className = "",
   align = "end",
+  footer,
 }: {
   items: MenuItem[];
   /** Accessible name for the trigger button. */
@@ -31,6 +32,8 @@ export function Menu({
   children: ReactNode;
   className?: string;
   align?: "start" | "end";
+  /** Extra controls under the items (a date field), given a way to close. */
+  footer?: (close: () => void) => ReactNode;
 }) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -55,7 +58,7 @@ export function Menu({
       >
         {children}
       </button>
-      {anchor && <Panel anchor={anchor} align={align} items={items} onClose={close} returnFocus={trigger} />}
+      {anchor && <Panel anchor={anchor} align={align} items={items} footer={footer} onClose={close} returnFocus={trigger} />}
     </>
   );
 }
@@ -64,12 +67,14 @@ function Panel({
   anchor,
   align,
   items,
+  footer,
   onClose,
   returnFocus,
 }: {
   anchor: DOMRect;
   align: "start" | "end";
   items: MenuItem[];
+  footer?: (close: () => void) => ReactNode;
   onClose: () => void;
   returnFocus: React.RefObject<HTMLElement | null>;
 }) {
@@ -154,7 +159,7 @@ function Panel({
               onClose();
               it.onSelect();
             }}
-            className={`flex h-9 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left text-[14px] outline-none transition-colors hover:bg-gray-150 focus-visible:bg-gray-150 ${
+            className={`flex h-9 w-full items-center [@media(hover:none)]:h-10 gap-2.5 rounded-[10px] px-2.5 text-left text-[14px] outline-none transition-colors hover:bg-gray-150 focus-visible:bg-gray-150 ${
               it.danger ? "text-[#d61a2f]" : "text-ink"
             }`}
           >
@@ -165,6 +170,7 @@ function Panel({
           </button>
         );
       })}
+      {footer?.(onClose)}
     </motion.div>,
     document.body,
   );
