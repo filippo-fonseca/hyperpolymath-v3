@@ -115,6 +115,8 @@ function Panel({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    // Fields in a footer keep their own arrow keys.
+    if ((e.target as HTMLElement).closest("input, textarea, select")) return;
     e.preventDefault();
     const els = Array.from(ref.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
     const i = els.indexOf(document.activeElement as HTMLElement);
