@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import type { Task } from "@/lib/dashboard-types";
 import { dueLabel, timeLabel } from "@/lib/format";
-import { IconArrowUp, IconRepeat } from "@/components/ui/icons";
+import { dueTone, type DueTone } from "@/lib/today";
+import { IconArrowUp, IconCalendar, IconCheck, IconRepeat } from "@/components/ui/icons";
 import { stop } from "@/components/ui/primitives";
 
 export function isOverdue(t: Task, today: string) {
@@ -81,5 +83,94 @@ export function QuickAdd({
         <IconArrowUp size={16} strokeWidth={2.2} />
       </button>
     </form>
+  );
+}
+
+/* ---------- Todoist-style pieces ---------- */
+
+// Resolved colors (not CSS vars) so the fill can animate. P1 red, P2 orange,
+// P3 blue, P4 plain gray. Keyed by the stored priority, 3 being P1.
+export const PRIORITY_COLORS: Record<number, { ring: string; tint: string; fill: string }> = {
+  3: { ring: "#ff263c", tint: "rgba(255, 38, 60, 0.1)", fill: "#ff263c" },
+  2: { ring: "#ff8a1f", tint: "rgba(255, 138, 31, 0.12)", fill: "#ff8a1f" },
+  1: { ring: "#1084fe", tint: "rgba(16, 132, 254, 0.1)", fill: "#1084fe" },
+  0: { ring: "#b7b7b7", tint: "rgba(255, 255, 255, 0)", fill: "#959595" },
+};
+
+export const priorityColors = (p: number) => PRIORITY_COLORS[Math.max(0, Math.min(3, Math.round(p)))];
+
+/**
+ * Round checkbox whose ring and tint say the priority. Hovering shows a faint
+ * check; checking fills it with a little pop. The hit area is 40px around a
+ * 20px circle, so place it with negative margins.
+ */
+export function PriorityCheck({
+  checked,
+  priority,
+  onToggle,
+  label,
+  className = "",
+}: {
+  checked: boolean;
+  priority: number;
+  onToggle: () => void;
+  label: string;
+  className?: string;
+}) {
+  const c = priorityColors(priority);
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onPointerDown={stop}
+      className={`group/check inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${className}`}
+    >
+      <motion.span
+        initial={false}
+        animate={{ backgroundColor: checked ? c.fill : c.tint, scale: checked ? [1, 1.18, 1] : 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="flex h-5 w-5 items-center justify-center rounded-full"
+        style={{ boxShadow: checked ? "none" : `inset 0 0 0 ${priority > 0 ? 2 : 1.5}px ${c.ring}` }}
+      >
+        <IconCheck
+          size={13}
+          strokeWidth={2.8}
+          className={`transition-opacity duration-150 ${checked ? "opacity-100" : "opacity-0 group-hover/check:opacity-60"}`}
+          style={{ color: checked ? "#fff" : c.ring }}
+        />
+      </motion.span>
+    </button>
+  );
+}
+
+const TONE_CLASS: Record<DueTone, string> = {
+  overdue: "text-danger",
+  today: "text-[#1f8a52]",
+  tomorrow: "text-[#d9730d]",
+  later: "text-[#7a5af8]",
+};
+
+/**
+ * Due date chip, colored by how close it is: overdue red, today green,
+ * tomorrow orange, later purple. Inside the Today section "Today" goes
+ * without saying, so only a time shows there.
+ */
+export function DueChip({ task, today, hideToday = false }: { task: Task; today: string; hideToday?: boolean }) {
+  if (!task.due_date) return null;
+  const tone = dueTone(task.due_date, today);
+  const time = timeLabel(task.due_time?.slice(0, 5) ?? null);
+  if (tone === "today" && hideToday && !time) return null;
+  const label = tone === "today" && hideToday ? time : [dueLabel(task.due_date, today), time].filter(Boolean).join(" ");
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 tabular-nums ${TONE_CLASS[tone]}`}>
+      <IconCalendar size={12} strokeWidth={2} />
+      {label}
+    </span>
   );
 }

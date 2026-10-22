@@ -8,9 +8,11 @@ import {
   createTaskAction,
   deleteTaskAction,
   reopenTaskAction,
+  rescheduleTasksAction,
   updateTaskAction,
 } from "@/app/actions/tasks";
 import { useDashboard } from "@/components/dashboard/context";
+import { useToast } from "@/components/ui/toast";
 
 const key = (t: Task) => `${t.id}:${t.due_date ?? ""}`;
 
@@ -21,6 +23,7 @@ const key = (t: Task) => `${t.id}:${t.due_date ?? ""}`;
  */
 export function useTasks() {
   const { data, run } = useDashboard();
+  const toast = useToast();
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [unchecked, setUnchecked] = useState<Set<string>>(() => new Set());
   const [patches, setPatches] = useState<Record<string, Partial<Task>>>({});
@@ -55,6 +58,66 @@ export function useTasks() {
       }
     },
     [isDone, run],
+  );
+
+  /**
+   * Complete with an Undo toast, Todoist style. Undo reopens a plain task; a
+   * recurring one has already rolled forward, so undo moves it back.
+   */
+  const complete = useCallback(
+    async (t: Task) => {
+      const k = key(t);
+      setChecked((s) => new Set(s).add(k));
+      setUnchecked((s) => (s.delete(t.id), new Set(s)));
+      const undo = async () => {
+        setChecked((s) => (s.delete(k), new Set(s)));
+        if (t.recurrence) await run(updateTaskAction(t.id, { due_date: t.due_date, status: "todo" }));
+        else {
+          setUnchecked((s) => new Set(s).add(t.id));
+          const ok = await run(reopenTaskAction(t.id));
+          if (!ok) setUnchecked((s) => (s.delete(t.id), new Set(s)));
+        }
+      };
+      toast.show(`Completed “${t.title}”`, { action: { label: "Undo", onClick: () => void undo() } });
+      const res = await run(completeTaskAction(t.id));
+      if (!res) setChecked((s) => (s.delete(k), new Set(s)));
+    },
+    [run, toast],
+  );
+
+  /** Move tasks to a date in one go, with Undo back to where each one was. */
+  const reschedule = useCallback(
+    async (tasks: Task[], due_date: string | null, label: string) => {
+      if (!tasks.length) return;
+      const before = new Map(tasks.map((t) => [t.id, t.due_date]));
+      setPatches((p) => {
+        const n = { ...p };
+        for (const t of tasks) n[t.id] = { ...n[t.id], due_date };
+        return n;
+      });
+      const res = await run(rescheduleTasksAction([...before.keys()], due_date));
+      const restore = () =>
+        setPatches((p) => {
+          const n = { ...p };
+          for (const t of tasks) n[t.id] = { ...n[t.id], due_date: before.get(t.id) ?? null };
+          return n;
+        });
+      if (res === null) {
+        restore();
+        return;
+      }
+      const undo = async () => {
+        restore();
+        const byDate = new Map<string | null, string[]>();
+        for (const [id, d] of before) byDate.set(d, [...(byDate.get(d) ?? []), id]);
+        for (const [d, ids] of byDate) await run(rescheduleTasksAction(ids, d));
+      };
+      const what = tasks.length === 1 ? `“${tasks[0].title}”` : `${tasks.length} tasks`;
+      toast.show(due_date ? `Moved ${what} to ${label}` : `Took the date off ${what}`, {
+        action: { label: "Undo", onClick: () => void undo() },
+      });
+    },
+    [run, toast],
   );
 
   const update = useCallback(
@@ -100,7 +163,21 @@ export function useTasks() {
 
   const isHidden = useCallback((t: Task) => hidden.has(t.id), [hidden]);
 
-  return { open, done, isDone, toggle, update, setStatus, remove, create, apply, isHidden, today: data.today };
+  return {
+    open,
+    done,
+    isDone,
+    toggle,
+    complete,
+    reschedule,
+    update,
+    setStatus,
+    remove,
+    create,
+    apply,
+    isHidden,
+    today: data.today,
+  };
 }
 
 export function sortToday(tasks: Task[]) {
