@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { completeTask, createTask, deleteTask, reopenTask, updateTask, type TaskInput } from "@/server/tasks";
+import { completeTask, createTask, deleteTask, reopenTask, rescheduleTasks, updateTask, type TaskInput } from "@/server/tasks";
 import { cancelReminder, setReminder, snoozeReminder, type ReminderInput } from "@/server/reminders";
 import { recurrenceSchema } from "@/lib/recurrence";
 import { scheduleSchema } from "@/lib/schedule";
@@ -35,6 +35,13 @@ export async function completeTaskAction(taskId: string) {
 
 export async function reopenTaskAction(taskId: string) {
   return asUser((ctx) => reopenTask(ctx, id.parse(taskId)));
+}
+
+export async function rescheduleTasksAction(taskIds: string[], dueDate: string | null) {
+  return asUser(async (ctx) => {
+    const tasks = await rescheduleTasks(ctx, z.array(id).max(200).parse(taskIds), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().parse(dueDate));
+    return tasks.length;
+  });
 }
 
 export async function deleteTaskAction(taskId: string) {

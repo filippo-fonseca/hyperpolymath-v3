@@ -182,6 +182,16 @@ export async function reopenTask(ctx: Ctx, id: string): Promise<Task> {
   return updateTask(ctx, id, { status: "todo" });
 }
 
+/**
+ * Move several tasks to one date (the Today view's "Reschedule" for overdue).
+ * Each move is its own logged update, so any one can be reverted.
+ */
+export async function rescheduleTasks(ctx: Ctx, ids: string[], due_date: string | null): Promise<Task[]> {
+  const out: Task[] = [];
+  for (const id of [...new Set(ids)].slice(0, 200)) out.push(await updateTask(ctx, id, { due_date }));
+  return out;
+}
+
 export async function deleteTask(ctx: Ctx, id: string) {
   const before = await getTask(ctx, id);
   const after = must(
