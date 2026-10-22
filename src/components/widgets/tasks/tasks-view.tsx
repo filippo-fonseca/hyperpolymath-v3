@@ -14,36 +14,72 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import type { Task, TaskStatus } from "@/lib/dashboard-types";
-import { PRIORITY_LABELS, longDate, weekdayName } from "@/lib/format";
+import { PRIORITY_LABELS, longDate, pluralize, weekdayName } from "@/lib/format";
 import { Checkbox, IconButton, Segmented } from "@/components/ui/primitives";
-import { IconBoard, IconChevronDown, IconList, IconTable, IconTrash } from "@/components/ui/icons";
+import { IconBoard, IconCheckCircle, IconChevronDown, IconList, IconTable, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { KiwiSleeping } from "@/components/illustrations";
 import { DueMeta, PriorityDot, QuickAdd } from "./task-bits";
 import { InlineTitle, TaskEditor } from "./task-editor";
 import { sortToday, useTasks } from "./use-tasks";
+import { TodayList, UpcomingList, useTodayData } from "./today-list";
 import { groupTasks } from "@/lib/projects";
 import { useDashboard } from "@/components/dashboard/context";
 import { ProjectChip, ProjectField } from "../projects/project-bits";
 
 type View = "list" | "board" | "table";
+type Tab = "today" | "upcoming" | "all";
 type Ops = ReturnType<typeof useTasks>;
+
+const TITLES: Record<Tab, string> = { today: "Today", upcoming: "Upcoming", all: "Tasks" };
 
 export function TasksView() {
   const ops = useTasks();
+  const [tab, setTab] = useState<Tab>("today");
+  const { left } = useTodayData(ops);
+
+  return (
+    <div className={`mx-auto w-full ${tab === "all" ? "" : "max-w-[760px]"}`}>
+      <ExpandedHeader
+        eyebrow={
+          tab === "today" ? (
+            <span className="flex items-center gap-1.5">
+              <IconCheckCircle size={14} />
+              {left ? `${pluralize(left, "task")} left` : "All done"}
+            </span>
+          ) : (
+            <>
+              <span className="text-accent">{weekdayName(ops.today)}</span>, {longDate(ops.today)}
+            </>
+          )
+        }
+        title={TITLES[tab]}
+        aside={
+          <Segmented<Tab>
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "today", label: "Today" },
+              { value: "upcoming", label: "Upcoming" },
+              { value: "all", label: "All" },
+            ]}
+          />
+        }
+      />
+      {tab === "today" && <TodayList ops={ops} />}
+      {tab === "upcoming" && <UpcomingList ops={ops} />}
+      {tab === "all" && <AllTasks ops={ops} />}
+    </div>
+  );
+}
+
+/** Every task, as a list, board or table: the view from before Today existed. */
+function AllTasks({ ops }: { ops: Ops }) {
   const [view, setView] = useState<View>("list");
-  const [dueToday, setDueToday] = useState(true);
+  const [dueToday, setDueToday] = useState(false);
 
   return (
     <div>
-      <ExpandedHeader
-        eyebrow={
-          <>
-            <span className="text-accent">{weekdayName(ops.today)}</span>, {longDate(ops.today)}
-          </>
-        }
-        title="Tasks"
-      />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <QuickAdd
           className="flex-1"
