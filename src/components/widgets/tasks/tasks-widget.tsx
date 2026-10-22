@@ -84,6 +84,8 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
     kind: "task",
     task,
     ...extra,
+    // A small card only has room for titles; its header already counts what's overdue.
+    ...(small ? { hideDate: true } : {}),
     h: v === "card" && rowMeta(task, extra).any ? ROW_HEIGHTS.card : ROW_HEIGHTS.dense,
   });
   const headings = size !== "s" && (size !== "m" || overdue > 0);
@@ -122,7 +124,7 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
         }
       />
       {adding && !small ? (
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+        <div className="-mx-px mt-2 min-h-0 flex-1 overflow-y-auto p-px">
           <TaskComposer ops={ops} defaultDate={ops.today} onClose={() => setAdding(false)} compact />
         </div>
       ) : size === "w" ? (
