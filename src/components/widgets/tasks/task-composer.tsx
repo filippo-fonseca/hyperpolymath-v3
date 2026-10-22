@@ -193,9 +193,10 @@ export function TaskComposer({
         compact ? "p-2.5" : "p-3"
       }`}
     >
-      <div className="relative">
+      {/* The global `font: inherit` on fields beats utilities, so the size sits on the wrapper. */}
+      <div className={`relative ${TITLE}`}>
         {/* Highlights sit under the transparent-backed textarea, matched glyph for glyph. */}
-        <div aria-hidden className={`pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-transparent ${TITLE}`}>
+        <div aria-hidden className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-transparent">
           <Highlights text={text} tokens={parsed.tokens} />
         </div>
         <textarea
@@ -212,23 +213,27 @@ export function TaskComposer({
               void submit();
             }
           }}
-          className={`relative block w-full resize-none overflow-hidden bg-transparent outline-none placeholder:text-ink-3 ${TITLE}`}
+          className="relative block w-full resize-none overflow-hidden whitespace-pre-wrap break-words bg-transparent placeholder:text-ink-3"
+          style={NO_RING}
         />
       </div>
       {!compact && (
-        <input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              void submit();
-            }
-          }}
-          placeholder="Description"
-          aria-label="Description"
-          className="mt-0.5 block w-full bg-transparent text-[13px] leading-[20px] text-ink-2 outline-none placeholder:text-ink-3"
-        />
+        <div className="mt-0.5 text-[13px] leading-[20px] text-ink-2">
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+            placeholder="Description"
+            aria-label="Description"
+            className="block w-full bg-transparent placeholder:text-ink-3"
+            style={NO_RING}
+          />
+        </div>
       )}
       <div className={compact ? "mt-2 flex items-end gap-2" : "mt-3"}>
         <div className="min-w-0 flex-1">{chips}</div>
@@ -246,6 +251,10 @@ export function TaskComposer({
 }
 
 const TITLE = "text-[15px] font-medium leading-[22px] tracking-normal";
+
+// The global :focus-visible ring is unlayered, so a utility can't turn it off.
+// The composer's own border lights up on focus instead.
+const NO_RING = { outline: "none" } as const;
 
 function Footer({ compact, children }: { compact: boolean; children: ReactNode }) {
   if (compact) return <div className="flex shrink-0 items-center gap-1">{children}</div>;
