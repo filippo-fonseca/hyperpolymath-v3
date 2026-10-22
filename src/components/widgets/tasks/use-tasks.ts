@@ -112,7 +112,8 @@ export function useTasks() {
         for (const [id, d] of before) byDate.set(d, [...(byDate.get(d) ?? []), id]);
         for (const [d, ids] of byDate) await run(rescheduleTasksAction(ids, d));
       };
-      toast.show(tasks.length === 1 ? `Moved “${tasks[0].title}” to ${label}` : `Moved ${tasks.length} tasks to ${label}`, {
+      const what = tasks.length === 1 ? `“${tasks[0].title}”` : `${tasks.length} tasks`;
+      toast.show(due_date ? `Moved ${what} to ${label}` : `Took the date off ${what}`, {
         action: { label: "Undo", onClick: () => void undo() },
       });
     },
