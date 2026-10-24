@@ -247,3 +247,15 @@ export const IconWidgets = (p: P) => (
     <rect x="3.5" y="13.5" width="17" height="7" rx="2" />
   </svg>
 );
+export const IconSliders = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+    <circle cx="15" cy="7" r="2" />
+    <circle cx="9" cy="17" r="2" />
+  </svg>
+);
+export const IconArrowDown = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </svg>
+);
