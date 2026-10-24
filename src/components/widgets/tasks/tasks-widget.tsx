@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import type { Task } from "@/lib/dashboard-types";
 import type { WidgetSize } from "@/lib/widgets";
@@ -12,6 +12,7 @@ import { ROW_HEIGHTS, TaskSheet, TodayRow, useRowMeta, type RowVariant } from ".
 import { AddTaskButton, TaskComposer } from "./task-composer";
 import { RescheduleButton, TodayEmpty, useQuickAddKey, useTodayData } from "./today-list";
 import { useTasks } from "./use-tasks";
+import { useTaskView } from "./use-task-view";
 
 type Ops = ReturnType<typeof useTasks>;
 
@@ -68,7 +69,10 @@ function useHeight(fallback: number) {
 /** Today on the dashboard: the same rows and composer as the full view, fitted to the card. */
 export function TasksWidget({ size }: { size: WidgetSize }) {
   const ops = useTasks();
-  const d = useTodayData(ops);
+  // The card follows Today's order but never its filters, so it always shows everything due.
+  const { prefs } = useTaskView("today");
+  const order = useMemo(() => ({ ...prefs, priorities: [], project: null, due: "any" as const }), [prefs]);
+  const d = useTodayData(ops, order);
   const rowMeta = useRowMeta();
   const [adding, setAdding] = useState(false);
   const [sheetId, setSheetId] = useState<string | null>(null);
