@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { listTokens, mintToken, revokeToken } from "@/server/tokens";
-import { setTimezone } from "@/server/settings";
+import { setTaskView, setTimezone } from "@/server/settings";
+import { taskViewSchema } from "@/lib/task-view";
 import { clearRelay, setRelay } from "@/server/relay";
 import { asUser, readAsUser } from "./run";
 
@@ -24,6 +25,14 @@ export async function revokeTokenAction(tokenId: string) {
 
 export async function setTimezoneAction(tz: string) {
   return asUser((ctx) => setTimezone(ctx, z.string().min(1).max(80).parse(tz)));
+}
+
+/** Save how a task tab sorts, groups and filters. The client already shows it, so no refresh. */
+export async function setTaskViewAction(input: unknown) {
+  return asUser(async (ctx) => {
+    const { view, prefs } = taskViewSchema.parse(input);
+    return setTaskView(ctx, view, prefs);
+  }, { write: false });
 }
 
 /** Save this account's Reminder relay webhook. The key is never sent back. */

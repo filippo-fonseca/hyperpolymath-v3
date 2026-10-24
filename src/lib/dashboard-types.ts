@@ -10,6 +10,7 @@ import type { widgetHistory } from "@/server/widgets";
 import type { listRoutines, listRuns } from "@/server/routines";
 import type { CalendarEvent } from "@/server/google/calendar";
 import type { listAreas } from "@/server/projects";
+import type { TaskViews } from "./task-view";
 
 export type { CalendarEvent };
 
@@ -48,6 +49,8 @@ export type DashboardData = {
   routines: RoutineRow[];
   /** Areas (archived included) with their projects, plus projects with no area. */
   areas: AreasData;
+  /** Sort, grouping and filters for each task tab. */
+  taskViews: TaskViews;
   realtime: { url: string; key: string } | null;
 };
 

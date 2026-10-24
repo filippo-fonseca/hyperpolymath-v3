@@ -682,16 +682,19 @@ export type Database = {
       }
       settings: {
         Row: {
+          task_view: Json
           timezone: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          task_view?: Json
           timezone?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          task_view?: Json
           timezone?: string
           updated_at?: string
           user_id?: string
