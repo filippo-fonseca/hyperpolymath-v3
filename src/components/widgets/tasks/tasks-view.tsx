@@ -16,26 +16,29 @@ import {
 import type { Task, TaskStatus } from "@/lib/dashboard-types";
 import { PRIORITY_LABELS, longDate, pluralize, weekdayName } from "@/lib/format";
 import { Checkbox, IconButton, Segmented } from "@/components/ui/primitives";
-import { IconBoard, IconCheckCircle, IconChevronDown, IconList, IconTable, IconTrash } from "@/components/ui/icons";
+import { IconArrowDown, IconArrowUp, IconBoard, IconCheckCircle, IconChevronDown, IconList, IconTable, IconTrash } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { KiwiSleeping } from "@/components/illustrations";
 import { DueMeta, PriorityDot, QuickAdd } from "./task-bits";
 import { InlineTitle, TaskEditor } from "./task-editor";
-import { sortToday, useTasks } from "./use-tasks";
-import { TodayList, UpcomingList, useTodayData } from "./today-list";
-import { groupTasks } from "@/lib/projects";
+import { useTasks } from "./use-tasks";
+import { TodayList, UpcomingList, clearFilters, useTodayData } from "./today-list";
+import { useTaskView } from "./use-task-view";
+import { FilteredOut, ViewOptionsButton } from "./view-options";
+import { NATURAL_DIR, filterTasks, groupSections, sortTasks, type Layout, type SortField, type TaskViewPrefs } from "@/lib/task-view";
 import { useDashboard } from "@/components/dashboard/context";
 import { ProjectChip, ProjectField } from "../projects/project-bits";
 
-type View = "list" | "board" | "table";
 type Tab = "today" | "upcoming" | "all";
 type Ops = ReturnType<typeof useTasks>;
+type Options = ReturnType<typeof useTaskView>;
 
 const TITLES: Record<Tab, string> = { today: "Today", upcoming: "Upcoming", all: "Tasks" };
 
 export function TasksView() {
   const ops = useTasks();
   const [tab, setTab] = useState<Tab>("today");
+  const views = { today: useTaskView("today"), upcoming: useTaskView("upcoming"), all: useTaskView("all") };
   const { left } = useTodayData(ops);
 
   return (
@@ -55,28 +58,33 @@ export function TasksView() {
         }
         title={TITLES[tab]}
         aside={
-          <Segmented<Tab>
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "today", label: "Today" },
-              { value: "upcoming", label: "Upcoming" },
-              { value: "all", label: "All" },
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            <Segmented<Tab>
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "today", label: "Today" },
+                { value: "upcoming", label: "Upcoming" },
+                { value: "all", label: "All" },
+              ]}
+            />
+            <ViewOptionsButton key={tab} view={tab} options={views[tab]} />
+          </div>
         }
       />
-      {tab === "today" && <TodayList ops={ops} />}
-      {tab === "upcoming" && <UpcomingList ops={ops} />}
-      {tab === "all" && <AllTasks ops={ops} />}
+      {tab === "today" && <TodayList ops={ops} options={views.today} />}
+      {tab === "upcoming" && <UpcomingList ops={ops} options={views.upcoming} />}
+      {tab === "all" && <AllTasks ops={ops} options={views.all} />}
     </div>
   );
 }
 
 /** Every task, as a list, board or table: the view from before Today existed. */
-function AllTasks({ ops }: { ops: Ops }) {
-  const [view, setView] = useState<View>("list");
+function AllTasks({ ops, options }: { ops: Ops; options: Options }) {
+  const { prefs, set } = options;
+  const view = prefs.layout;
   const [dueToday, setDueToday] = useState(false);
+  const hidden = ops.open.length - filterTasks(ops.open, prefs, ops.today).length;
 
   return (
     <div>
@@ -97,9 +105,9 @@ function AllTasks({ ops }: { ops: Ops }) {
           >
             Today
           </button>
-          <Segmented<View>
+          <Segmented<Layout>
             value={view}
-            onChange={setView}
+            onChange={(layout) => set({ layout })}
             options={[
               { value: "list", label: <><IconList size={15} /> <span className="max-sm:sr-only">List</span></> },
               { value: "board", label: <><IconBoard size={15} /> <span className="max-sm:sr-only">Board</span></> },
@@ -108,30 +116,40 @@ function AllTasks({ ops }: { ops: Ops }) {
           />
         </div>
       </div>
-      {view === "list" && <ListView ops={ops} />}
-      {view === "board" && <BoardView ops={ops} />}
-      {view === "table" && <TableView ops={ops} />}
+      {hidden > 0 && hidden === ops.open.length ? (
+        <FilteredOut hidden={hidden} onClear={() => clearFilters(options)} />
+      ) : (
+        <>
+          {hidden > 0 && (
+            <p className="-mt-3 mb-4 text-[13px] text-ink-3">
+              Filters hide {pluralize(hidden, "open task")}.{" "}
+              <button type="button" onClick={() => clearFilters(options)} className="font-medium text-accent hover:underline">
+                Clear filters
+              </button>
+            </p>
+          )}
+          {view === "list" && <ListView ops={ops} prefs={prefs} />}
+          {view === "board" && <BoardView ops={ops} prefs={prefs} />}
+          {view === "table" && <TableView ops={ops} options={options} />}
+        </>
+      )}
     </div>
   );
 }
 
 /* ---------------- List ---------------- */
 
-type GroupBy = "date" | "project" | "area";
+/** Filtered and sorted with the tab's options. */
+const arrange = (tasks: Task[], prefs: TaskViewPrefs, today: string) => sortTasks(filterTasks(tasks, prefs, today), prefs.sort, prefs.dir);
 
-function ListView({ ops }: { ops: Ops }) {
+function ListView({ ops, prefs }: { ops: Ops; prefs: TaskViewPrefs }) {
   const { open, done, today } = ops;
   const { data } = useDashboard();
-  const [groupBy, setGroupBy] = useState<GroupBy>("date");
-  const byDate: { key: string; title: string; emoji?: string | null; tasks: Task[]; tone?: "danger" }[] = [
-    { key: "overdue", title: "Overdue", tasks: sortToday(open.filter((t) => t.due_date && t.due_date < today)), tone: "danger" },
-    { key: "today", title: "Today", tasks: sortToday(open.filter((t) => t.due_date === today)) },
-    { key: "upcoming", title: "Upcoming", tasks: sortToday(open.filter((t) => t.due_date && t.due_date > today)) },
-    { key: "nodate", title: "No date", tasks: open.filter((t) => !t.due_date).sort((a, b) => b.priority - a.priority) },
-  ];
+  const groupBy = prefs.group;
+  const shown = arrange(open, prefs, today);
   const groups = [
-    ...(groupBy === "date" ? byDate : groupTasks(sortToday(open), data.areas, groupBy)),
-    { key: "done", title: "Done", tasks: done },
+    ...groupSections(shown, groupBy, today, data.areas).map((g) => ({ ...g, title: g.title || "Open" })),
+    { key: "done", title: "Done", tasks: filterTasks(done, prefs, today) },
   ];
   const [openId, setOpenId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -139,19 +157,6 @@ function ListView({ ops }: { ops: Ops }) {
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="-mb-3 flex items-center justify-end gap-2">
-        <span className="text-[12.5px] font-medium text-gray-500">Group by</span>
-        <Segmented<GroupBy>
-          size="sm"
-          value={groupBy}
-          onChange={setGroupBy}
-          options={[
-            { value: "date", label: "Date" },
-            { value: "project", label: "Project" },
-            { value: "area", label: "Area" },
-          ]}
-        />
-      </div>
       {empty && (
         <div className="flex flex-col items-center pb-6 text-center">
           <KiwiSleeping animated size={148} />
@@ -264,8 +269,9 @@ const COLUMNS: { status: TaskStatus; title: string }[] = [
   { status: "done", title: "Done" },
 ];
 
-function BoardView({ ops }: { ops: Ops }) {
+function BoardView({ ops, prefs }: { ops: Ops; prefs: TaskViewPrefs }) {
   const all = [...ops.open, ...ops.done];
+  const shown = arrange(all, prefs, ops.today);
   const [dragId, setDragId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const sensors = useSensors(
@@ -287,7 +293,7 @@ function BoardView({ ops }: { ops: Ops }) {
     <DndContext sensors={sensors} onDragStart={(e) => setDragId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragId(null)}>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {COLUMNS.map((c) => {
-          const tasks = sortToday(all.filter((t) => t.status === c.status));
+          const tasks = shown.filter((t) => t.status === c.status);
           return (
             <Column key={c.status} id={c.status} title={c.title} count={tasks.length}>
               {tasks.map((t) => (
@@ -363,8 +369,20 @@ function BoardCard({ task, ops, expanded, onToggleOpen }: { task: Task; ops: Ops
 
 /* ---------------- Table ---------------- */
 
-function TableView({ ops }: { ops: Ops }) {
-  const rows = [...sortToday(ops.open), ...ops.done];
+function TableView({ ops, options }: { ops: Ops; options: Options }) {
+  const { prefs, set } = options;
+  const rows = [...arrange(ops.open, prefs, ops.today), ...arrange(ops.done, prefs, ops.today)];
+  // A header click sorts by that column; a second click flips the order.
+  const sortBy = (sort: SortField) =>
+    set(prefs.sort === sort ? { dir: prefs.dir === "asc" ? "desc" : "asc" } : { sort, dir: NATURAL_DIR[sort] });
+  const th = (sort: SortField, label: string, className: string) => (
+    <th className={`pb-2 pl-2 font-semibold ${className}`} aria-sort={prefs.sort === sort ? (prefs.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" onClick={() => sortBy(sort)} className={`flex items-center gap-1 transition hover:text-ink ${prefs.sort === sort ? "text-ink" : ""}`}>
+        {label}
+        {prefs.sort === sort && (prefs.dir === "asc" ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />)}
+      </button>
+    </th>
+  );
   const cell = "h-9 rounded-[8px] bg-transparent px-2 text-[14px] outline-none transition hover:bg-gray-100 focus:bg-gray-100";
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
@@ -372,9 +390,9 @@ function TableView({ ops }: { ops: Ops }) {
         <thead>
           <tr className="text-[12px] font-semibold text-gray-500">
             <th className="w-8 pb-2" />
-            <th className="pb-2 pl-2 font-semibold">Title</th>
-            <th className="w-[150px] pb-2 pl-2 font-semibold">Due</th>
-            <th className="w-[110px] pb-2 pl-2 font-semibold">Priority</th>
+            {th("title", "Title", "")}
+            {th("due", "Due", "w-[150px]")}
+            {th("priority", "Priority", "w-[110px]")}
             <th className="w-[170px] pb-2 pl-2 font-semibold">Project</th>
             <th className="w-[100px] pb-2 pl-2 font-semibold">Status</th>
             <th className="w-9 pb-2" />

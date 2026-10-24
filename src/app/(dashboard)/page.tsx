@@ -10,6 +10,7 @@ import { listActions } from "@/server/log";
 import { listReminders } from "@/server/reminders";
 import { listRoutines } from "@/server/routines";
 import { listAreas } from "@/server/projects";
+import { getTaskViews } from "@/server/settings";
 import { localDate } from "@/lib/time";
 import { loadCalendar } from "@/lib/calendar-data";
 import type { DashboardData } from "@/lib/dashboard-types";
@@ -30,7 +31,7 @@ async function DashboardLoader() {
   // Streams separately so a slow or failing Google call never blocks the grid.
   const calendar = loadCalendar(ctx);
   await ensureDefaultWidgets(ctx.db, userId);
-  const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders, routines, areas] = await Promise.all([
+  const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders, routines, areas, taskViews] = await Promise.all([
     listWidgets(ctx),
     listTasks(ctx, { scope: "open", limit: 500 }),
     listTasks(ctx, { scope: "done", limit: 40 }),
@@ -43,6 +44,7 @@ async function DashboardLoader() {
     listRoutines(ctx),
     // Archived ones too, so the Projects view can show its quiet archive.
     listAreas(ctx, { includeArchived: true }),
+    getTaskViews(ctx),
   ]);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -62,6 +64,7 @@ async function DashboardLoader() {
     reminders,
     routines,
     areas,
+    taskViews,
     realtime: url && key ? { url, key } : null,
   };
   return <Dashboard data={data} calendar={calendar} />;
