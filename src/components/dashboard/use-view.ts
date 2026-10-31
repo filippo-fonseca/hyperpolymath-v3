@@ -62,7 +62,10 @@ export function useViewMode<T extends string>(modes: readonly T[], fallback: T) 
       const url = new URL(window.location.href);
       if (next === fallback) url.searchParams.delete(MODE);
       else url.searchParams.set(MODE, next);
-      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      // Carry over only our own flag: passing Next's internal state back
+      // would make the router skip syncing useSearchParams.
+      const fromHome = !!(window.history.state as Record<string, unknown> | null)?.[FROM_HOME];
+      window.history.replaceState({ [FROM_HOME]: fromHome }, "", url.pathname + url.search + url.hash);
     },
     [fallback],
   );
