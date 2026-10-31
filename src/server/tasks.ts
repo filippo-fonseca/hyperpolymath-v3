@@ -2,7 +2,7 @@ import "server-only";
 import { AppError, asJson, must, type Ctx, type Row, type Update, escapeLike } from "./ctx";
 import { logAction } from "./log";
 import { projectIdFor } from "./projects";
-import { nextOccurrence, recurrenceSchema, type Recurrence } from "@/lib/recurrence";
+import { latestOccurrence, nextOccurrence, recurrenceSchema, type Recurrence } from "@/lib/recurrence";
 import { addDays, localDate } from "@/lib/time";
 
 export type Task = Row<"tasks">;
@@ -176,6 +176,50 @@ export async function completeTask(ctx: Ctx, id: string): Promise<Task> {
   const after = must(await ctx.db.from("tasks").update(values).eq("id", id).select().single(), "complete task");
   await logAction(ctx, { tool: "complete_task", entityType: "task", entityId: id, before, after, summary });
   return after;
+}
+
+/**
+ * Roll missed recurring tasks forward to their latest occurrence on or before
+ * today, so a skipped series shows once (due today, or overdue by its most
+ * recent date) instead of counting from the first day it was missed.
+ */
+export async function catchUpRecurring(ctx: Ctx): Promise<Task[]> {
+  const today = localDate(ctx.now, ctx.tz);
+  const { data, error } = await ctx.db
+    .from("tasks")
+    .select()
+    .eq("user_id", ctx.userId)
+    .is("deleted_at", null)
+    .neq("status", "done")
+    .not("recurrence", "is", null)
+    .lt("due_date", today);
+  if (error) throw new AppError(`catch up recurring: ${error.message}`);
+  const out: Task[] = [];
+  for (const before of data ?? []) {
+    const rule = recurrenceSchema.safeParse(before.recurrence);
+    if (!rule.success || !before.due_date) continue;
+    const due = latestOccurrence(rule.data, before.due_date, today);
+    if (due === before.due_date) continue;
+    // Only if nobody moved it meanwhile.
+    const { data: after } = await ctx.db
+      .from("tasks")
+      .update({ due_date: due })
+      .eq("id", before.id)
+      .eq("due_date", before.due_date)
+      .select()
+      .maybeSingle();
+    if (!after) continue;
+    await logAction(ctx, {
+      tool: "catch_up_recurring",
+      entityType: "task",
+      entityId: before.id,
+      before,
+      after,
+      summary: `Moved "${before.title}" to ${due}, its latest repeat (missed since ${before.due_date})`,
+    });
+    out.push(after);
+  }
+  return out;
 }
 
 export async function reopenTask(ctx: Ctx, id: string): Promise<Task> {

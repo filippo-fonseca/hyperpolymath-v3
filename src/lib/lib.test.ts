@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextFire, firstFire } from "./schedule";
-import { nextOccurrence } from "./recurrence";
+import { latestOccurrence, nextOccurrence } from "./recurrence";
 import { currentStreak } from "./streak";
 import { zonedToUtc, localDate } from "./time";
 
@@ -65,6 +65,17 @@ describe("recurrence", () => {
   });
   it("monthly with an anchor day recovers after short months", () => {
     expect(nextOccurrence({ freq: "monthly", interval: 1, month_day: 31 }, "2026-02-28")).toBe("2026-03-31");
+  });
+  it("a missed daily task catches up to today", () => {
+    expect(latestOccurrence({ freq: "daily", interval: 1 }, "2026-10-25", "2026-10-31")).toBe("2026-10-31");
+  });
+  it("a missed weekly task lands on the last occurrence, not today", () => {
+    // Mon/Thu series due Mon Oct 19; on Sat Oct 31 the latest is Thu Oct 29.
+    expect(latestOccurrence({ freq: "weekly", interval: 1, days: [1, 4] }, "2026-10-19", "2026-10-31")).toBe("2026-10-29");
+  });
+  it("leaves a task due today or later alone", () => {
+    expect(latestOccurrence({ freq: "daily", interval: 1 }, "2026-10-31", "2026-10-31")).toBe("2026-10-31");
+    expect(latestOccurrence({ freq: "daily", interval: 1 }, "2026-11-02", "2026-10-31")).toBe("2026-11-02");
   });
 });
 
