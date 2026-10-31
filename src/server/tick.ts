@@ -1,9 +1,11 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { adminDb, userTimezone, type DB, type Row } from "./ctx";
+import { adminDb, makeCtx, userTimezone, type DB, type Row } from "./ctx";
 import { advance, type DueReminder } from "./reminders";
 import { describeSchedule, scheduleSchema } from "@/lib/schedule";
 import { getRelay } from "./relay";
+import { catchUpRecurring } from "./tasks";
+import { localDate } from "@/lib/time";
 
 // The reminder tick. Runs every few minutes: claims due reminders, batches
 // them per user into ONE webhook call to the coordinator bot's "Reminder
@@ -100,6 +102,31 @@ export async function runTick(
     }
   }
   return result;
+}
+
+/**
+ * Roll every account's missed recurring tasks forward to their latest
+ * occurrence. Anything dated on or before today in UTC could be behind in
+ * some timezone; catchUpRecurring checks each user's own date.
+ */
+export async function catchUpRecurringAll(now = new Date(), opts: { userId?: string } = {}) {
+  const db = adminDb();
+  let q = db
+    .from("tasks")
+    .select("user_id")
+    .is("deleted_at", null)
+    .neq("status", "done")
+    .not("recurrence", "is", null)
+    .lte("due_date", localDate(now, "UTC"));
+  if (opts.userId) q = q.eq("user_id", opts.userId);
+  const { data, error } = await q.limit(1000);
+  if (error) throw new Error(`catch-up query: ${error.message}`);
+  let moved = 0;
+  for (const userId of new Set((data ?? []).map((r) => r.user_id))) {
+    const ctx = { ...(await makeCtx(userId, { kind: "system", name: "repeats" })), now };
+    moved += (await catchUpRecurring(ctx)).length;
+  }
+  return moved;
 }
 
 /**
