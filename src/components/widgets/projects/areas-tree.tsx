@@ -5,7 +5,7 @@ import type { ProjectWithCounts } from "@/lib/dashboard-types";
 import { STATUS_LABELS, areaColor, asStatus, treeBranches, type TreeBranch } from "@/lib/projects";
 import { pluralize } from "@/lib/format";
 import { Button, Switch } from "@/components/ui/primitives";
-import { IconChevronDown, IconFolder, IconPlus } from "@/components/ui/icons";
+import { IconArchive, IconChevronDown, IconFolder, IconPlus } from "@/components/ui/icons";
 import { RootAvatar } from "@/components/ui/root-avatar";
 import { useProjects } from "./use-projects";
 
@@ -338,7 +338,12 @@ function AreaBranch({
               {name}
             </button>
           )}
-          {archived && <span className="shrink-0 text-[11.5px] text-ink-3">Archived</span>}
+          {archived && (
+            <span title="Archived" className="shrink-0 text-ink-3">
+              <IconArchive size={13} />
+              <span className="sr-only">Archived</span>
+            </span>
+          )}
           <span className="shrink-0 text-[12px] tabular-nums text-ink-3">{projects.length}</span>
           <button
             type="button"
