@@ -48,3 +48,18 @@ export function nextOccurrence(rule: Recurrence, from: LocalDate): LocalDate {
     }
   }
 }
+
+/**
+ * The series' latest occurrence on or before `today`, walking forward from
+ * `due`. A missed recurring task shows as that one occurrence rather than the
+ * oldest missed one. Returns `due` when it is already today or later.
+ */
+export function latestOccurrence(rule: Recurrence, due: LocalDate, today: LocalDate): LocalDate {
+  let current = due;
+  for (let i = 0; i < 1000; i++) {
+    const next = nextOccurrence(rule, current);
+    if (next > today) break;
+    current = next;
+  }
+  return current;
+}
