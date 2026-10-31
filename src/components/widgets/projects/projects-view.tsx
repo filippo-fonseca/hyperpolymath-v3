@@ -11,24 +11,28 @@ import {
   reorderAreasAction,
   updateAreaAction,
 } from "@/app/actions/projects";
-import { Button, IconButton, Sheet, fieldClass } from "@/components/ui/primitives";
-import { IconArchive, IconChevronDown, IconDots, IconPlus, IconTrash, IconUndo } from "@/components/ui/icons";
+import { Button, IconButton, Segmented, Sheet, fieldClass } from "@/components/ui/primitives";
+import { IconArchive, IconChevronDown, IconDots, IconList, IconPlus, IconTrash, IconTree, IconUndo } from "@/components/ui/icons";
 import { ConfirmCard } from "@/components/teammates/form";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
+import { useViewMode } from "@/components/dashboard/use-view";
 import { KiwiBuilding } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { Emoji, EmojiButton, Layer, StatusPill } from "./project-bits";
 import { ProjectCard } from "./project-card";
 import { ProjectSheet } from "./project-sheet";
+import { AreasTree } from "./areas-tree";
 import { clearNewProjectRequest, peekNewProjectRequest } from "./intent";
 import { useProjects } from "./use-projects";
 
 const ALL = "all";
 const NONE = "none";
+const MODES = ["list", "tree"] as const;
 
-/** Life areas with their projects, like v2's Areas page. */
+/** Life areas with their projects, like v2's Areas page, as a list or a tree (?mode=tree). */
 export function ProjectsView() {
   const { all, areas, unsorted } = useProjects();
+  const [mode, setMode] = useViewMode(MODES, "list");
   const [filter, setFilter] = useState<string>(ALL);
   const [addingArea, setAddingArea] = useState(false);
   // "+ Project" on the widget opens this view with the new-project form up.
@@ -64,8 +68,24 @@ export function ProjectsView() {
         eyebrow={`${pluralize(activeCount, "active project")} across ${pluralize(areas.length, "area")}`}
         title="Projects"
         aside={
-          <div className="flex gap-2">
-            <Button size="sm" variant="soft" onClick={() => setAddingTo(filter !== ALL ? filter : (areas[0]?.id ?? NONE))}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented
+              size="sm"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: "list", label: <><IconList size={14} /> List</> },
+                { value: "tree", label: <><IconTree size={14} /> Tree</> },
+              ]}
+            />
+            <Button
+              size="sm"
+              variant="soft"
+              onClick={() => {
+                setMode("list");
+                setAddingTo(filter !== ALL ? filter : (areas[0]?.id ?? NONE));
+              }}
+            >
               <IconPlus size={15} /> Project
             </Button>
             <Button size="sm" variant="soft" onClick={() => setAddingArea(true)}>
@@ -77,63 +97,77 @@ export function ProjectsView() {
 
       {addingArea && <NewAreaForm onDone={() => setAddingArea(false)} />}
 
-      <div className="flex flex-col gap-6 sm:grid sm:grid-cols-[188px_minmax(0,1fr)] sm:gap-8">
-        {/* Area list: a filter column on desktop, wrapping pills on phones */}
-        <nav aria-label="Areas" className="flex flex-wrap gap-1.5 sm:sticky sm:top-[76px] sm:flex-col sm:flex-nowrap sm:gap-0.5 sm:self-start">
-          <AreaTab active={filter === ALL} onClick={() => setFilter(ALL)} label="All areas" count={activeCount} />
-          {areas.map((a) => (
-            <AreaTab
-              key={a.id}
-              active={filter === a.id}
-              onClick={() => setFilter(a.id)}
-              emoji={a.emoji}
-              label={a.name}
-              count={a.projects.filter(isLive).length}
-            />
-          ))}
-          {unsorted.some(isLive) && (
-            <AreaTab active={filter === NONE} onClick={() => setFilter(NONE)} label="No area" count={unsorted.filter(isLive).length} />
-          )}
-        </nav>
-
-        <div className="flex min-w-0 flex-col gap-8">
-          {areas.length === 0 && unsorted.length === 0 && !addingArea && (
-            <div className="flex flex-col items-center pb-10 text-center">
-              <KiwiBuilding size={148} />
-              <div className="mt-1 text-[15px] font-medium">No areas yet</div>
-              <p className="mx-auto mt-1 max-w-[320px] text-[14px] text-ink-3">
-                Areas are the big buckets of your life, like School, Work or Health. Projects live inside them.
-              </p>
-              <Button size="sm" variant="dark" className="mt-4" onClick={() => setAddingArea(true)}>
-                <IconPlus size={15} /> New area
-              </Button>
-            </div>
-          )}
-          {shown.map((s) => (
-            <AreaSection
-              key={s.key}
-              area={s.area}
-              projects={s.projects}
-              adding={addingTo === s.key}
-              onAdd={() => setAddingTo(s.key)}
-              onAddDone={(id) => {
-                setAddingTo(null);
-                if (id) setProjectId(id);
-              }}
-              onOpen={setProjectId}
-              moveUp={s.area ? move(s.area.id, -1) : null}
-              moveDown={s.area ? move(s.area.id, 1) : null}
-              onArchived={() => setFilter(ALL)}
-            />
-          ))}
-          <QuietSection
-            finished={finished}
-            archivedProjects={archivedProjects}
-            archivedAreas={archivedAreas}
-            onOpen={setProjectId}
+      {mode === "tree" ? (
+        <div className="mx-auto w-full max-w-[960px]">
+          <AreasTree
+            selectedId={projectId}
+            onOpenProject={setProjectId}
+            onFocusArea={(key) => {
+              setFilter(key);
+              setMode("list");
+            }}
+            onNewArea={() => setAddingArea(true)}
           />
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-6 sm:grid sm:grid-cols-[188px_minmax(0,1fr)] sm:gap-8">
+          {/* Area list: a filter column on desktop, wrapping pills on phones */}
+          <nav aria-label="Areas" className="flex flex-wrap gap-1.5 sm:sticky sm:top-[76px] sm:flex-col sm:flex-nowrap sm:gap-0.5 sm:self-start">
+            <AreaTab active={filter === ALL} onClick={() => setFilter(ALL)} label="All areas" count={activeCount} />
+            {areas.map((a) => (
+              <AreaTab
+                key={a.id}
+                active={filter === a.id}
+                onClick={() => setFilter(a.id)}
+                emoji={a.emoji}
+                label={a.name}
+                count={a.projects.filter(isLive).length}
+              />
+            ))}
+            {unsorted.some(isLive) && (
+              <AreaTab active={filter === NONE} onClick={() => setFilter(NONE)} label="No area" count={unsorted.filter(isLive).length} />
+            )}
+          </nav>
+
+          <div className="flex min-w-0 flex-col gap-8">
+            {areas.length === 0 && unsorted.length === 0 && !addingArea && (
+              <div className="flex flex-col items-center pb-10 text-center">
+                <KiwiBuilding size={148} />
+                <div className="mt-1 text-[15px] font-medium">No areas yet</div>
+                <p className="mx-auto mt-1 max-w-[320px] text-[14px] text-ink-3">
+                  Areas are the big buckets of your life, like School, Work or Health. Projects live inside them.
+                </p>
+                <Button size="sm" variant="dark" className="mt-4" onClick={() => setAddingArea(true)}>
+                  <IconPlus size={15} /> New area
+                </Button>
+              </div>
+            )}
+            {shown.map((s) => (
+              <AreaSection
+                key={s.key}
+                area={s.area}
+                projects={s.projects}
+                adding={addingTo === s.key}
+                onAdd={() => setAddingTo(s.key)}
+                onAddDone={(id) => {
+                  setAddingTo(null);
+                  if (id) setProjectId(id);
+                }}
+                onOpen={setProjectId}
+                moveUp={s.area ? move(s.area.id, -1) : null}
+                moveDown={s.area ? move(s.area.id, 1) : null}
+                onArchived={() => setFilter(ALL)}
+              />
+            ))}
+            <QuietSection
+              finished={finished}
+              archivedProjects={archivedProjects}
+              archivedAreas={archivedAreas}
+              onOpen={setProjectId}
+            />
+          </div>
+        </div>
+      )}
 
       <ProjectSheet projectId={projectId} onClose={() => setProjectId(null)} />
     </div>
