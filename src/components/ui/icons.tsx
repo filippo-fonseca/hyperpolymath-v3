@@ -120,6 +120,14 @@ export const IconList = (p: P) => (
     <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
   </svg>
 );
+export const IconTree = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="9" y="3.5" width="6" height="5" rx="1.5" />
+    <rect x="3.5" y="15.5" width="5" height="5" rx="1.5" />
+    <rect x="15.5" y="15.5" width="5" height="5" rx="1.5" />
+    <path d="M12 8.5V12M6 15.5V14a2 2 0 012-2h8a2 2 0 012 2v1.5" />
+  </svg>
+);
 export const IconBoard = (p: P) => (
   <svg {...base(p)}>
     <rect x="3.5" y="4" width="5" height="16" rx="1.5" />
