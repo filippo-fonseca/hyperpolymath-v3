@@ -95,7 +95,7 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     await runTick(zonedToUtc("2026-10-12", "10:01", TZ), deliver, { userId });
     expect(sent).toContain("Call the bank");
     const { data: after } = await adminDb().from("reminders").select().eq("id", r.id).single();
-    expect(after!.next_fire_at).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
+    expect(new Date(after!.next_fire_at!).toISOString()).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
 
     // A failed delivery rolls back so the next tick retries.
     await runTick(
@@ -106,7 +106,7 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
       { userId },
     );
     const { data: failed } = await adminDb().from("reminders").select().eq("id", r.id).single();
-    expect(failed!.next_fire_at).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
+    expect(new Date(failed!.next_fire_at!).toISOString()).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
     expect(failed!.last_error).toMatch(/webhook down/);
 
     await completeTask(ctx, t.id);
