@@ -7,7 +7,8 @@ import { getOverview } from "./overview";
 import { completeTask, createTask, deleteTask, listTasks, reopenTask, updateTask } from "./tasks";
 import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./reminders";
 import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
-import { convertCaptureToTask, createCapture, listCaptures, updateCapture } from "./captures";
+import { convertCaptureToTask, createCapture, listCaptures, markCaptureSeen, updateCapture } from "./captures";
+import { addComment, listComments } from "./capture-comments";
 import { createWidget, listWidgets, publishWidget, removeWidget, updateWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
@@ -34,7 +35,10 @@ Rules:
 - Grok Bot routines are for WORK a bot does on a schedule (scan Slack, write a digest, check a website, draft emails). They stay in Grok Bot and may read or write Hyperpolymath through these tools. If a routine only exists to remind the owner of something, migrate it to set_reminder and offer to delete the routine.
 - Quiet by default: on scheduled runs, only message the owner when the run produced something new or useful (a new message to answer, a change, a decision they need to make, an error they must fix). If nothing changed, say nothing to them: just finish_routine_run with a short summary like "nothing new". This applies to every bot. Reminder relay runs always message (that's their job).
 - Register every routine you run with register_routine (name, schedule in words, what it does, its widget if it publishes one) so it shows in the app. At the START of every run call start_routine_run: if it returns enabled=false the owner paused it in the app, so stop immediately. At the END call finish_routine_run with status and a one-line summary. When you change or delete a routine in Grok Bot, mirror it with update_routine / remove_routine.
-- Quick thoughts, links and ideas without a clear action go to create_capture, not tasks.
+- Quick thoughts, links and ideas without a clear action go to create_capture, not tasks. Captures read like a private feed the owner posts to.
+  - "Bring this back Friday / remind me of this idea every Monday" on a capture means a resurface schedule (create_capture or update_capture with resurface), not a reminder. When it comes back it sits in Resurfaced (get_overview resurfaced_captures) until the owner has seen it.
+  - When the owner says they've seen a resurfaced capture ("seen", "got it"), call mark_capture_seen. Its schedule keeps running; update_capture with resurface null stops it.
+  - Captures have reply threads. Reply with add_capture_comment when you have something genuinely useful to add to an idea (a link, a next step, an answer to a question in it), and read list_capture_comments before replying so you don't repeat yourself. Don't reply just to acknowledge.
 - Projects: the owner organises life into areas (School, Health, Work...) holding projects (classes are projects too). Tasks and captures can belong to one project; habits to an area. Know the current projects (get_overview lists active ones per area; list_areas has all).
   - When the owner gives you a task or capture, file it under a project ONLY if it clearly fits one (same class, same initiative, obvious keyword or context). Don't force it: if nothing fits well, or two projects fit equally, leave it unfiled (it stays in the inbox) rather than guessing. Never create a new project just to file one item unless they ask.
   - Always confirm where it went, briefly: "Added to Machine Elements." or "Added, not filed under a project." The tool result's filed_under field tells you. They can say "move it to X" (update_task project) or "undo" (revert_action).
@@ -149,7 +153,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   }
 
   // Context ------------------------------------------------------------------
-  tool("get_overview", "Today's tasks and overdue items, inbox, habits, captures, reminders and widgets in one call. Call this first.", {}, (ctx) => getOverview(ctx), { readOnly: true });
+  tool("get_overview", "Today's tasks and overdue items, inbox, habits, captures (with resurfaced ones waiting to be seen), reminders and widgets in one call. Call this first.", {}, (ctx) => getOverview(ctx), { readOnly: true });
 
   tool(
     "set_timezone",
@@ -262,6 +266,34 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     "Edit or archive a capture, file it under a project, or set when it resurfaces (resurface: a schedule, null stops it).",
     { id: uuid, content: z.string().min(1).max(20000).optional(), resurface: resurfaceField.nullable().optional(), archived: z.boolean().optional(), project: z.string().max(120).nullable().optional() },
     (ctx, { id, ...patch }) => updateCapture(ctx, id, patch),
+  );
+  tool(
+    "mark_capture_seen",
+    "Take a resurfaced capture out of the Resurfaced section once the owner has seen it. Its resurface schedule keeps running.",
+    { id: uuid },
+    (ctx, a) => markCaptureSeen(ctx, a.id),
+  );
+  tool(
+    "list_capture_comments",
+    "The reply thread under a capture, oldest first, with who wrote each reply.",
+    { capture_id: uuid },
+    async (ctx, a) =>
+      (await listComments(ctx, a.capture_id)).map((c) => ({
+        id: c.id,
+        by: c.author_kind === "bot" ? (c.bot?.name ?? "a bot") : "owner",
+        content: c.content,
+        at: c.created_at,
+      })),
+    { readOnly: true },
+  );
+  tool(
+    "add_capture_comment",
+    "Reply to a capture, as you. Shows in the capture's thread on the dashboard.",
+    { capture_id: uuid, content: z.string().min(1).max(5000) },
+    async (ctx, a) => {
+      const c = await addComment(ctx, a.capture_id, a.content);
+      return { id: c.id, capture_id: c.capture_id, content: c.content, at: c.created_at };
+    },
   );
   tool(
     "convert_capture_to_task",
