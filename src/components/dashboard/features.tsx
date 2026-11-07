@@ -34,6 +34,37 @@ export function widgetForView<W extends Pick<WidgetRow, "id" | "kind">>(widgets:
   return widgets.find((w) => viewKeyFor(w) === key) ?? null;
 }
 
+/**
+ * A built-in view still opens from its URL when its widget isn't on the
+ * dashboard (?view=projects&mode=tree with no Projects card), through a
+ * stand-in row that is never saved. Built-in views don't read the row.
+ */
+export function standInWidget(key: string | null): WidgetRow | null {
+  const kind = FEATURE_ORDER.find((k) => FEATURES[k].slug === key);
+  if (!kind) return null;
+  return {
+    id: `${STAND_IN}${kind}`,
+    kind,
+    title: FEATURES[kind].label,
+    size: "m",
+    page: 0,
+    position: 0,
+    payload: {},
+    icon: null,
+    owner_bot_id: null,
+    owner: null,
+    published_at: null,
+    stale_after_hours: null,
+    created_at: "",
+    updated_at: "",
+    deleted_at: null,
+    user_id: "",
+  };
+}
+
+const STAND_IN = "view:";
+export const isStandIn = (w: Pick<WidgetRow, "id">) => w.id.startsWith(STAND_IN);
+
 export function featureLabel(w: Pick<WidgetRow, "kind" | "title">): string {
   return isFixed(w.kind) ? FEATURES[w.kind].label : w.title;
 }

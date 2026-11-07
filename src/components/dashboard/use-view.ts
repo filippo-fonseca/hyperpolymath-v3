@@ -13,11 +13,12 @@ const FROM_HOME = "hpFromHome";
 // It belongs to the open view, so switching or closing views drops it.
 const MODE = "mode";
 
-function urlWith(key: string | null) {
+function urlWith(key: string | null, mode?: string) {
   const url = new URL(window.location.href);
-  if (url.searchParams.get("view") !== key) url.searchParams.delete(MODE);
+  if (url.searchParams.get("view") !== key || mode) url.searchParams.delete(MODE);
   if (key) url.searchParams.set("view", key);
   else url.searchParams.delete("view");
+  if (key && mode) url.searchParams.set(MODE, mode);
   return url.pathname + url.search + url.hash;
 }
 
@@ -28,14 +29,15 @@ export function useView() {
    * Open a view. From the dashboard this adds a history entry; switching
    * between views replaces it, so Back always lands on the dashboard.
    */
-  const openView = useCallback((key: string) => {
-    const current = new URL(window.location.href).searchParams.get("view");
-    if (current === key) return;
+  const openView = useCallback((key: string, mode?: string) => {
+    const params = new URL(window.location.href).searchParams;
+    const current = params.get("view");
+    if (current === key && (!mode || params.get(MODE) === mode)) return;
     if (current) {
       const fromHome = !!(window.history.state as Record<string, unknown> | null)?.[FROM_HOME];
-      window.history.replaceState({ [FROM_HOME]: fromHome }, "", urlWith(key));
+      window.history.replaceState({ [FROM_HOME]: fromHome }, "", urlWith(key, mode));
     } else {
-      window.history.pushState({ [FROM_HOME]: true }, "", urlWith(key));
+      window.history.pushState({ [FROM_HOME]: true }, "", urlWith(key, mode));
     }
   }, []);
 
