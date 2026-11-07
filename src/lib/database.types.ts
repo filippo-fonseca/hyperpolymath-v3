@@ -172,6 +172,57 @@ export type Database = {
           },
         ]
       }
+      capture_comments: {
+        Row: {
+          author_kind: string
+          bot_id: string | null
+          capture_id: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_kind: string
+          bot_id?: string | null
+          capture_id: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_kind?: string
+          bot_id?: string | null
+          capture_id?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_comments_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_comments_capture_id_fkey"
+            columns: ["capture_id"]
+            isOneToOne: false
+            referencedRelation: "captures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       captures: {
         Row: {
           archived_at: string | null
@@ -182,6 +233,9 @@ export type Database = {
           id: string
           project_id: string | null
           resurface_at: string | null
+          resurface_next_at: string | null
+          resurface_schedule: Json | null
+          resurfaced_at: string | null
           source: string
           updated_at: string
           urls: string[]
@@ -196,6 +250,9 @@ export type Database = {
           id?: string
           project_id?: string | null
           resurface_at?: string | null
+          resurface_next_at?: string | null
+          resurface_schedule?: Json | null
+          resurfaced_at?: string | null
           source?: string
           updated_at?: string
           urls?: string[]
@@ -210,6 +267,9 @@ export type Database = {
           id?: string
           project_id?: string | null
           resurface_at?: string | null
+          resurface_next_at?: string | null
+          resurface_schedule?: Json | null
+          resurfaced_at?: string | null
           source?: string
           updated_at?: string
           urls?: string[]
