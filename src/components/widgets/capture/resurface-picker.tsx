@@ -24,13 +24,14 @@ import { useDashboard } from "@/components/dashboard/context";
 type Target = { resurface_schedule: unknown; resurface_next_at: string | null };
 export type ResurfaceSave = (schedule: Schedule | null, startAt: string | null) => Promise<unknown>;
 
-const WIDTH = 344;
+const WIDTH = 368;
 
-const REPEATS: { value: Repeat; label: string }[] = [
-  { value: "never", label: "Once" },
-  { value: "daily", label: "Daily" },
-  { value: "weekdays", label: "Weekdays" },
-  { value: "every", label: "Every few days" },
+const nowrap = (s: string) => <span className="whitespace-nowrap">{s}</span>;
+const REPEATS: { value: Repeat; label: React.ReactNode }[] = [
+  { value: "never", label: nowrap("Once") },
+  { value: "daily", label: nowrap("Daily") },
+  { value: "weekdays", label: nowrap("Weekdays") },
+  { value: "every", label: nowrap("Every few days") },
 ];
 
 /**
@@ -72,17 +73,23 @@ export function ResurfacePicker({
 
 function Popover({ anchor, onClose, children }: { anchor: DOMRect; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
   useEscape(onClose);
 
+  // Below the button when it fits, else above, else on the roomier side and scrolling.
   useLayoutEffect(() => {
-    const h = ref.current?.offsetHeight ?? 0;
+    const h = ref.current?.scrollHeight ?? 0;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const below = anchor.bottom + 8;
-    const top = below + h > vh - 8 ? Math.max(8, anchor.top - 8 - h) : below;
+    const roomBelow = vh - anchor.bottom - 16;
+    const roomAbove = anchor.top - 16;
     const left = Math.max(8, Math.min(anchor.left - 8, vw - WIDTH - 8));
-    setPos({ top, left });
+    if (h <= roomBelow || roomBelow >= roomAbove) {
+      setPos({ top: anchor.bottom + 8, left, maxHeight: Math.max(160, roomBelow) });
+    } else {
+      const maxHeight = Math.min(h, roomAbove);
+      setPos({ top: anchor.top - 8 - maxHeight, left, maxHeight });
+    }
   }, [anchor]);
 
   useEffect(() => {
@@ -106,8 +113,14 @@ function Popover({ anchor, onClose, children }: { anchor: DOMRect; onClose: () =
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.14 }}
       onClick={(e) => e.stopPropagation()}
-      className="fixed z-[70] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-[20px] bg-surface shadow-pop"
-      style={{ width: WIDTH, top: pos?.top ?? anchor.bottom + 8, left: pos?.left ?? anchor.left, visibility: pos ? "visible" : "hidden" }}
+      className="fixed z-[70] overflow-y-auto overflow-x-hidden overscroll-contain rounded-[20px] bg-surface shadow-pop"
+      style={{
+        width: WIDTH,
+        top: pos?.top ?? anchor.bottom + 8,
+        left: pos?.left ?? anchor.left,
+        maxHeight: pos?.maxHeight,
+        visibility: pos ? "visible" : "hidden",
+      }}
     >
       {children}
     </motion.div>,
@@ -170,7 +183,7 @@ function PickerBody({ target, onSave, onClose }: { target: Target | null; onSave
             aria-label="Time"
             value={choice.time}
             onChange={(e) => e.target.value && set({ time: e.target.value })}
-            className={`${fieldClass} w-[118px] shrink-0`}
+            className={`${fieldClass} w-[132px] shrink-0`}
           />
         </div>
         <div className="flex flex-col gap-2">

@@ -97,7 +97,11 @@ export function choiceFor(
   const s = parsed.data;
   const next = capture.resurface_next_at ? zonedParts(new Date(capture.resurface_next_at), tz) : null;
   const date = next?.date ?? fallback.date;
-  if (s.type === "once") return { ...fallback, date: s.date, time: s.time };
+  if (s.type === "once") {
+    // A one-off that already came back starts the picker fresh, at the same time of day.
+    const ahead = zonedToUtc(s.date, s.time, tz) > now;
+    return ahead ? { ...fallback, date: s.date, time: s.time } : { ...fallback, time: s.time };
+  }
   if (s.type === "daily") {
     const weekdays = s.days?.length === 5 && WEEKDAYS.every((d) => s.days!.includes(d));
     return { ...fallback, date, time: s.times[0], repeat: weekdays ? "weekdays" : "daily" };

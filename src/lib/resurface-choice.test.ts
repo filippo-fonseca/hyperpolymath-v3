@@ -64,6 +64,11 @@ describe("choiceFor and resurfaceBadge", () => {
     expect(resurfaceBadge(c, NY, "2026-11-11")).toBe("Back tomorrow 9am · weekdays");
   });
 
+  it("starts fresh from tomorrow when a one-off already came back", () => {
+    const c = { resurface_schedule: { type: "once", date: "2026-10-20", time: "08:30" }, resurface_next_at: null };
+    expect(choiceFor(c, NOW, NY)).toEqual({ date: "2026-11-12", time: "08:30", repeat: "never", everyDays: 3 });
+  });
+
   it("defaults to tomorrow morning", () => {
     expect(choiceFor(null, NOW, NY)).toEqual({ date: "2026-11-12", time: "09:00", repeat: "never", everyDays: 3 });
     expect(resurfaceBadge({ resurface_schedule: null, resurface_next_at: null }, NY, "2026-11-11")).toBeNull();
