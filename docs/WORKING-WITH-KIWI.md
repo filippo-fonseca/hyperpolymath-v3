@@ -73,6 +73,22 @@ When you give Kiwi a task or a thought, it files it under a project **only when 
 
 Say "move it to Rover" or "undo" to fix it. Kiwi also keeps project status current (active, paused, done) as things move on.
 
+## Areas and projects: what you can ask
+
+Areas are the big, lasting parts of your life (School, Health, Work). Projects are things with an arc inside an area: a class, an initiative, a trip. Kiwi only creates a new area when you name a genuinely new part of your life; most new things become projects.
+
+| Say | What happens |
+|---|---|
+| "Add a Relationships area" | A new area, with an emoji. |
+| "Start a project 'Rover outreach' under Rover, due end of Nov" | A project in that area with dates and a short description. Tasks you mention for it get filed there. |
+| "Add my class MENG 3850, Fall 26" | A class project with its course code and term. |
+| "What's going on with Rover outreach?" | Kiwi reads the project and sums up its open tasks, recent captures, dates and status. |
+| "Move Rover outreach to Work" / "rename it" | The project moves or changes; nothing is lost. |
+| "Put my running habit under Health" | Habits belong to an area. |
+| "Machine Elements is done for the semester" | Status becomes done. Say "archive it" to hide it entirely. |
+
+You see all of it in the Projects view, as a list or as a tree, with your areas branching into their projects. Kiwi archives rather than deletes, and asks first before deleting anything.
+
 ## Quiet by default
 
 Scheduled runs only message you when they found something new or need you: a message to answer, a change, a decision, an error to fix. A run with nothing new finishes silently (it still shows on the Teammates page as "nothing new"). Widgets work the same way: republishing identical content doesn't add history or activity entries. The Reminder relay is the exception, since nudging you is its job.
