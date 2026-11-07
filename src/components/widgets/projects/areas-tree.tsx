@@ -6,7 +6,7 @@ import { STATUS_LABELS, areaColor, asStatus, treeBranches, type TreeBranch } fro
 import { pluralize } from "@/lib/format";
 import { Button, Switch } from "@/components/ui/primitives";
 import { IconArchive, IconChevronDown, IconFolder, IconPlus } from "@/components/ui/icons";
-import { RootAvatar } from "@/components/ui/root-avatar";
+import { RootAvatar, useRootName } from "@/components/ui/root-avatar";
 import { useProjects } from "./use-projects";
 
 /* ---------- saved view prefs ---------- */
@@ -169,6 +169,7 @@ export function AreasTree({
 
   const container = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const rootName = useRootName();
   const cards = useRef(new Map<string, HTMLElement>());
   const [geo, setGeo] = useState<Geometry | null>(null);
   const keys = branches.map((b) => b.key).join(",");
@@ -233,7 +234,7 @@ export function AreasTree({
             <div className="rounded-full bg-surface p-1 shadow-ring">
               <RootAvatar size={56} />
             </div>
-            <div className="text-[13.5px] font-semibold">You</div>
+            <div className="text-[13.5px] font-semibold">{rootName}</div>
           </div>
         </div>
 
