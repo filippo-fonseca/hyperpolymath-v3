@@ -6,14 +6,28 @@ import { describeSchedule, scheduleSchema } from "@/lib/schedule";
 import { getRelay } from "./relay";
 import { catchUpRecurring } from "./tasks";
 import { localDate } from "@/lib/time";
+import { advanceResurface, describeResurface, excerpt } from "@/lib/resurface";
 
-// The reminder tick. Runs every few minutes: claims due reminders, batches
-// them per user into ONE webhook call to the coordinator bot's "Reminder
-// relay" routine (one Bot run per tick, not per reminder), then advances them.
+// The reminder tick. Runs every few minutes: claims due reminders and captures
+// due to resurface, batches them per user into ONE webhook call to the
+// coordinator bot's "Reminder relay" routine (one Bot run per tick, not per
+// item), then advances them.
 
 type DueRow = Row<"reminders"> & { task: { title: string; status: string; deleted_at: string | null } | null };
+type DueCapture = Pick<Row<"captures">, "id" | "user_id" | "content" | "resurface_schedule" | "resurface_next_at">;
 
-export type TickResult = { users: number; sent: number; skipped: number; failed: number; errors: string[] };
+/** A capture that just came back, as the relay payload carries it. */
+export type ResurfacedCapture = { capture_id: string; excerpt: string; schedule: string };
+
+export type TickResult = {
+  users: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  /** Captures brought back into Resurfaced this tick (delivered or not). */
+  resurfaced: number;
+  errors: string[];
+};
 
 export async function runTick(
   now = new Date(),
@@ -21,7 +35,7 @@ export async function runTick(
   opts: { userId?: string } = {},
 ): Promise<TickResult> {
   const db = adminDb();
-  const result: TickResult = { users: 0, sent: 0, skipped: 0, failed: 0, errors: [] };
+  const result: TickResult = { users: 0, sent: 0, skipped: 0, failed: 0, resurfaced: 0, errors: [] };
   let q = db
     .from("reminders")
     .select("*, task:tasks(title, status, deleted_at)")
@@ -32,10 +46,28 @@ export async function runTick(
   if (error) throw new Error(`tick query: ${error.message}`);
   const due = (data ?? []) as DueRow[];
 
-  const byUser = new Map<string, DueRow[]>();
-  for (const r of due) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r]);
+  let cq = db
+    .from("captures")
+    .select("id, user_id, content, resurface_schedule, resurface_next_at")
+    .not("resurface_next_at", "is", null)
+    .lte("resurface_next_at", now.toISOString())
+    .is("deleted_at", null)
+    .is("archived_at", null);
+  if (opts.userId) cq = cq.eq("user_id", opts.userId);
+  const { data: capData, error: capError } = await cq.order("resurface_next_at").limit(200);
+  if (capError) throw new Error(`tick captures query: ${capError.message}`);
+  const dueCaptures = (capData ?? []) as DueCapture[];
 
-  for (const [userId, rows] of byUser) {
+  const byUser = new Map<string, { reminders: DueRow[]; captures: DueCapture[] }>();
+  const slot = (userId: string) => {
+    let s = byUser.get(userId);
+    if (!s) byUser.set(userId, (s = { reminders: [], captures: [] }));
+    return s;
+  };
+  for (const r of due) slot(r.user_id).reminders.push(r);
+  for (const c of dueCaptures) slot(c.user_id).captures.push(c);
+
+  for (const [userId, { reminders: rows, captures }] of byUser) {
     result.users++;
     const tz = await userTimezone(db, userId);
     const batch: DueReminder[] = [];
@@ -68,18 +100,44 @@ export async function runTick(
         until_done: r.until_kind === "done" && !!r.task_id,
       });
     }
-    if (!batch.length) continue;
+
+    // Captures: mark resurfaced now and step the schedule. Same optimistic
+    // claim as reminders, matching the resurface_next_at we read.
+    const resurfaced: ResurfacedCapture[] = [];
+    for (const c of captures) {
+      const patch = advanceResurface(c.resurface_schedule, c.resurface_next_at, now, tz);
+      const { data: won } = await db
+        .from("captures")
+        .update(patch)
+        .eq("id", c.id)
+        .eq("resurface_next_at", c.resurface_next_at!)
+        .select("id");
+      if (!won?.length) continue;
+      result.resurfaced++;
+      resurfaced.push({
+        capture_id: c.id,
+        excerpt: excerpt(c.content, 280),
+        schedule: describeResurface(c.resurface_schedule),
+      });
+    }
+    if (!batch.length && !resurfaced.length) continue;
 
     try {
-      await deliver(userId, batch, now, tz);
+      await deliver(userId, batch, now, tz, resurfaced);
       result.sent += batch.length;
     } catch (e) {
-      // Roll back the claim so the next tick retries, and surface the error.
-      // Only rows still exactly as we left them: a cancel or snooze that
-      // happened during delivery wins.
+      // Resurfaced captures are NOT rolled back: they already sit in the
+      // dashboard's Resurfaced section until marked seen, so nothing is lost,
+      // and their schedule stays advanced. Retrying them every tick would
+      // churn forever for accounts without a relay. Only reminders retry.
+      //
+      // Reminders: roll back the claim so the next tick retries, and surface
+      // the error. Only rows still exactly as we left them: a cancel or
+      // snooze that happened during delivery wins.
       const msg = e instanceof Error ? e.message : String(e);
       result.failed += batch.length;
-      result.errors.push(msg);
+      // Captures alone, no relay set up: the dashboard is enough, not an error.
+      if (batch.length || !msg.startsWith("No reminder relay")) result.errors.push(msg);
       await Promise.all(
         claimed.map(({ row, patch }) => {
           let q = db
@@ -129,27 +187,45 @@ export async function catchUpRecurringAll(now = new Date(), opts: { userId?: str
   return moved;
 }
 
+const REMINDER_INSTRUCTIONS =
+  "Nudge the owner about each reminder below in one short message, in Kiwi's voice (a composed British butler who addresses the owner as sir; at most one light touch of dry wit, none if anything is overdue or urgent). For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed, and skip anything already done.";
+
+const CAPTURE_INSTRUCTIONS =
+  "resurfaced_captures are notes the owner asked to see again. Mention them briefly, a short line each, after any reminders (or on their own if there are none), in the same voice and with no pressure. If the owner replies 'seen' (or similar), call mark_capture_seen with the capture_id via the Hyperpolymath MCP. If they want it back again later, call update_capture with a new resurface schedule.";
+
+/** The JSON body for the relay webhook. Pure, so the wording is testable. */
+export function relayPayload(batch: DueReminder[], now: Date, tz: string, resurfaced: ResurfacedCapture[] = []) {
+  const parts = [batch.length ? REMINDER_INSTRUCTIONS : null, resurfaced.length ? CAPTURE_INSTRUCTIONS : null];
+  return {
+    source: "hyperpolymath",
+    kind: "reminders_due",
+    at: now.toISOString(),
+    timezone: tz,
+    instructions: parts.filter(Boolean).join(" "),
+    reminders: batch,
+    resurfaced_captures: resurfaced,
+  };
+}
+
 /**
  * POST the batch to this account's own Grok Bot "Reminder relay" webhook. The
  * JSON body becomes the routine run's input, so it carries plain-language
  * instructions.
  */
-export async function deliverToKiwi(userId: string, batch: DueReminder[], now: Date, tz: string) {
+export async function deliverToKiwi(
+  userId: string,
+  batch: DueReminder[],
+  now: Date,
+  tz: string,
+  resurfaced: ResurfacedCapture[] = [],
+) {
   const relay = await getRelay(adminDb(), userId);
   if (!relay) throw new Error("No reminder relay set up. Add the Reminder relay webhook in Settings, Reminders.");
   const { url, token } = relay;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      source: "hyperpolymath",
-      kind: "reminders_due",
-      at: now.toISOString(),
-      timezone: tz,
-      instructions:
-        "Nudge the owner about each reminder below in one short message, in Kiwi's voice (a composed British butler who addresses the owner as sir; at most one light touch of dry wit, none if anything is overdue or urgent). For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed, and skip anything already done.",
-      reminders: batch,
-    }),
+    body: JSON.stringify(relayPayload(batch, now, tz, resurfaced)),
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`Kiwi webhook ${res.status}: ${(await res.text()).slice(0, 200)}`);
