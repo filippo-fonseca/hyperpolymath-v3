@@ -12,7 +12,11 @@ EMAIL="${2:-${OWNER_EMAIL:-}}"
 if [[ -z "$EMAIL" ]]; then read -rp "Owner email (the only account allowed to sign in): " EMAIL; fi
 
 umask 077
-supabase projects api-keys --project-ref "$REF" -o json 2>/dev/null | python3 -c '
+# The CLI masks new-style secret keys, so ask the Management API to reveal them,
+# authenticated with the CLI's own login token from the keychain.
+TOKEN="$(security find-generic-password -s "Supabase CLI" -w)"
+TOKEN="${TOKEN#go-keyring-base64:}"; [[ "$TOKEN" == sbp_* ]] || TOKEN="$(printf %s "$TOKEN" | base64 -d)"
+curl -fsS -H "Authorization: Bearer $TOKEN" "https://api.supabase.com/v1/projects/$REF/api-keys?reveal=true" | python3 -c '
 import json, sys
 raw = sys.stdin.read()
 keys, _ = json.JSONDecoder().raw_decode(raw[raw.index("["):])
@@ -21,10 +25,11 @@ def first(t):
         if k.get("type") == t: return k["api_key"]
     sys.exit(f"no {t} key found")
 ref, email = sys.argv[1], sys.argv[2]
+pub, sec = first("publishable"), first("secret")
 lines = [
     f"NEXT_PUBLIC_SUPABASE_URL=https://{ref}.supabase.co",
-    f"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY={first(\"publishable\")}",
-    f"SUPABASE_SECRET_KEY={first(\"secret\")}",
+    f"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY={pub}",
+    f"SUPABASE_SECRET_KEY={sec}",
     f"OWNER_EMAIL={email}",
 ]
 # Keep any other vars already in .env.local (e.g. KIWI_WEBHOOK_URL).
