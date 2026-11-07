@@ -67,6 +67,7 @@ const EXPORT_TABLES = [
   "habits",
   "habit_logs",
   "captures",
+  "capture_comments",
   "widgets",
   "widget_snapshots",
   "bots",
