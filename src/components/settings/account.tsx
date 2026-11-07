@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition, type FormEvent } from "react";
 import { signOut, updatePassword, type PasswordState } from "@/app/actions/auth";
+import { removeAvatarAction, setDisplayNameAction, uploadAvatarAction } from "@/app/actions/profile";
+import { AVATAR_MAX_BYTES, AVATAR_TYPES } from "@/lib/avatar";
+import { ProfileAvatar } from "@/components/ui/bot-avatar";
+import { useDashboard } from "@/components/dashboard/context";
 import { PASSWORD_MIN, passwordProblem } from "@/lib/auth-errors";
 import { Button, fieldClass } from "@/components/ui/primitives";
 import { IconSignOut } from "@/components/ui/icons";
@@ -37,8 +41,85 @@ export function AccountSection({ overview }: SectionProps) {
           </Button>
         </div>
       </Section>
+      <ProfileSection />
       <PasswordSection email={overview?.email ?? null} />
     </div>
+  );
+}
+
+/** Your name and photo, shown on your captures and replies. */
+function ProfileSection() {
+  const { data, run } = useDashboard();
+  const toast = useToast();
+  const { profile } = data;
+  const [name, setName] = useState(profile.display_name ?? "");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const changed = name.trim() !== (profile.display_name ?? "");
+
+  const saveName = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!changed) return;
+    setSaving(true);
+    await run(setDisplayNameAction(name.trim()), { success: name.trim() ? "Name saved" : "Name cleared" });
+    setSaving(false);
+  };
+
+  const pick = async (file: File | undefined) => {
+    if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error("That photo is over 2 MB. Try a smaller one.");
+      return;
+    }
+    const form = new FormData();
+    form.set("avatar", file);
+    setUploading(true);
+    await run(uploadAvatarAction(form), { success: "Photo updated" });
+    setUploading(false);
+  };
+  return (
+    <Section title="Profile" hint="Your name and photo appear on your captures and replies.">
+      <div className="flex items-center gap-3">
+        <ProfileAvatar profile={profile} size={56} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="soft" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? <KiwiLoader size={16} label="Uploading" /> : null}
+            {profile.avatar_url ? "Change photo" : "Upload photo"}
+          </Button>
+          {profile.avatar_url && (
+            <Button size="sm" variant="ghost" className="text-ink-2" onClick={() => run(removeAvatarAction(), { success: "Photo removed" })} disabled={uploading}>
+              Remove
+            </Button>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={AVATAR_TYPES.join(",")}
+            className="hidden"
+            aria-label="Profile photo"
+            onChange={(e) => pick(e.target.files?.[0])}
+          />
+        </div>
+      </div>
+      <p className="mt-2 text-[12.5px] text-ink-3">JPG, PNG, WebP or GIF, up to 2 MB.</p>
+      <form onSubmit={saveName} className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+          aria-label="Display name"
+          placeholder="Your name"
+          autoComplete="name"
+          className={`${fieldClass} min-w-0 flex-1`}
+        />
+        <Button type="submit" variant="dark" disabled={saving || !changed}>
+          {saving ? <KiwiLoader size={18} label="Saving" /> : null}
+          Save name
+        </Button>
+      </form>
+    </Section>
   );
 }
 

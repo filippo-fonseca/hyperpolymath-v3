@@ -51,6 +51,8 @@ export type DashboardData = {
   areas: AreasData;
   /** Sort, grouping and filters for each task tab. */
   taskViews: TaskViews;
+  /** Your name and photo, shown on captures and replies. */
+  profile: { display_name: string | null; avatar_url: string | null };
   realtime: { url: string; key: string } | null;
 };
 

@@ -1,3 +1,4 @@
+import { initialsOf } from "@/lib/avatar";
 import { KiwiBlob } from "./kiwi-blob";
 
 // Shape avatars with two dot eyes, in the spirit of Grok Bot's bot faces.
@@ -72,5 +73,37 @@ export function YouAvatar({ size = 24, className = "" }: { size?: number; classN
       <circle cx="20" cy="16" r="5.5" fill="#777777" />
       <path d="M10.5 30.5c1.8-4.6 5.3-7 9.5-7s7.7 2.4 9.5 7" fill="#777777" />
     </svg>
+  );
+}
+
+type ProfileLike = { display_name?: string | null; avatar_url?: string | null } | null | undefined;
+
+/** Your own avatar: your uploaded photo, else your initials, else the plain silhouette. */
+export function ProfileAvatar({ profile, size = 24, className = "" }: { profile: ProfileLike; size?: number; className?: string }) {
+  const name = profile?.display_name?.trim() || "You";
+  if (profile?.avatar_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- user photos come from Supabase Storage at any size
+      <img
+        src={profile.avatar_url}
+        alt={name}
+        width={size}
+        height={size}
+        className={`shrink-0 rounded-full bg-gray-100 object-cover ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  const initials = initialsOf(profile?.display_name);
+  if (!initials) return <YouAvatar size={size} className={className} />;
+  return (
+    <span
+      role="img"
+      aria-label={name}
+      className={`inline-flex shrink-0 select-none items-center justify-center rounded-full bg-gray-150 font-semibold text-ink-2 ${className}`}
+      style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.38)) }}
+    >
+      {initials}
+    </span>
   );
 }
