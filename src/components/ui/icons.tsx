@@ -259,3 +259,17 @@ export const IconArrowDown = (p: P) => (
     <path d="M12 5v14M6 13l6 6 6-6" />
   </svg>
 );
+/** Speech bubble, for replies. */
+export const IconReply = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4.5 12a7.5 7.5 0 117.5 7.5H5.2a.6.6 0 01-.45-1l1.2-1.4A7.47 7.47 0 014.5 12z" />
+  </svg>
+);
+/** Circular arrow, for "bring this back later". */
+export const IconResurface = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+    <path d="M4 4.5v3.2h3.2" />
+    <path d="M12 8.5V12l2.5 1.5" />
+  </svg>
+);
