@@ -46,7 +46,7 @@ export function CaptureComposer({ autoFocus = false }: { autoFocus?: boolean }) 
         e.preventDefault();
         void post();
       }}
-      className="flex gap-3 rounded-[20px] bg-surface p-3.5 shadow-ring sm:p-4"
+      className="flex gap-3 rounded-[20px] bg-surface p-3.5 shadow-ring transition focus-within:ring-2 focus-within:ring-accent/25 sm:p-4"
     >
       <ProfileAvatar profile={data.profile} size={40} className="mt-0.5" />
       <div className="min-w-0 flex-1">
@@ -68,7 +68,9 @@ export function CaptureComposer({ autoFocus = false }: { autoFocus?: boolean }) 
               void post();
             }
           }}
-          className="block w-full resize-none bg-transparent py-1.5 text-[16px] leading-relaxed outline-none placeholder:text-ink-3"
+          // The card shows focus, so the field itself skips the global focus outline.
+          style={{ outline: "none" }}
+          className="block w-full resize-none bg-transparent py-1.5 text-[16px] leading-relaxed placeholder:text-ink-3"
         />
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-150 pt-2.5">
           {later ? (
