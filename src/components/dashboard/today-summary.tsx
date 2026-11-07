@@ -46,7 +46,7 @@ export function TodaySummary({ widgets, onOpen }: { widgets: WidgetRow[]; onOpen
       )}
       {capture && toSort > 0 && (
         <Chip widget={capture} onClick={() => onOpen(capture)}>
-          {data.resurfaced.length ? `${pluralize(data.resurfaced.length, "capture")} back today` : `${toSort} in your inbox`}
+          {data.resurfaced.length ? `${pluralize(data.resurfaced.length, "capture")} came back` : `${toSort} in your inbox`}
         </Chip>
       )}
     </div>

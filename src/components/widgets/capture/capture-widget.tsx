@@ -41,7 +41,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
         <WidgetHeader />
         <div className="mt-1 text-[13px] text-ink-3">
           {data.resurfaced.length ? (
-            <span className="font-medium text-accent">{data.resurfaced.length} back today</span>
+            <span className="font-medium text-accent">{data.resurfaced.length} came back</span>
           ) : (
             meta || "Inbox empty"
           )}
@@ -54,11 +54,12 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
     );
   }
 
-  const resurfacing = size === "m" ? [] : data.resurfaced;
-  const recent = data.captures.filter((c) => !resurfacing.some((r) => r.id === c.id));
+  // What came back on schedule stays up front until you mark it seen.
+  const resurfaced = size === "m" ? [] : data.resurfaced;
+  const recent = data.captures.filter((c) => !resurfaced.some((r) => r.id === c.id));
 
   if (size === "w") {
-    const cards = [...resurfacing.map((c) => ({ c, back: true })), ...recent.map((c) => ({ c, back: false }))].slice(0, cardCols * 2);
+    const cards = [...resurfaced.map((c) => ({ c, back: true })), ...recent.map((c) => ({ c, back: false }))].slice(0, cardCols * 2);
     return (
       <div className="flex h-full flex-col">
         <WidgetHeader meta={meta} />
@@ -79,8 +80,8 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
     );
   }
 
-  // Large shows what's back today as its own section; medium keeps it to recent.
-  const backShown = resurfacing.slice(0, Math.max(0, Math.min(2, fit - 2)));
+  // Large shows what came back as its own section; medium keeps it to recent.
+  const backShown = resurfaced.slice(0, Math.max(0, Math.min(2, fit - 2)));
   const headings = (backShown.length ? 1 : 0) + (backShown.length && recent.length ? 1 : 0);
   const recentShown = recent.slice(0, Math.max(0, fit - backShown.length - headings));
 
@@ -89,7 +90,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
       <WidgetHeader meta={meta} />
       <QuickAdd className="mt-1.5" placeholder="What's on your mind?" onSubmit={add} />
       <div ref={listRef} className="mt-1.5 min-h-0 flex-1 overflow-hidden">
-        {data.captures.length === 0 && resurfacing.length === 0 ? (
+        {data.captures.length === 0 && resurfaced.length === 0 ? (
           size === "l" ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
               <KiwiReading size={124} />
@@ -100,9 +101,9 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
           )
         ) : (
           <ul>
-            {backShown.length > 0 && <SectionLabel accent>Back today</SectionLabel>}
+            {backShown.length > 0 && <SectionLabel accent>Resurfaced</SectionLabel>}
             {backShown.map((c) => (
-              <Row key={c.id} capture={c} trailing={<span className="text-accent">today</span>} dot />
+              <Row key={c.id} capture={c} trailing={<span className="text-accent">{relativeTime(c.resurfaced_at, nowMs)}</span>} dot />
             ))}
             {backShown.length > 0 && recentShown.length > 0 && <SectionLabel>Recent</SectionLabel>}
             {recentShown.map((c) => (
@@ -162,7 +163,7 @@ function CaptureCard({ capture, back, nowMs }: { capture: Capture; back: boolean
         ) : (
           sourceLabel(capture) && <span className="truncate">{sourceLabel(capture)}</span>
         )}
-        <span className={`ml-auto shrink-0 ${back ? "font-medium text-accent" : ""}`}>{back ? "Back today" : relativeTime(capture.created_at, nowMs)}</span>
+        <span className={`ml-auto shrink-0 ${back ? "font-medium text-accent" : ""}`}>{back ? "Came back" : relativeTime(capture.created_at, nowMs)}</span>
       </div>
     </li>
   );
