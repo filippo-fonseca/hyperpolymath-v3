@@ -151,7 +151,7 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     let back = await resurfacedCaptures(ctx);
     expect(back.map((x) => x.id)).toContain(c.id);
     const { data: row } = await adminDb().from("captures").select().eq("id", c.id).single();
-    expect(row!.resurface_next_at).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
+    expect(new Date(row!.resurface_next_at!).toISOString()).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
 
     // A failed delivery keeps the capture resurfaced (nothing is lost).
     await markCaptureSeen(ctx, c.id);
