@@ -7,7 +7,7 @@ import { dueLabel } from "@/lib/format";
 import { createTaskAction } from "@/app/actions/tasks";
 import { createCaptureAction } from "@/app/actions/captures";
 import { useEscape, useFocusTrap, useScrollLock } from "@/components/ui/primitives";
-import { IconGear, IconHome, IconPencil, IconPlus, IconSearch, IconWidgets } from "@/components/ui/icons";
+import { IconGear, IconHome, IconPencil, IconPlus, IconSearch, IconTree, IconWidgets } from "@/components/ui/icons";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { useDashboard } from "./context";
 import { KindIcon, featureLabel } from "./features";
@@ -27,6 +27,7 @@ export function CommandPalette({
   widgets,
   onHome,
   onOpen,
+  onOpenView,
   onEditLayout,
 }: {
   open: boolean;
@@ -34,11 +35,12 @@ export function CommandPalette({
   widgets: WidgetRow[];
   onHome: () => void;
   onOpen: (w: WidgetRow) => void;
+  onOpenView: (key: string, mode?: string) => void;
   onEditLayout: () => void;
 }) {
   return (
     <AnimatePresence>
-      {open && <Palette key="palette" onClose={onClose} widgets={widgets} onHome={onHome} onOpen={onOpen} onEditLayout={onEditLayout} />}
+      {open && <Palette key="palette" onClose={onClose} widgets={widgets} onHome={onHome} onOpen={onOpen} onOpenView={onOpenView} onEditLayout={onEditLayout} />}
     </AnimatePresence>
   );
 }
@@ -48,12 +50,14 @@ function Palette({
   widgets,
   onHome,
   onOpen,
+  onOpenView,
   onEditLayout,
 }: {
   onClose: () => void;
   widgets: WidgetRow[];
   onHome: () => void;
   onOpen: (w: WidgetRow) => void;
+  onOpenView: (key: string, mode?: string) => void;
   onEditLayout: () => void;
 }) {
   const { data, run, openSettings, openTeammates } = useDashboard();
@@ -158,11 +162,13 @@ function Palette({
     const more: Item[] = [
       { key: "settings", group: "More", label: "Settings", text: "settings preferences account", icon: <IconGear size={16} />, run: go(openSettings) },
       { key: "team", group: "More", label: "Teammates", text: "teammates bots kiwi routines", icon: <KindIcon widget={{ kind: "kiwi", icon: null }} size={16} />, run: go(() => openTeammates()) },
+      // Opens even without a Projects card on the dashboard.
+      { key: "tree", group: "More", label: "Areas tree", text: "areas tree projects life map", icon: <IconTree size={16} />, run: go(() => onOpenView("projects", "tree")) },
       { key: "edit", group: "More", label: "Edit widgets", text: "edit layout widgets arrange resize", icon: <IconWidgets size={16} />, run: go(onEditLayout) },
     ];
     out.push(...more.filter((m) => match(m.text)));
     return out;
-  }, [q, query, widgets, data, run, onClose, onHome, onOpen, onEditLayout, openSettings, openTeammates]);
+  }, [q, query, widgets, data, run, onClose, onHome, onOpen, onOpenView, onEditLayout, openSettings, openTeammates]);
 
   const current = Math.min(active, Math.max(0, items.length - 1));
 
