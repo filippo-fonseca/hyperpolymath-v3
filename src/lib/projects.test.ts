@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { AreasData, Task } from "./dashboard-types";
-import { classLabel, dateRangeLabel, groupTasks, indexProjects, isLive, matchesProject, progressOf, taskCalendarLabel } from "./projects";
+import {
+  AREA_COLORS,
+  areaColor,
+  classLabel,
+  dateRangeLabel,
+  groupTasks,
+  indexProjects,
+  isLive,
+  matchesProject,
+  progressOf,
+  taskCalendarLabel,
+  treeBranches,
+} from "./projects";
 
 const project = (id: string, area_id: string | null, extra: Record<string, unknown> = {}) =>
   ({
@@ -68,5 +80,40 @@ describe("projects", () => {
     const e = indexProjects(data).get("p1")!;
     expect(matchesProject(e, "school")).toBe(true);
     expect(matchesProject(e, "nope")).toBe(false);
+  });
+
+  it("picks an area color from a name, a hex value or the id", () => {
+    expect(areaColor({ id: "a1", color: "Green" })).toBe("#2fb26b");
+    expect(areaColor({ id: "a1", color: "#ABC" })).toBe("#abc");
+    const fallback = areaColor({ id: "a1", color: "not a color" });
+    expect(Object.values(AREA_COLORS)).toContain(fallback);
+    expect(areaColor({ id: "a1", color: null })).toBe(fallback);
+  });
+
+  it("builds tree branches with archived ones only on request", () => {
+    const tree = {
+      areas: [
+        {
+          id: "a1",
+          name: "School",
+          archived_at: null,
+          projects: [
+            project("p1", "a1", { status: "done" }),
+            project("p2", "a1", { archived_at: "2026-10-01T00:00:00Z" }),
+            project("p3", "a1", { status: "paused" }),
+            project("p4", "a1"),
+          ],
+        },
+        { id: "a2", name: "Old", archived_at: "2026-10-01T00:00:00Z", projects: [project("p5", "a2")] },
+      ],
+      unsorted: [],
+    } as unknown as AreasData;
+    const live = treeBranches(tree, false);
+    expect(live.map((b) => b.key)).toEqual(["a1"]);
+    expect(live[0].projects.map((p) => p.id)).toEqual(["p4", "p3", "p1"]);
+    const all = treeBranches(tree, true);
+    expect(all.map((b) => b.key)).toEqual(["a1", "a2"]);
+    expect(all[0].projects.map((p) => p.id)).toEqual(["p4", "p3", "p1", "p2"]);
+    expect(treeBranches(data, false).at(-1)).toMatchObject({ key: "none", area: null });
   });
 });

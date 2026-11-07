@@ -26,7 +26,7 @@ import { longDate, weekdayName } from "@/lib/format";
 import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
 import { AppBar, FeatureStrip } from "./app-bar";
 import { TodaySummary } from "./today-summary";
-import { viewKeyFor, widgetForView } from "./features";
+import { isStandIn, standInWidget, viewKeyFor, widgetForView } from "./features";
 import { useView } from "./use-view";
 import { CommandPalette } from "./command-palette";
 import { WidgetFrame } from "./widget-chrome";
@@ -136,7 +136,7 @@ function Home({
   overlayOpen,
 }: {
   view: string | null;
-  openView: (key: string) => void;
+  openView: (key: string, mode?: string) => void;
   closeView: () => void;
   sheetId: string | null;
   setSheetId: (id: string | null) => void;
@@ -175,7 +175,7 @@ function Home({
 
   const pages = useMemo(() => groupPages(widgets), [widgets]);
   const pageCount = Math.max(1, pages.length);
-  const expanded = widgetForView(widgets, view);
+  const expanded = widgetForView(widgets, view) ?? standInWidget(view);
   const openWidget = useCallback((w: WidgetRow) => openView(viewKeyFor(w)), [openView]);
   const sheetWidget = widgets.find((w) => w.id === sheetId) ?? null;
   const dragWidget = widgets.find((w) => w.id === dragId) ?? null;
@@ -429,7 +429,9 @@ function Home({
                             void navigator.clipboard?.writeText(window.location.href).then(() => toast.show("Link copied"));
                           },
                         },
-                        { label: "Widget settings", icon: <IconGear size={15} />, onSelect: () => openWidgetSettings(expanded.id) },
+                        ...(isStandIn(expanded)
+                          ? []
+                          : [{ label: "Widget settings", icon: <IconGear size={15} />, onSelect: () => openWidgetSettings(expanded.id) }]),
                       ]}
                     >
                       <IconDots size={19} />
@@ -469,6 +471,7 @@ function Home({
         widgets={widgets}
         onHome={closeView}
         onOpen={openWidget}
+        onOpenView={openView}
         onEditLayout={() => {
           closeView();
           setEditing(true);

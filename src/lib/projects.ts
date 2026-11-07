@@ -108,3 +108,66 @@ export function matchesProject(e: ProjectEntry, query: string) {
   if (!q) return true;
   return [e.project.name, e.area?.name, e.project.course_code, e.project.term].some((s) => s?.toLowerCase().includes(q));
 }
+
+/* ---------- areas tree ---------- */
+
+/** Named area colors (the same set bots pick avatar colors from). */
+export const AREA_COLORS: Record<string, string> = {
+  blue: "#1084fe",
+  green: "#2fb26b",
+  orange: "#ff8a1f",
+  magenta: "#e5399b",
+  violet: "#8b5cf6",
+  cyan: "#12b5c8",
+  red: "#ff4757",
+  brown: "#a8754f",
+};
+
+const AREA_COLOR_LIST = Object.values(AREA_COLORS);
+
+/**
+ * An area's accent: its color when it's a known name or a hex value,
+ * otherwise a steady pick from the palette based on its id.
+ */
+export function areaColor(area: { id: string; color?: string | null }): string {
+  const c = area.color?.trim().toLowerCase();
+  if (c && AREA_COLORS[c]) return AREA_COLORS[c];
+  if (c && /^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(c)) return c;
+  let h = 0;
+  for (const ch of area.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AREA_COLOR_LIST[h % AREA_COLOR_LIST.length];
+}
+
+export type TreeBranch = {
+  /** The area id, or "none" for projects with no area. */
+  key: string;
+  area: AreaWithProjects | null;
+  projects: ProjectWithCounts[];
+};
+
+const STATUS_RANK: Record<ProjectStatus, number> = { active: 0, paused: 1, done: 2 };
+
+/**
+ * Branches for the areas tree, in display order: areas, then a trailing
+ * "No area" branch when it has projects. Projects sort active, paused, done,
+ * with archived ones last. Archived areas and projects only show on request.
+ */
+export function treeBranches(data: AreasData, showArchived: boolean): TreeBranch[] {
+  const order = (ps: ProjectWithCounts[]) =>
+    ps
+      .filter((p) => showArchived || !p.archived_at)
+      .map((p, i) => ({ p, i }))
+      .sort(
+        (a, b) =>
+          Number(!!a.p.archived_at) - Number(!!b.p.archived_at) ||
+          STATUS_RANK[asStatus(a.p.status)] - STATUS_RANK[asStatus(b.p.status)] ||
+          a.i - b.i,
+      )
+      .map(({ p }) => p);
+  const branches: TreeBranch[] = data.areas
+    .filter((a) => showArchived || !a.archived_at)
+    .map((a) => ({ key: a.id, area: a, projects: order(a.projects) }));
+  const loose = order(data.unsorted);
+  if (loose.length) branches.push({ key: "none", area: null, projects: loose });
+  return branches;
+}
