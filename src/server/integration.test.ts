@@ -10,7 +10,8 @@ import { completeTask, createTask, getTask, listTasks, updateTask } from "./task
 import { listActions, revertAction } from "./log";
 import { setReminder } from "./reminders";
 import { createHabit, listHabits, logHabit } from "./habits";
-import { convertCaptureToTask, createCapture } from "./captures";
+import { convertCaptureToTask, createCapture, listCaptures, markCaptureSeen, resurfacedCaptures, setResurface } from "./captures";
+import { addComment, deleteComment, listComments } from "./capture-comments";
 import { createWidget, publishWidget, widgetHistory } from "./widgets";
 import { getOverview } from "./overview";
 import { runTick } from "./tick";
@@ -134,6 +135,53 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     expect(task.title).toBe("Book dentist");
     const open = await listTasks(ctx, { scope: "inbox" });
     expect(open.some((x) => x.id === task.id)).toBe(true);
+  });
+
+  it("resurfaces captures on schedule through the tick, until marked seen", async () => {
+    const ctx = ctxAt(zonedToUtc("2026-10-12", "09:30", TZ));
+    const c = await createCapture(ctx, { content: "Reread the Fermi paper" });
+    await setResurface(ctx, c.id, { type: "daily", times: ["10:00"] });
+
+    const got: { capture_id: string; excerpt: string }[] = [];
+    const deliver = async (_u: string, _b: unknown[], _n: Date, _t: string, caps: { capture_id: string; excerpt: string }[] = []) => {
+      got.push(...caps);
+    };
+    await runTick(zonedToUtc("2026-10-12", "10:01", TZ), deliver, { userId });
+    expect(got.map((g) => g.capture_id)).toContain(c.id);
+    let back = await resurfacedCaptures(ctx);
+    expect(back.map((x) => x.id)).toContain(c.id);
+    const { data: row } = await adminDb().from("captures").select().eq("id", c.id).single();
+    expect(row!.resurface_next_at).toBe(zonedToUtc("2026-10-13", "10:00", TZ).toISOString());
+
+    // A failed delivery keeps the capture resurfaced (nothing is lost).
+    await markCaptureSeen(ctx, c.id);
+    await runTick(zonedToUtc("2026-10-13", "10:01", TZ), async () => {
+      throw new Error("webhook down");
+    }, { userId });
+    back = await resurfacedCaptures(ctx);
+    expect(back.map((x) => x.id)).toContain(c.id);
+
+    await markCaptureSeen(ctx, c.id);
+    expect((await resurfacedCaptures(ctx)).map((x) => x.id)).not.toContain(c.id);
+  });
+
+  it("threads replies on captures, counts them, and reverts a deleted reply", async () => {
+    const ctx = ctxAt(NOON);
+    const c = await createCapture(ctx, { content: "Idea: bike to class" });
+    const kiwi = ctxAt(NOON, await resolveBotActor(adminDb(), userId, "Kiwi"));
+    const mine = await addComment(ctx, c.id, "Only when it's dry");
+    const theirs = await addComment(kiwi, c.id, "Noted, sir.");
+    expect(theirs.author_kind).toBe("bot");
+    await expect(deleteComment(kiwi, mine.id)).rejects.toThrow(/own replies/);
+
+    await deleteComment(ctx, theirs.id);
+    expect((await listComments(ctx, c.id)).map((x) => x.content)).toEqual(["Only when it's dry"]);
+    expect((await listCaptures(ctx)).find((x) => x.id === c.id)!.comment_count).toBe(1);
+
+    const [del] = await listActions(ctx, { limit: 1 });
+    expect(del.tool).toBe("delete_capture_comment");
+    await revertAction(ctx, del.id);
+    expect(await listComments(ctx, c.id)).toHaveLength(2);
   });
 
   it("validates widget payloads and keeps history", async () => {
