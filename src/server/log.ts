@@ -4,11 +4,23 @@ import { asJson, AppError, must, type Ctx, type Row } from "./ctx";
 // The audit log. Every write records before/after snapshots so the activity
 // view can show what happened and revert it.
 
-export type EntityType = "task" | "reminder" | "habit" | "habit_log" | "capture" | "widget" | "bot" | "routine" | "area" | "project" | "event";
+export type EntityType =
+  | "task"
+  | "reminder"
+  | "habit"
+  | "habit_log"
+  | "capture"
+  | "widget"
+  | "bot"
+  | "routine"
+  | "area"
+  | "project"
+  | "profile"
+  | "event";
 
 const TABLE: Record<
   Exclude<EntityType, "event">,
-  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects"
+  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects" | "profiles"
 > = {
   task: "tasks",
   reminder: "reminders",
@@ -20,7 +32,13 @@ const TABLE: Record<
   routine: "routines",
   area: "areas",
   project: "projects",
+  profile: "profiles",
 };
+
+// Tables keyed by the account id itself rather than a user_id column.
+const OWNER_COLUMN: Partial<Record<EntityType, "id">> = { profile: "id" };
+// Only these columns are restored on revert (the rest is synced from auth).
+const REVERT_COLUMNS: Partial<Record<EntityType, string[]>> = { profile: ["display_name", "avatar_url"] };
 
 // Tables where "create" is undone by soft delete rather than a hard delete.
 const SOFT_DELETE = new Set<EntityType>(["task", "capture", "widget", "routine", "area", "project"]);
@@ -117,7 +135,8 @@ async function revertRow(ctx: Ctx, action: Row<"actions">, type: Exclude<EntityT
   const id = action.entity_id!;
   const before = action.before as Record<string, unknown> | null;
   const after = action.after as Record<string, unknown> | null;
-  const { data: current } = await ctx.db.from(table).select().eq("id", id).eq("user_id", ctx.userId).maybeSingle();
+  const owner = OWNER_COLUMN[type] ?? "user_id";
+  const { data: current } = await ctx.db.from(table as "tasks").select().eq("id", id).eq(owner, ctx.userId).maybeSingle();
   const cur = current as Record<string, unknown> | null;
 
   // Bots' updated_at moves on every call (last_seen_at), so it can't signal edits.
@@ -144,19 +163,22 @@ async function revertRow(ctx: Ctx, action: Row<"actions">, type: Exclude<EntityT
         "revert create",
       );
     } else {
-      await ctx.db.from(table).delete().eq("id", id).eq("user_id", ctx.userId);
+      await ctx.db.from(table as "tasks").delete().eq("id", id).eq(owner, ctx.userId);
     }
   } else if (!cur) {
     // Row was hard-deleted: put it back.
     restored = must(await ctx.db.from(table as "tasks").insert(before as never).select().single(), "revert delete");
   } else {
-    const patch = Object.fromEntries(Object.entries(before).filter(([k]) => !IMMUTABLE.has(k)));
+    const only = REVERT_COLUMNS[type];
+    const patch = Object.fromEntries(
+      Object.entries(before).filter(([k]) => !IMMUTABLE.has(k) && (!only || only.includes(k))),
+    );
     restored = must(
       await ctx.db
         .from(table as "tasks")
         .update(patch as never)
         .eq("id", id)
-        .eq("user_id", ctx.userId)
+        .eq(owner, ctx.userId)
         .select()
         .single(),
       "revert update",
