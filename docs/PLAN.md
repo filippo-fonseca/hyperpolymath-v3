@@ -66,7 +66,7 @@ Next.js (App Router) + React 19 + TypeScript + Tailwind 4 on Vercel. Supabase (n
 | `tasks` | title, notes, status (todo / doing / done), priority, due_at, recurrence jsonb, list/project, position, completed_at, deleted_at |
 | `reminders` | task_id (nullable for free-standing), schedule jsonb (see below), until (`done` / date / count), channel, next_fire_at, last_fired_at, active |
 | `habits`, `habit_logs` | days_of_week, icon, order; log per day with a 0 to 3 progress state |
-| `captures` | content, urls, source (app / bot name / email), resurface_at, converted_task_id, archived_at |
+| `captures` | content, urls, source (app / bot name / email), resurface schedule (same shape as reminders) with next and last resurfaced times, converted_task_id, archived_at; replies live in `capture_comments` |
 | `widgets` | kind (digest / list / stat / timeline / markdown / table), title, owner_bot_id, payload jsonb, page, position, size (S/M/L), stale_after |
 | `widget_snapshots` | payload history per publish, so you can scroll back through past roundups |
 | `bots` | name, role, parent_bot_id (Kiwi as root), description, avatar shape/color, grokbot_id, last_seen_at |
@@ -82,7 +82,7 @@ Every write tool takes a required `bot` argument (which bot is acting). The MCP 
 - **Tasks:** `list_tasks`, `create_task`, `update_task`, `complete_task`, `delete_task`
 - **Reminders:** `set_reminder`, `list_reminders`, `snooze_reminder`, `cancel_reminder`
 - **Habits:** `list_habits`, `log_habit`, `create_habit`, `update_habit`
-- **Captures:** `create_capture`, `list_captures`, `convert_capture_to_task`, `archive_capture`
+- **Captures:** `create_capture`, `list_captures`, `update_capture` (including the resurface schedule), `mark_capture_seen`, `list_capture_comments`, `add_capture_comment`, `convert_capture_to_task`
 - **Calendar:** `list_events`, `create_event`, `update_event`, `delete_event` (these proxy Google so calendar writes are logged and revertible too)
 - **Widgets:** `list_widgets`, `create_widget`, `publish_widget`, `remove_widget`
 - **Teammates and audit:** `register_bot`, `list_bots`, `list_actions`, `revert_action`

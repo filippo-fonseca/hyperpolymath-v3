@@ -46,7 +46,7 @@ export function DataSection({ overview, overviewFailed, reloadOverview }: Sectio
       <Section
         id="settings-export"
         title="Export everything"
-        hint="One JSON file with your tasks, projects, habits, captures, reminders, widgets, teammates, routines and the full activity log. Tokens and Google credentials are left out."
+        hint="One JSON file with your tasks, projects, habits, captures and replies, reminders, widgets, teammates, routines and the full activity log. Tokens and Google credentials are left out."
       >
         <Button variant="dark" onClick={download} disabled={busy}>
           {busy ? <KiwiLoader size={20} label="Preparing export" /> : <IconArrowUp size={15} className="rotate-180" />}

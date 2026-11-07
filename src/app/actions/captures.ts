@@ -6,21 +6,36 @@ import {
   createCapture,
   deleteCapture,
   listCaptures,
+  markCaptureSeen,
+  setResurface,
   updateCapture,
 } from "@/server/captures";
+import { scheduleSchema, type Schedule } from "@/lib/schedule";
 import { asUser, readAsUser } from "./run";
 
 const id = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export async function createCaptureAction(content: string, resurfaceAt?: string | null, projectId?: string | null) {
+const instant = z.string().datetime({ offset: true });
+
+export async function createCaptureAction(
+  content: string,
+  resurface?: Schedule | null,
+  projectId?: string | null,
+  resurfaceStart?: string | null,
+) {
   return asUser((ctx) =>
     createCapture(ctx, {
       content: z.string().max(20000).parse(content),
-      resurface_at: date.nullable().optional().parse(resurfaceAt),
+      resurface: scheduleSchema.nullable().optional().parse(resurface),
+      resurface_start: instant.nullable().optional().parse(resurfaceStart),
       project: id.nullable().optional().parse(projectId),
     }),
   );
+}
+
+/** Edit a capture's text. */
+export async function editCaptureAction(captureId: string, content: string) {
+  return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { content: z.string().min(1).max(20000).parse(content) }));
 }
 
 /** File a capture under a project, or clear it with null. */
@@ -38,8 +53,19 @@ export async function archiveCaptureAction(captureId: string, archived = true) {
   return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { archived: !!archived }));
 }
 
-export async function resurfaceCaptureAction(captureId: string, resurfaceAt: string | null) {
-  return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { resurface_at: date.nullable().parse(resurfaceAt) }));
+/**
+ * When a capture comes back (see scheduleSchema), or null to stop resurfacing
+ * it. startAt (ISO) is when a repeating schedule begins.
+ */
+export async function resurfaceCaptureAction(captureId: string, schedule: Schedule | null, startAt?: string | null) {
+  return asUser((ctx) =>
+    setResurface(ctx, id.parse(captureId), scheduleSchema.nullable().parse(schedule), instant.nullable().optional().parse(startAt)),
+  );
+}
+
+/** Take a capture out of Resurfaced. */
+export async function markCaptureSeenAction(captureId: string) {
+  return asUser((ctx) => markCaptureSeen(ctx, id.parse(captureId)));
 }
 
 export async function deleteCaptureAction(captureId: string) {

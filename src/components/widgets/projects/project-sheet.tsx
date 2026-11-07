@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence } from "motion/react";
-import type { Capture, ProjectStatus, Task } from "@/lib/dashboard-types";
+import type { CaptureRow, ProjectStatus, Task } from "@/lib/dashboard-types";
 import { STATUSES, STATUS_LABELS, asStatus, progressOf, type ProjectEntry } from "@/lib/projects";
 import { relativeTime } from "@/lib/format";
 import { deleteProjectAction, getProjectAction, updateProjectAction } from "@/app/actions/projects";
@@ -44,7 +44,7 @@ export function ProjectSheet({ projectId, onClose }: { projectId: string | null;
   );
 }
 
-type Detail = { tasks: Task[]; captures: Capture[] };
+type Detail = { tasks: Task[]; captures: CaptureRow[] };
 
 function ProjectPage({ entry, onClose }: { entry: ProjectEntry; onClose: () => void }) {
   const { data, run, nowMs } = useDashboard();

@@ -2,7 +2,8 @@ import "server-only";
 import type { Ctx } from "./ctx";
 import { listTasks } from "./tasks";
 import { listHabits } from "./habits";
-import { listCaptures, resurfacingCaptures } from "./captures";
+import { listCaptures, resurfacedCaptures } from "./captures";
+import { describeResurface } from "@/lib/resurface";
 import { listReminders } from "./reminders";
 import { listWidgets } from "./widgets";
 import { upcomingForOverview } from "./google/calendar";
@@ -14,12 +15,12 @@ import { localDate, zonedParts } from "@/lib/time";
  * purpose: ids and the fields a bot needs to act, nothing else.
  */
 export async function getOverview(ctx: Ctx) {
-  const [today, inbox, habits, captures, resurfacing, reminders, widgets, calendar, areas] = await Promise.all([
+  const [today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas] = await Promise.all([
     listTasks(ctx, { scope: "today", limit: 50 }),
     listTasks(ctx, { scope: "inbox", limit: 20 }),
     listHabits(ctx),
     listCaptures(ctx, { limit: 8 }),
-    resurfacingCaptures(ctx),
+    resurfacedCaptures(ctx),
     listReminders(ctx),
     listWidgets(ctx),
     upcomingForOverview(ctx),
@@ -55,8 +56,20 @@ export async function getOverview(ctx: Ctx) {
     habits_today: habits
       .filter((h) => h.scheduled_today)
       .map((h) => ({ name: h.name, progress: `${h.today_progress}/3`, streak: h.streak })),
-    recent_captures: captures.map((c) => ({ id: c.id, content: c.content.slice(0, 200), source: c.source, at: c.created_at })),
-    resurfacing_captures: resurfacing.map((c) => ({ id: c.id, content: c.content.slice(0, 200) })),
+    recent_captures: captures.map((c) => ({
+      id: c.id,
+      content: c.content.slice(0, 200),
+      source: c.source,
+      at: c.created_at,
+      replies: c.comment_count,
+    })),
+    resurfaced_captures: resurfaced.map((c) => ({
+      id: c.id,
+      content: c.content.slice(0, 200),
+      resurfaced_at: c.resurfaced_at,
+      schedule: c.resurface_schedule ? describeResurface(c.resurface_schedule) : null,
+      replies: c.comment_count,
+    })),
     active_reminders: reminders.map((r) => ({
       id: r.id,
       for: r.task?.title ?? r.message,

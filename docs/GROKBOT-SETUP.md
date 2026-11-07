@@ -45,6 +45,8 @@ Hyperpolymath checks for due reminders every 5 minutes and sends **one** webhook
 
 Reply "done" to a nudge and Kiwi completes the task, which stops every until-done reminder for it.
 
+The same call also carries any captures that just came back on their resurface schedule (`resurfaced_captures`), so Kiwi can mention them in a line each. Reply "seen" and Kiwi marks them seen, which clears them from the Resurfaced section on the dashboard. If no relay is set up, resurfaced captures still show on the dashboard.
+
 ## 5. Custom widgets from routines
 
 Any routine can publish to the dashboard, but only when you ask. Example:
