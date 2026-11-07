@@ -43,7 +43,7 @@ export function CaptureView() {
   }, [query, archived, searching, run, data.captures]);
 
   const list = (searching ? (results ?? []) : data.captures).filter((c) => !hidden.has(c.id));
-  const resurfacing = searching ? [] : data.resurfacing.filter((c) => !hidden.has(c.id));
+  const resurfacing = searching ? [] : data.resurfaced.filter((c) => !hidden.has(c.id));
   const hide = (id: string) => setHidden((s) => new Set(s).add(id));
   const unhide = (id: string) => setHidden((s) => (s.delete(id), new Set(s)));
 

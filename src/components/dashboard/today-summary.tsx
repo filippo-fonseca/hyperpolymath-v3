@@ -24,7 +24,7 @@ export function TodaySummary({ widgets, onOpen }: { widgets: WidgetRow[]; onOpen
   const overdue = due.filter((t) => t.due_date! < data.today).length;
   const scheduled = data.habits.filter((h) => h.scheduled_today);
   const habitsDone = scheduled.filter((h) => h.today_progress >= 3).length;
-  const toSort = data.resurfacing.length || data.captures.length;
+  const toSort = data.resurfaced.length || data.captures.length;
 
   return (
     <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
@@ -46,7 +46,7 @@ export function TodaySummary({ widgets, onOpen }: { widgets: WidgetRow[]; onOpen
       )}
       {capture && toSort > 0 && (
         <Chip widget={capture} onClick={() => onOpen(capture)}>
-          {data.resurfacing.length ? `${pluralize(data.resurfacing.length, "capture")} back today` : `${toSort} in your inbox`}
+          {data.resurfaced.length ? `${pluralize(data.resurfaced.length, "capture")} back today` : `${toSort} in your inbox`}
         </Chip>
       )}
     </div>

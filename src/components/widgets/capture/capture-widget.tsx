@@ -40,8 +40,8 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
       <div className="flex h-full flex-col">
         <WidgetHeader />
         <div className="mt-1 text-[13px] text-ink-3">
-          {data.resurfacing.length ? (
-            <span className="font-medium text-accent">{data.resurfacing.length} back today</span>
+          {data.resurfaced.length ? (
+            <span className="font-medium text-accent">{data.resurfaced.length} back today</span>
           ) : (
             meta || "Inbox empty"
           )}
@@ -54,7 +54,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
     );
   }
 
-  const resurfacing = size === "m" ? [] : data.resurfacing;
+  const resurfacing = size === "m" ? [] : data.resurfaced;
   const recent = data.captures.filter((c) => !resurfacing.some((r) => r.id === c.id));
 
   if (size === "w") {

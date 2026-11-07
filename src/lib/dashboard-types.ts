@@ -10,6 +10,7 @@ import type { widgetHistory } from "@/server/widgets";
 import type { listRoutines, listRuns } from "@/server/routines";
 import type { CalendarEvent } from "@/server/google/calendar";
 import type { listAreas } from "@/server/projects";
+import type { CaptureWithCount } from "@/server/captures";
 import type { TaskViews } from "./task-view";
 
 export type { CalendarEvent };
@@ -17,7 +18,10 @@ export type { CalendarEvent };
 type T = Database["public"]["Tables"];
 
 export type Task = T["tasks"]["Row"];
-export type Capture = T["captures"]["Row"];
+/** A capture with its reply count and resurface fields (resurface_schedule, resurface_next_at, resurfaced_at). */
+export type Capture = CaptureWithCount;
+/** A plain capture row, without the reply count. */
+export type CaptureRow = T["captures"]["Row"];
 export type Bot = T["bots"]["Row"];
 export type Habit = HabitWithStatus;
 export type WidgetRow = Awaited<ReturnType<typeof listWidgets>>[number];
@@ -42,7 +46,8 @@ export type DashboardData = {
   doneTasks: Task[];
   habits: Habit[];
   captures: Capture[];
-  resurfacing: Capture[];
+  /** Captures that came back on schedule and wait in Resurfaced until marked seen, newest first. */
+  resurfaced: Capture[];
   bots: Bot[];
   actions: ActionRow[];
   reminders: ReminderRow[];

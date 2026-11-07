@@ -4,7 +4,7 @@ import { makeCtx } from "@/server/ctx";
 import { ensureDefaultWidgets, listWidgets } from "@/server/widgets";
 import { listTasks } from "@/server/tasks";
 import { listHabits } from "@/server/habits";
-import { listCaptures, resurfacingCaptures } from "@/server/captures";
+import { listCaptures, resurfacedCaptures } from "@/server/captures";
 import { listBots } from "@/server/bots";
 import { listActions } from "@/server/log";
 import { listReminders } from "@/server/reminders";
@@ -32,13 +32,13 @@ async function DashboardLoader() {
   // Streams separately so a slow or failing Google call never blocks the grid.
   const calendar = loadCalendar(ctx);
   await ensureDefaultWidgets(ctx.db, userId);
-  const [widgets, openTasks, doneTasks, habits, captures, resurfacing, bots, actions, reminders, routines, areas, taskViews, profile] = await Promise.all([
+  const [widgets, openTasks, doneTasks, habits, captures, resurfaced, bots, actions, reminders, routines, areas, taskViews, profile] = await Promise.all([
     listWidgets(ctx),
     listTasks(ctx, { scope: "open", limit: 500 }),
     listTasks(ctx, { scope: "done", limit: 40 }),
     listHabits(ctx),
     listCaptures(ctx, { limit: 40 }),
-    resurfacingCaptures(ctx),
+    resurfacedCaptures(ctx),
     listBots(ctx),
     listActions(ctx, { limit: 100 }),
     listReminders(ctx),
@@ -60,7 +60,7 @@ async function DashboardLoader() {
     doneTasks,
     habits,
     captures,
-    resurfacing,
+    resurfaced,
     bots,
     actions,
     reminders,

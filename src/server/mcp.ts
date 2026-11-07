@@ -72,6 +72,10 @@ const reminderFields = {
   count: z.number().int().min(1).max(500).optional(),
 };
 
+const resurfaceField = scheduleSchema.describe(
+  'When the capture comes back to the owner, same shape as reminder schedules, in their local time. Examples: {"type":"once","date":"2026-11-14","time":"09:00"} (once); {"type":"daily","times":["09:00"]} (every day); {"type":"daily","times":["09:00"],"days":[1,2,3,4,5]} (weekdays); {"type":"interval","every_minutes":4320} (every 3 days). When it comes back it shows in Resurfaced until marked seen.',
+);
+
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
 function ok(data: Json) {
@@ -239,8 +243,8 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   // Captures -----------------------------------------------------------------
   tool(
     "create_capture",
-    "Save a quick thought, link or idea. resurface_at brings it back on a date.",
-    { content: z.string().min(1).max(20000), resurface_at: date.optional(), project: z.string().max(120).optional() },
+    "Save a quick thought, link or idea. resurface brings it back on a schedule.",
+    { content: z.string().min(1).max(20000), resurface: resurfaceField.optional(), project: z.string().max(120).optional() },
     async (ctx, a) => {
       const capture = await createCapture(ctx, a);
       return { ...capture, filed_under: await filedUnder(ctx, capture.project_id) };
@@ -255,8 +259,8 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   );
   tool(
     "update_capture",
-    "Edit, archive or reschedule resurfacing of a capture.",
-    { id: uuid, content: z.string().min(1).max(20000).optional(), resurface_at: date.nullable().optional(), archived: z.boolean().optional(), project: z.string().max(120).nullable().optional() },
+    "Edit or archive a capture, file it under a project, or set when it resurfaces (resurface: a schedule, null stops it).",
+    { id: uuid, content: z.string().min(1).max(20000).optional(), resurface: resurfaceField.nullable().optional(), archived: z.boolean().optional(), project: z.string().max(120).nullable().optional() },
     (ctx, { id, ...patch }) => updateCapture(ctx, id, patch),
   );
   tool(
