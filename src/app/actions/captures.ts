@@ -6,21 +6,28 @@ import {
   createCapture,
   deleteCapture,
   listCaptures,
+  markCaptureSeen,
+  setResurface,
   updateCapture,
 } from "@/server/captures";
+import { scheduleSchema, type Schedule } from "@/lib/schedule";
 import { asUser, readAsUser } from "./run";
 
 const id = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export async function createCaptureAction(content: string, resurfaceAt?: string | null, projectId?: string | null) {
+export async function createCaptureAction(content: string, resurface?: Schedule | null, projectId?: string | null) {
   return asUser((ctx) =>
     createCapture(ctx, {
       content: z.string().max(20000).parse(content),
-      resurface_at: date.nullable().optional().parse(resurfaceAt),
+      resurface: scheduleSchema.nullable().optional().parse(resurface),
       project: id.nullable().optional().parse(projectId),
     }),
   );
+}
+
+/** Edit a capture's text. */
+export async function editCaptureAction(captureId: string, content: string) {
+  return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { content: z.string().min(1).max(20000).parse(content) }));
 }
 
 /** File a capture under a project, or clear it with null. */
@@ -38,8 +45,14 @@ export async function archiveCaptureAction(captureId: string, archived = true) {
   return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { archived: !!archived }));
 }
 
-export async function resurfaceCaptureAction(captureId: string, resurfaceAt: string | null) {
-  return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { resurface_at: date.nullable().parse(resurfaceAt) }));
+/** When a capture comes back (see scheduleSchema), or null to stop resurfacing it. */
+export async function resurfaceCaptureAction(captureId: string, schedule: Schedule | null) {
+  return asUser((ctx) => setResurface(ctx, id.parse(captureId), scheduleSchema.nullable().parse(schedule)));
+}
+
+/** Take a capture out of Resurfaced. */
+export async function markCaptureSeenAction(captureId: string) {
+  return asUser((ctx) => markCaptureSeen(ctx, id.parse(captureId)));
 }
 
 export async function deleteCaptureAction(captureId: string) {
