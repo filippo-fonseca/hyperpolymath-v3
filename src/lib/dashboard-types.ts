@@ -11,6 +11,7 @@ import type { listRoutines, listRuns } from "@/server/routines";
 import type { CalendarEvent } from "@/server/google/calendar";
 import type { listAreas } from "@/server/projects";
 import type { CaptureWithCount } from "@/server/captures";
+import type { CaptureComment } from "@/server/capture-comments";
 import type { TaskViews } from "./task-view";
 
 export type { CalendarEvent };
@@ -20,6 +21,8 @@ type T = Database["public"]["Tables"];
 export type Task = T["tasks"]["Row"];
 /** A capture with its reply count and resurface fields (resurface_schedule, resurface_next_at, resurfaced_at). */
 export type Capture = CaptureWithCount;
+/** A reply on a capture, with its bot (null for your own replies). */
+export type { CaptureComment };
 /** A plain capture row, without the reply count. */
 export type CaptureRow = T["captures"]["Row"];
 export type Bot = T["bots"]["Row"];
