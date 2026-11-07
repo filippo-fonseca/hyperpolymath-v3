@@ -3,7 +3,7 @@ import { AppError, asJson, must, type Ctx, type Row, type Update, escapeLike } f
 import { logAction } from "./log";
 import { createTask, type TaskInput } from "./tasks";
 import { projectIdFor } from "./projects";
-import { describeSchedule, firstFire, scheduleSchema, type Schedule } from "@/lib/schedule";
+import { describeSchedule, firstFire, nextFire, scheduleSchema, type Schedule } from "@/lib/schedule";
 
 export type Capture = Row<"captures">;
 /** A capture as lists return it: with how many replies it has. */
@@ -62,22 +62,32 @@ async function withCommentCounts(ctx: Ctx, rows: Capture[]): Promise<CaptureWith
   return rows.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
 }
 
-/** Resurface columns for a schedule (or null to stop resurfacing). */
-function resurfaceValues(ctx: Ctx, schedule: Schedule | null) {
+/**
+ * Resurface columns for a schedule (or null to stop resurfacing). `startAt`
+ * (an ISO instant) holds a repeating schedule back until then; for "every N
+ * days" it is the first time it comes back, and the cadence steps from it.
+ * Without it, an interval first comes back one interval from now.
+ */
+export function resurfaceValues(ctx: Ctx, schedule: Schedule | null, startAt?: string | null) {
   if (!schedule) return { resurface_schedule: null, resurface_next_at: null };
   const parsed = scheduleSchema.parse(schedule);
-  const next = firstFire(parsed, ctx.now, ctx.tz);
+  const start = startAt ? new Date(startAt) : null;
+  if (start && Number.isNaN(start.getTime())) throw new AppError("That start time isn't a valid date.");
+  if (start && start <= ctx.now) throw new AppError("Pick a start time in the future.");
+  let next: Date | null;
+  if (parsed.type === "interval") next = start ?? nextFire(parsed, ctx.now, ctx.tz);
+  else next = firstFire(parsed, start && start > ctx.now ? start : ctx.now, ctx.tz);
   if (!next) throw new AppError("That resurface time has already passed. Pick a time in the future.");
   return { resurface_schedule: asJson(parsed), resurface_next_at: next.toISOString() };
 }
 
 export async function createCapture(
   ctx: Ctx,
-  input: { content: string; resurface?: Schedule | null; project?: string | null },
+  input: { content: string; resurface?: Schedule | null; resurface_start?: string | null; project?: string | null },
 ) {
   const content = input.content.trim();
   if (!content) throw new AppError("Capture can't be empty.");
-  const resurface = input.resurface ? resurfaceValues(ctx, input.resurface) : {};
+  const resurface = input.resurface ? resurfaceValues(ctx, input.resurface, input.resurface_start) : {};
   const capture = must(
     await ctx.db
       .from("captures")
@@ -114,7 +124,14 @@ export async function getCapture(ctx: Ctx, id: string) {
 export async function updateCapture(
   ctx: Ctx,
   id: string,
-  patch: { content?: string; resurface?: Schedule | null; archived?: boolean; project?: string | null },
+  patch: {
+    content?: string;
+    resurface?: Schedule | null;
+    /** ISO instant a repeating resurface schedule starts from (see resurfaceValues). */
+    resurface_start?: string | null;
+    archived?: boolean;
+    project?: string | null;
+  },
 ) {
   const before = await getCapture(ctx, id);
   const values: Update<"captures"> = {};
@@ -124,7 +141,7 @@ export async function updateCapture(
     values.content = patch.content.trim();
     values.urls = [...new Set(patch.content.match(URL_RE) ?? [])];
   }
-  if (patch.resurface !== undefined) Object.assign(values, resurfaceValues(ctx, patch.resurface));
+  if (patch.resurface !== undefined) Object.assign(values, resurfaceValues(ctx, patch.resurface, patch.resurface_start));
   if (patch.archived !== undefined) values.archived_at = patch.archived ? ctx.now.toISOString() : null;
   const after = must(
     await ctx.db.from("captures").update(values).eq("id", id).eq("user_id", ctx.userId).select().single(),
@@ -132,7 +149,7 @@ export async function updateCapture(
   );
   const onlyResurface =
     patch.resurface !== undefined &&
-    Object.entries(patch).every(([k, v]) => k === "resurface" || v === undefined);
+    Object.entries(patch).every(([k, v]) => k === "resurface" || k === "resurface_start" || v === undefined);
   const verb = patch.archived === true ? "Archived" : patch.archived === false ? "Unarchived" : "Updated";
   const summary = onlyResurface
     ? patch.resurface
@@ -151,8 +168,8 @@ export async function updateCapture(
 }
 
 /** Schedule when a capture comes back (once, daily or every N minutes), or null to stop. */
-export function setResurface(ctx: Ctx, id: string, schedule: Schedule | null) {
-  return updateCapture(ctx, id, { resurface: schedule });
+export function setResurface(ctx: Ctx, id: string, schedule: Schedule | null, startAt?: string | null) {
+  return updateCapture(ctx, id, { resurface: schedule, resurface_start: startAt });
 }
 
 /** Take a capture out of the Resurfaced section. Its schedule keeps running. */

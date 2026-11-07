@@ -15,11 +15,19 @@ import { asUser, readAsUser } from "./run";
 
 const id = z.string().uuid();
 
-export async function createCaptureAction(content: string, resurface?: Schedule | null, projectId?: string | null) {
+const instant = z.string().datetime({ offset: true });
+
+export async function createCaptureAction(
+  content: string,
+  resurface?: Schedule | null,
+  projectId?: string | null,
+  resurfaceStart?: string | null,
+) {
   return asUser((ctx) =>
     createCapture(ctx, {
       content: z.string().max(20000).parse(content),
       resurface: scheduleSchema.nullable().optional().parse(resurface),
+      resurface_start: instant.nullable().optional().parse(resurfaceStart),
       project: id.nullable().optional().parse(projectId),
     }),
   );
@@ -45,9 +53,14 @@ export async function archiveCaptureAction(captureId: string, archived = true) {
   return asUser((ctx) => updateCapture(ctx, id.parse(captureId), { archived: !!archived }));
 }
 
-/** When a capture comes back (see scheduleSchema), or null to stop resurfacing it. */
-export async function resurfaceCaptureAction(captureId: string, schedule: Schedule | null) {
-  return asUser((ctx) => setResurface(ctx, id.parse(captureId), scheduleSchema.nullable().parse(schedule)));
+/**
+ * When a capture comes back (see scheduleSchema), or null to stop resurfacing
+ * it. startAt (ISO) is when a repeating schedule begins.
+ */
+export async function resurfaceCaptureAction(captureId: string, schedule: Schedule | null, startAt?: string | null) {
+  return asUser((ctx) =>
+    setResurface(ctx, id.parse(captureId), scheduleSchema.nullable().parse(schedule), instant.nullable().optional().parse(startAt)),
+  );
 }
 
 /** Take a capture out of Resurfaced. */
