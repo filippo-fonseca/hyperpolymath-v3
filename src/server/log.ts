@@ -10,6 +10,7 @@ export type EntityType =
   | "habit"
   | "habit_log"
   | "capture"
+  | "capture_comment"
   | "widget"
   | "bot"
   | "routine"
@@ -20,13 +21,14 @@ export type EntityType =
 
 const TABLE: Record<
   Exclude<EntityType, "event">,
-  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects" | "profiles"
+  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects" | "profiles" | "capture_comments"
 > = {
   task: "tasks",
   reminder: "reminders",
   habit: "habits",
   habit_log: "habit_logs",
   capture: "captures",
+  capture_comment: "capture_comments",
   widget: "widgets",
   bot: "bots",
   routine: "routines",
@@ -41,7 +43,7 @@ const OWNER_COLUMN: Partial<Record<EntityType, "id">> = { profile: "id" };
 const REVERT_COLUMNS: Partial<Record<EntityType, string[]>> = { profile: ["display_name", "avatar_url"] };
 
 // Tables where "create" is undone by soft delete rather than a hard delete.
-const SOFT_DELETE = new Set<EntityType>(["task", "capture", "widget", "routine", "area", "project"]);
+const SOFT_DELETE = new Set<EntityType>(["task", "capture", "capture_comment", "widget", "routine", "area", "project"]);
 const IMMUTABLE = new Set(["id", "user_id", "created_at", "updated_at"]);
 
 export async function logAction(
