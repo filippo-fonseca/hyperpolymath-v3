@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { adminDb, makeCtx, userTimezone, type DB, type Row } from "./ctx";
 import { advance, type DueReminder } from "./reminders";
 import { describeSchedule, scheduleSchema } from "@/lib/schedule";
-import { getRelay } from "./relay";
+import { getRelay, NO_RELAY_ERROR } from "./relay";
 import { catchUpRecurring } from "./tasks";
 import { localDate } from "@/lib/time";
 import { advanceResurface, describeResurface, excerpt } from "@/lib/resurface";
@@ -32,9 +32,14 @@ export type TickResult = {
 export async function runTick(
   now = new Date(),
   deliver = deliverToKiwi,
-  opts: { userId?: string } = {},
+  opts: { userId?: string; hasRelay?: (userId: string) => Promise<boolean> } = {},
 ): Promise<TickResult> {
   const db = adminDb();
+  // Without a relay a reminder can't go anywhere. Claiming and rolling it back
+  // every tick cost two writes per reminder for nothing, so skip it instead.
+  const hasRelay =
+    opts.hasRelay ??
+    (deliver === deliverToKiwi ? async (userId: string) => !!(await getRelay(db, userId)) : async () => true);
   const result: TickResult = { users: 0, sent: 0, skipped: 0, failed: 0, resurfaced: 0, errors: [] };
   let q = db
     .from("reminders")
@@ -72,8 +77,18 @@ export async function runTick(
     const tz = await userTimezone(db, userId);
     const batch: DueReminder[] = [];
     const claimed: { row: DueRow; patch: ReturnType<typeof advance> }[] = [];
+    const relayReady = await hasRelay(userId);
 
-    for (const r of rows) {
+    if (!relayReady && rows.length) {
+      // Leave them due; they fire once a relay is saved. Mark each once so
+      // Settings shows why and the cron gate can stop calling every 5 minutes.
+      const unmarked = rows.filter((r) => r.last_error !== NO_RELAY_ERROR).map((r) => r.id);
+      if (unmarked.length) await db.from("reminders").update({ last_error: NO_RELAY_ERROR }).in("id", unmarked);
+      result.failed += rows.length;
+      result.errors.push(NO_RELAY_ERROR);
+    }
+
+    for (const r of relayReady ? rows : []) {
       // Task finished or deleted: an until-done reminder retires quietly.
       if (r.task && (r.task.deleted_at || (r.task.status === "done" && r.until_kind === "done"))) {
         await db.from("reminders").update({ active: false }).eq("id", r.id);
@@ -121,6 +136,8 @@ export async function runTick(
       });
     }
     if (!batch.length && !resurfaced.length) continue;
+    // Captures alone and no relay: the dashboard's Resurfaced section is enough.
+    if (!relayReady) continue;
 
     try {
       await deliver(userId, batch, now, tz, resurfaced);
@@ -220,7 +237,7 @@ export async function deliverToKiwi(
   resurfaced: ResurfacedCapture[] = [],
 ) {
   const relay = await getRelay(adminDb(), userId);
-  if (!relay) throw new Error("No reminder relay set up. Add the Reminder relay webhook in Settings, Reminders.");
+  if (!relay) throw new Error(NO_RELAY_ERROR);
   const { url, token } = relay;
   const res = await fetch(url, {
     method: "POST",

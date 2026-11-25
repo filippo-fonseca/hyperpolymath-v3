@@ -9,6 +9,13 @@ import { isOwnerEmail } from "@/lib/supabase/env";
 // it. KIWI_WEBHOOK_URL/TOKEN in env still work, but only for OWNER_EMAIL, so
 // one account's reminders can never reach another account's bot.
 
+/**
+ * Kept on due reminders while their account has no relay. The pg_cron job
+ * only calls the tick every 5 minutes when some due reminder lacks it (see
+ * the reminder_tick_gate migration); otherwise it calls once an hour.
+ */
+export const NO_RELAY_ERROR = "No reminder relay set up. Add the Reminder relay webhook in Settings, Reminders.";
+
 export type Relay = { url: string; token: string };
 export type RelayStatus = { configured: boolean; source: "account" | "env" | null; host: string | null };
 
@@ -60,6 +67,12 @@ export async function setRelay(ctx: Ctx, input: { url: string; token: string }) 
       .single(),
     "save relay",
   );
+  // Reminders held back for want of a relay go out on the next tick.
+  await ctx.db
+    .from("reminders")
+    .update({ last_error: null })
+    .eq("user_id", ctx.userId)
+    .eq("last_error", NO_RELAY_ERROR);
   return relayStatus(ctx.db, ctx.userId);
 }
 
