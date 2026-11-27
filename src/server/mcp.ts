@@ -9,6 +9,7 @@ import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./re
 import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
 import { convertCaptureToTask, createCapture, listCaptures, markCaptureSeen, updateCapture } from "./captures";
 import { addComment, listComments } from "./capture-comments";
+import { acceptSuggestion, dismissSuggestion, listSuggestions, suggest } from "./suggestions";
 import { createWidget, listWidgets, publishWidget, removeWidget, updateWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
@@ -19,6 +20,7 @@ import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
 import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
 import { isLocalDate, isLocalTime } from "@/lib/time";
+import { BATCH_LIMIT, DAILY_LIMIT_PER_SOURCE } from "@/lib/suggestions";
 
 const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
 
@@ -39,6 +41,7 @@ Rules:
   - "Bring this back Friday / remind me of this idea every Monday" on a capture means a resurface schedule (create_capture or update_capture with resurface), not a reminder. When it comes back it sits in Resurfaced (get_overview resurfaced_captures) until the owner has seen it.
   - When the owner says they've seen a resurfaced capture ("seen", "got it"), call mark_capture_seen. Its schedule keeps running; update_capture with resurface null stops it.
   - Captures have reply threads. Reply with add_capture_comment when you have something genuinely useful to add to an idea (a link, a next step, an answer to a question in it), and read list_capture_comments before replying so you don't repeat yourself. Don't reply just to acknowledge.
+- Suggestions: when you notice something the owner would likely want as a task or capture (a deadline in an email, a follow-up from a meeting, an idea in a chat) and they did not ask you to save it, call suggest; they review it in the app. What they ask for directly still goes straight to create_task / create_capture.
 - Projects: the owner organises life into areas (School, Health, Work...) holding projects (classes are projects too). Tasks and captures can belong to one project; habits to an area. Know the current projects (get_overview lists active ones per area; list_areas has all).
   - When the owner gives you a task or capture, file it under a project ONLY if it clearly fits one (same class, same initiative, obvious keyword or context). Don't force it: if nothing fits well, or two projects fit equally, leave it unfiled (it stays in the inbox) rather than guessing. Never create a new project just to file one item unless they ask.
   - Always confirm where it went, briefly: "Added to Machine Elements." or "Added, not filed under a project." The tool result's filed_under field tells you. They can say "move it to X" (update_task project) or "undo" (revert_action).
@@ -312,6 +315,62 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     "Turn a capture into a task (archives the capture).",
     { id: uuid, title: z.string().max(500).optional(), due_date: date.optional(), priority: z.number().int().min(0).max(3).optional(), project: z.string().max(120).optional() },
     (ctx, { id, ...task }) => convertCaptureToTask(ctx, id, task),
+  );
+
+  // Suggestions --------------------------------------------------------------
+  const suggestionItem = z.object({
+    kind: z.enum(["task", "capture"]),
+    content: z.string().min(1).max(2000).describe("Task title, or the capture's text"),
+    reason: z.string().max(300).optional().describe('Why, and where you saw it: "Slack #mech-e: Prof. Lee moved the pset to Fri"'),
+    project: z.string().max(120).optional().describe("Project name or id, only if it clearly fits"),
+    due_date: date.optional(),
+    due_time: time.optional(),
+    priority: z.number().int().min(0).max(3).optional(),
+    notes: z.string().max(4000).optional(),
+  });
+  tool(
+    "suggest",
+    `Propose tasks or captures you noticed on your own that the owner did NOT ask you to save (deadlines in emails or Slack, meeting follow-ups, ideas worth keeping). They wait in the app's Suggested tray until the owner accepts or dismisses them. Batch a whole run into one call (up to ${BATCH_LIMIT}). The server skips duplicates, things already saved and recently dismissed ones, so don't check first. Each bot gets ${DAILY_LIMIT_PER_SOURCE} a day: suggest only what the owner would plausibly act on.`,
+    { items: z.array(suggestionItem).min(1).max(BATCH_LIMIT) },
+    (ctx, a) => suggest(ctx, a.items),
+  );
+  tool(
+    "list_suggestions",
+    "Suggestions waiting for the owner (default), or recently accepted or dismissed ones, newest first.",
+    { status: z.enum(["pending", "accepted", "dismissed"]).optional(), limit: z.number().int().min(1).max(100).optional() },
+    async (ctx, a) =>
+      (await listSuggestions(ctx, a)).map((s) => ({
+        id: s.id,
+        kind: s.kind,
+        content: s.content,
+        reason: s.reason,
+        due: s.due_date ? `${s.due_date}${s.due_time ? " " + s.due_time.slice(0, 5) : ""}` : null,
+        by: s.source,
+        status: s.status,
+        at: s.created_at,
+      })),
+    { readOnly: true },
+  );
+  tool(
+    "review_suggestion",
+    "Accept or dismiss a waiting suggestion, only when the owner says so (\"yes, add the second one\"). Accepting creates the task or capture; content, project, due_date and priority override what was suggested.",
+    {
+      id: uuid,
+      decision: z.enum(["accept", "dismiss"]),
+      content: z.string().min(1).max(2000).optional(),
+      project: z.string().max(120).nullable().optional(),
+      due_date: date.nullable().optional(),
+      priority: z.number().int().min(0).max(3).optional(),
+    },
+    async (ctx, { id, decision, ...edits }) => {
+      if (decision === "dismiss") {
+        const s = await dismissSuggestion(ctx, id);
+        return { dismissed: s.content };
+      }
+      const r = await acceptSuggestion(ctx, id, edits);
+      const projectId = "project_id" in r.created ? r.created.project_id : null;
+      return { accepted: r.kind, id: r.created.id, filed_under: await filedUnder(ctx, projectId) };
+    },
   );
 
   // Areas and projects -------------------------------------------------------

@@ -8,6 +8,7 @@ import { listReminders } from "./reminders";
 import { listWidgets } from "./widgets";
 import { upcomingForOverview } from "./google/calendar";
 import { listAreas } from "./projects";
+import { pendingSuggestionCount } from "./suggestions";
 import { localDate, zonedParts } from "@/lib/time";
 
 /**
@@ -15,7 +16,7 @@ import { localDate, zonedParts } from "@/lib/time";
  * purpose: ids and the fields a bot needs to act, nothing else.
  */
 export async function getOverview(ctx: Ctx) {
-  const [today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas] = await Promise.all([
+  const [today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas, suggestionsPending] = await Promise.all([
     listTasks(ctx, { scope: "today", limit: 50 }),
     listTasks(ctx, { scope: "inbox", limit: 20 }),
     listHabits(ctx),
@@ -25,6 +26,7 @@ export async function getOverview(ctx: Ctx) {
     listWidgets(ctx),
     upcomingForOverview(ctx),
     listAreas(ctx),
+    pendingSuggestionCount(ctx),
   ]);
   const projectName = new Map(
     [...areas.areas.flatMap((a) => a.projects), ...areas.unsorted].map((p) => [p.id, p.name]),
@@ -70,6 +72,8 @@ export async function getOverview(ctx: Ctx) {
       schedule: c.resurface_schedule ? describeResurface(c.resurface_schedule) : null,
       replies: c.comment_count,
     })),
+    // A count only: list_suggestions has the details when a bot needs them.
+    suggestions_waiting_for_owner: suggestionsPending,
     active_reminders: reminders.map((r) => ({
       id: r.id,
       for: r.task?.title ?? r.message,
