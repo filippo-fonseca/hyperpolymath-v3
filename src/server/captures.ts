@@ -84,6 +84,8 @@ export function resurfaceValues(ctx: Ctx, schedule: Schedule | null, startAt?: s
 export async function createCapture(
   ctx: Ctx,
   input: { content: string; resurface?: Schedule | null; resurface_start?: string | null; project?: string | null },
+  /** `by` credits someone other than the actor (an accepted bot suggestion keeps the bot's name). */
+  opts: { by?: string } = {},
 ) {
   const content = input.content.trim();
   if (!content) throw new AppError("Capture can't be empty.");
@@ -95,7 +97,7 @@ export async function createCapture(
         user_id: ctx.userId,
         content,
         urls: [...new Set(content.match(URL_RE) ?? [])],
-        source: ctx.actor.name,
+        source: opts.by ?? ctx.actor.name,
         ...resurface,
         project_id: (await projectIdFor(ctx, input.project)) ?? null,
       })

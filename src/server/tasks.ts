@@ -92,7 +92,8 @@ function clean(input: TaskInput): Update<"tasks"> {
   return out;
 }
 
-export async function createTask(ctx: Ctx, input: TaskInput & { title: string }): Promise<Task> {
+/** `by` credits someone other than the actor (an accepted bot suggestion keeps the bot's name). */
+export async function createTask(ctx: Ctx, input: TaskInput & { title: string }, opts: { by?: string } = {}): Promise<Task> {
   const values = clean(input);
   const project_id = await projectIdFor(ctx, input.project);
   if (project_id !== undefined) values.project_id = project_id;
@@ -103,7 +104,7 @@ export async function createTask(ctx: Ctx, input: TaskInput & { title: string })
         ...values,
         title: values.title!,
         user_id: ctx.userId,
-        created_by: ctx.actor.name,
+        created_by: opts.by ?? ctx.actor.name,
         position: -ctx.now.getTime(),
         completed_at: values.status === "done" ? ctx.now.toISOString() : null,
       })
