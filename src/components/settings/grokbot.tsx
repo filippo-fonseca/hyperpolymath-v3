@@ -11,7 +11,7 @@ import { KiwiLoader } from "@/components/ui/kiwi-loader";
 import { useDashboard } from "@/components/dashboard/context";
 import { CopyButton, DOCS, DocLink, Section, type SectionProps } from "./shared";
 
-// Settings → Assistants: the MCP address, how to connect each client, the
+// Settings → Connections: the MCP address, how to connect each client, the
 // apps connected by sign-in (OAuth), personal tokens, and teammates.
 // The section id stays "grokbot" so existing deep links keep working.
 

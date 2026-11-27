@@ -152,6 +152,23 @@ describe("client metadata", () => {
     expect(parseClientMetadata({ client_id: "https://evil.com/x", redirect_uris: ["http://localhost/callback"] }, { clientId: url }).ok).toBe(false);
   });
 
+  it("accepts Claude Code's published metadata document as served", () => {
+    const url = "https://claude.ai/oauth/claude-code-client-metadata";
+    const doc = {
+      client_id: url,
+      client_name: "Claude Code",
+      client_uri: "https://claude.ai",
+      redirect_uris: ["http://localhost/callback", "http://127.0.0.1/callback"],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+    };
+    const r = parseClientMetadata(doc, { clientId: url });
+    expect(r.ok && r.value.name).toBe("Claude Code");
+    // Claude Code picks a free port at sign-in time.
+    expect(r.ok && redirectMatches("http://localhost:54012/callback", r.value.redirect_uris)).toBe(true);
+  });
+
   it("drops non-https logos", () => {
     const r = parseClientMetadata({ redirect_uris: ["https://a.example.com/cb"], logo_uri: "http://a.example.com/logo.png" });
     expect(r.ok && r.value.logo_uri).toBeNull();

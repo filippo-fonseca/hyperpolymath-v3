@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "motion/react";
 import { approveAuthorization, denyAuthorization, switchAccount, type ConsentResult } from "@/app/actions/oauth";
@@ -101,7 +101,7 @@ const PERMISSIONS = [
   { icon: IconEye, title: "See your dashboard", body: "Tasks, habits, reminders, captures, projects, widgets and your calendar." },
   { icon: IconPencil, title: "Make changes for you", body: "Add and complete tasks, log habits, set reminders, publish widgets." },
   { icon: IconUndo, title: "Every change is logged", body: "You can review and undo anything it does in Activity." },
-  { icon: IconShield, title: "You stay in control", body: "Disconnect it any time in Settings, under Assistants." },
+  { icon: IconShield, title: "You stay in control", body: "Disconnect it any time in Settings, under Connections." },
 ] as const;
 
 export function ConsentCard({
@@ -122,12 +122,6 @@ export function ConsentCard({
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
-  const allowRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    allowRef.current?.focus({ preventScroll: true });
-  }, []);
-
   // Leave once the success animation has played; offer a manual link if the
   // browser doesn't follow (an app scheme with no app installed, say).
   useEffect(() => {
@@ -219,7 +213,8 @@ export function ConsentCard({
             initial={false}
             exit={{ opacity: 0, height: 0, marginTop: 0 }}
             transition={{ duration: 0.32, ease: EASE }}
-            className="mt-5 overflow-hidden"
+            // Padding keeps focus rings inside the clipped, collapsing box.
+            className="-mx-1.5 mt-5 overflow-hidden px-1.5 pb-1.5"
           >
             <ul className="flex flex-col gap-1" aria-label={`What ${client.name} can do`}>
               {PERMISSIONS.map((p, i) => (
@@ -264,7 +259,6 @@ export function ConsentCard({
                 {phase === "denying" ? <KiwiLoader size={20} label="Cancelling" /> : "Cancel"}
               </button>
               <motion.button
-                ref={allowRef}
                 type="button"
                 onClick={() => void submit("approve")}
                 disabled={busy}
