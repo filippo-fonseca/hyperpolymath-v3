@@ -14,6 +14,10 @@ Bots get in with MCP tokens you create in Settings, and each token only reaches 
 
 Setting up your own deployment: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
+## iPhone, widgets and Mac menu bar
+
+Native apps live in [`apple/`](apple): an iPhone app with home screen and lock screen widgets you can tap, Siri shortcuts, and a Mac menu bar app. Pair a device from **Settings → Phone and Mac** with a QR code. Each device gets its own app key that can't reach MCP. Build steps are in [`apple/README.md`](apple/README.md), and the API they use is in [`docs/APP-API.md`](docs/APP-API.md).
+
 ## Develop
 
 ```bash
