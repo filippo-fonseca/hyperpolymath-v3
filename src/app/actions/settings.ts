@@ -16,6 +16,14 @@ export async function mintTokenAction(name: string) {
   return asUser((ctx) => mintToken(ctx.db, ctx.userId, z.string().max(60).parse(name)), { write: false });
 }
 
+/**
+ * Mint an app-scoped token for the iPhone or Mac app (no MCP access). Returns
+ * the plaintext once, like mintTokenAction.
+ */
+export async function mintAppTokenAction(name: string) {
+  return asUser((ctx) => mintToken(ctx.db, ctx.userId, z.string().max(60).parse(name), "app"), { write: false });
+}
+
 export async function revokeTokenAction(tokenId: string) {
   return asUser(async (ctx) => {
     await revokeToken(ctx.db, ctx.userId, z.string().uuid().parse(tokenId));

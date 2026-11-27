@@ -15,7 +15,7 @@ export type SectionProps = {
   go: (section: SectionId, focusId?: string) => void;
 };
 
-export type SectionId = "setup" | "account" | "preferences" | "assistant" | "grokbot" | "calendar" | "reminders" | "data" | "about";
+export type SectionId = "setup" | "account" | "preferences" | "assistant" | "grokbot" | "devices" | "calendar" | "reminders" | "data" | "about";
 
 export const REPO_URL = "https://github.com/filippo-fonseca/hyperpolymath-v3";
 export const DOCS = {
@@ -26,6 +26,7 @@ export const DOCS = {
   kiwi: `${REPO_URL}/blob/HEAD/docs/WORKING-WITH-KIWI.md`,
   deploy: `${REPO_URL}/blob/HEAD/docs/DEPLOY.md`,
   google: `${REPO_URL}/blob/HEAD/docs/DEPLOY.md#3-google-calendar`,
+  apple: `${REPO_URL}/tree/HEAD/apple`,
 };
 
 export function Section({ title, hint, children, id }: { title: string; hint?: ReactNode; children: ReactNode; id?: string }) {

@@ -67,3 +67,7 @@ Any personal token from **Settings → Connections** also works for the capture 
 - Request body: JSON, `content` = the input (optionally `source` = `"shortcut"`)
 
 Add it to the Action Button or Back Tap, and captures land on the dashboard instantly (and in Kiwi's overview).
+
+## 7. iPhone, widgets and Mac menu bar (optional)
+
+Apply the migrations first (`supabase db push`), since device keys need the `scope` column on `mcp_tokens`. Then build the apps from [`apple/`](../apple/README.md) and pair each device from **Settings → Phone and Mac**. The apps call `/api/v1` on this deployment ([`APP-API.md`](APP-API.md)); no extra env vars are needed.

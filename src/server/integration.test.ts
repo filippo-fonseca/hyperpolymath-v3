@@ -20,6 +20,7 @@ import { createArea, createProject, listAreas, updateProject } from "./projects"
 import { finishRun, listRoutines, registerRoutine, startRun, updateRoutine } from "./routines";
 import { acceptSuggestion, dismissSuggestion, listSuggestions, suggest } from "./suggestions";
 import { zonedToUtc } from "@/lib/time";
+import { appSummarySchema, appTaskSchema } from "@/lib/app-api";
 
 const enabled = !!(process.env.SUPABASE_SECRET_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL);
 const TZ = "America/New_York";
@@ -380,5 +381,48 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     const res = await http({ source: "chatgpt", kind: "capture", content: "Look into Kalman filters for the ECG project" });
     expect(res.status).toBe(201);
     expect((await res.json()).results[0].outcome).toBe("pending");
+  });
+
+  it("serves the app API to an app token, which can't reach MCP", async () => {
+    const { token } = await mintToken(adminDb(), userId, "iPhone", "app");
+    const auth = { authorization: `Bearer ${token}` };
+    const none = { params: Promise.resolve({}) };
+
+    const mcp = await import("@/app/api/mcp/route");
+    const denied = await mcp.POST(
+      new Request("http://localhost/api/mcp", {
+        method: "POST",
+        headers: { ...auth, "content-type": "application/json", accept: "application/json, text/event-stream" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      }),
+    );
+    expect(denied.status).toBe(401);
+
+    const summaryRoute = await import("@/app/api/v1/summary/route");
+    expect((await summaryRoute.GET(new Request("http://localhost/api/v1/summary"), none)).status).toBe(401);
+    const res = await summaryRoute.GET(new Request("http://localhost/api/v1/summary", { headers: auth }), none);
+    expect(res.status).toBe(200);
+    appSummarySchema.parse(await res.json());
+
+    const tasksRoute = await import("@/app/api/v1/tasks/route");
+    const created = await tasksRoute.POST(
+      new Request("http://localhost/api/v1/tasks", {
+        method: "POST",
+        headers: { ...auth, "content-type": "application/json" },
+        body: JSON.stringify({ text: "Call the bank today p1" }),
+      }),
+      none,
+    );
+    expect(created.status).toBe(201);
+    const task = appTaskSchema.parse(await created.json());
+    expect(task).toMatchObject({ title: "Call the bank", priority: 3 });
+
+    const complete = await import("@/app/api/v1/tasks/[id]/complete/route");
+    const done = await complete.POST(new Request("http://localhost/x", { method: "POST", headers: auth }), {
+      params: Promise.resolve({ id: task.id }),
+    });
+    expect(appTaskSchema.parse(await done.json()).status).toBe("done");
+    const [last] = await listActions(ctxAt(new Date()), { limit: 1 });
+    expect(last).toMatchObject({ tool: "complete_task", actor_kind: "user" });
   });
 });

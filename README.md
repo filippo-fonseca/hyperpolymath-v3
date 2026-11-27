@@ -64,6 +64,10 @@ See [`SECURITY.md`](SECURITY.md) for the full model and how to report a vulnerab
 
 Letting any assistant (Claude, Grok Bot, ChatGPT, scripts) send you suggested tasks and captures to review: [`docs/AGENT-SUGGESTIONS.md`](docs/AGENT-SUGGESTIONS.md).
 
+## iPhone, widgets and Mac menu bar
+
+Native apps live in [`apple/`](apple): an iPhone app with home screen and lock screen widgets you can tap, Siri shortcuts, and a Mac menu bar app. Pair a device from **Settings → Phone and Mac** with a QR code. Each device gets its own app key that can't reach MCP. Build steps are in [`apple/README.md`](apple/README.md), and the API they use is in [`docs/APP-API.md`](docs/APP-API.md).
+
 ## Develop
 
 ```bash

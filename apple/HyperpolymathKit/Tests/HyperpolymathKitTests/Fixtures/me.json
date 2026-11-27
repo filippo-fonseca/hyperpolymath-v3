@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "name": "Ada Lovelace",
+  "avatar_url": null,
+  "timezone": "America/New_York",
+  "token": { "name": "iPhone", "scope": "app" }
+}

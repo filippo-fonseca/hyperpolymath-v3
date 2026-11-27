@@ -2,6 +2,7 @@ import { adminDb, AppError, makeCtx } from "@/server/ctx";
 import { createCapture } from "@/server/captures";
 import { verifyToken } from "@/server/tokens";
 import { authFailures, CAPTURE_LIMIT, clientIp, hit, limitHeaders } from "@/server/rate-limit";
+import { scopesFor } from "@/lib/token-scope";
 
 // Quick capture from anywhere (iOS Shortcut, Raycast, curl):
 //   POST /api/capture  Authorization: Bearer hpm_...  {"content": "...", "source": "shortcut"}
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   }
   const auth = req.headers.get("authorization");
   const token = auth?.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : null;
-  const userId = token ? await verifyToken(adminDb(), token) : null;
+  const userId = token ? await verifyToken(adminDb(), token, scopesFor("capture")) : null;
   if (!userId) {
     authFailures.hit(ip);
     return Response.json({ error: "Missing or invalid token" }, { status: 401 });
