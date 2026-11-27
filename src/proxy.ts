@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { safeNextPath } from "@/lib/auth-errors";
 
 // Refreshes the Supabase session cookie on every page request, shows
 // signed-out visitors to `/` the public landing page (a rewrite to /welcome,
@@ -55,13 +56,14 @@ export async function proxy(request: NextRequest) {
     return rewrite;
   }
   if (!signedIn && !isPublic) return go("/login");
-  if (signedIn && pathname === "/login") return go("/");
+  // Keep ?next= (e.g. back to an /oauth/authorize consent screen).
+  if (signedIn && pathname === "/login") return go(safeNextPath(request.nextUrl.searchParams.get("next")));
   return response;
 }
 
 export const config = {
   matcher: [
-    // Everything except static assets, app icons, the manifest, MCP, cron and token capture.
-    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|brand/|api/mcp|api/cron|api/capture|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
+    // Everything except static assets, app icons, the manifest, MCP, OAuth endpoints, cron and token capture.
+    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|brand/|api/mcp|api/oauth|\\.well-known|api/cron|api/capture|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
   ],
 };
