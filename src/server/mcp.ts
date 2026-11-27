@@ -18,7 +18,8 @@ import { finishRun, listRoutines, registerRoutine, removeRoutine, startRun, upda
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
-import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
+import { CUSTOM_KINDS, KIND_INFO, WIDGET_SIZES, kindSchemas } from "@/lib/widgets";
+import { SOURCE_IDS, SOURCE_INFO, sourceSchema } from "@/lib/widget-sources";
 import { isLocalDate, isLocalTime } from "@/lib/time";
 import { BATCH_LIMIT, DAILY_LIMIT_PER_SOURCE } from "@/lib/suggestions";
 
@@ -39,7 +40,7 @@ const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard and the s
 - After creating or moving something dated, say the date in words ("tomorrow, Mon Oct 12"). With no date given, leave due_date empty rather than guess.
 - Use these calendar tools (not another calendar connector) so changes are logged. Never invite people unless asked.
 - When you notice something the owner would likely want as a task or capture and they didn't ask you to save it, call suggest (with a short reason); they review it in the app. Direct requests still go straight to create_task / create_capture.
-- Create or publish widgets only when the owner asked for something on the dashboard.
+- Create or publish widgets only when the owner asked for something on the dashboard. When get_overview lists widget_requests owned by you, call widget_kinds, pick the kind that fits the brief and publish; keep following the brief on later runs. Never publish to live widgets (the app fills them).
 - Scheduled routines: if you run recurring work on your platform, register_routine it, call start_routine_run at the start of every run (stop if enabled is false) and finish_routine_run at the end. On scheduled runs, message the owner only when something is new or needs them.
 - When you create a helper agent, call update_bot with its role and parent so it appears under you.
 - Ask before deleting anything. Own mistakes and undo them with revert_action.`;
@@ -461,34 +462,72 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   tool("delete_event", "Remove an event from Google Calendar. Ask first.", { id: z.string().min(3) }, (ctx, a) => deleteEvent(ctx, a.id), { destructive: true });
 
   // Widgets ------------------------------------------------------------------
-  tool("list_widgets", "Widgets on the dashboard, with owner bot and last publish time.", {}, (ctx) => listWidgets(ctx), { readOnly: true });
+  tool("list_widgets", "Widgets on the dashboard, with owner bot, brief (what the owner asked for) and last publish time.", {}, async (ctx) =>
+    (await listWidgets(ctx, { resolve: false })).map((w) => ({
+      id: w.id,
+      title: w.title,
+      kind: w.kind,
+      size: w.size,
+      owner: w.owner?.name ?? null,
+      brief: w.brief,
+      live: w.source ?? undefined,
+      published_at: w.published_at,
+      stale_after_hours: w.stale_after_hours,
+    })),
+    { readOnly: true },
+  );
+  tool(
+    "widget_kinds",
+    "Widget kinds with their JSON schema and a working example, plus live data sources. Call before create_widget or publish_widget. Pass kind for just one.",
+    { kind: z.enum(CUSTOM_KINDS).optional() },
+    async (_ctx, a) => ({
+      kinds: kindSchemas(a.kind),
+      ...(a.kind
+        ? {}
+        : {
+            sources: Object.fromEntries(SOURCE_IDS.map((id) => [id, { label: SOURCE_INFO[id].label, about: SOURCE_INFO[id].blurb, kinds: SOURCE_INFO[id].kinds }])),
+            notes:
+              "Every payload also takes accent (blue, green, red, orange, yellow, purple, pink, teal, gray) and footnote. Give times as at (ISO datetime with offset, or YYYY-MM-DD) so the app formats them in the owner's timezone. A live widget passes source ({id, days}) instead of a payload and the app keeps it current. blocks combines up to 6 other kinds in one card.",
+          }),
+    }),
+    { readOnly: true },
+  );
   tool(
     "create_widget",
-    `Add a custom widget owned by you. Only when the owner asked for this on the dashboard. ${PAYLOAD_DOCS}`,
+    `Add a custom widget owned by you, only when the owner asked for it. Pass payload (shape depends on kind: call widget_kinds), or source for a live widget the app fills from its own data. Kinds: ${CUSTOM_KINDS.map((k) => `${k} (${KIND_INFO[k].label.toLowerCase()})`).join(", ")}.`,
     {
       kind: z.enum(CUSTOM_KINDS),
       title: z.string().min(1).max(60),
       size: z.enum(WIDGET_SIZES).optional().describe("s = 1x1, m = 2x1, l = 2x2, w = full row. Leave out for a sensible default per kind"),
       stale_after_hours: z.number().int().min(1).max(24 * 30).optional().describe("Dim the widget if not republished within this many hours"),
       icon: z.string().max(500).optional().describe("An emoji, an https image URL, or the domain of the site it covers (e.g. slack.com) to use its favicon"),
-      payload: z.record(z.string(), z.unknown()).optional(),
+      payload: z.record(z.string(), z.unknown()).optional().describe("Content; shape per kind from widget_kinds"),
+      source: sourceSchema.optional().describe("Instead of payload: a live data source from widget_kinds"),
+      brief: z.string().max(2000).optional().describe("What the owner asked for, in their words, so later runs stay on brief"),
     },
     (ctx, a) => createWidget(ctx, a),
   );
   tool(
     "publish_widget",
-    `Replace a custom widget's content (by title or id). ${PAYLOAD_DOCS}`,
-    { widget: z.string().describe("Widget title or id"), payload: z.record(z.string(), z.unknown()) },
-    (ctx, a) => publishWidget(ctx, a.widget, a.payload),
+    "Replace a custom widget's content (by title or id). Pass kind to redraw it as a better-suited kind; the payload must match that kind (see widget_kinds).",
+    {
+      widget: z.string().describe("Widget title or id"),
+      payload: z.record(z.string(), z.unknown()),
+      kind: z.enum(CUSTOM_KINDS).optional(),
+    },
+    (ctx, a) => publishWidget(ctx, a.widget, a.payload, a.kind),
   );
   tool(
     "update_widget",
-    "Change a widget's title, icon (emoji, https image URL, or a domain for its favicon; null clears) or staleness window.",
+    "Change a widget's title, icon (emoji, https image URL, or a domain for its favicon; null clears), staleness window, brief, or a live widget's source and kind.",
     {
       widget: z.string().describe("Widget title or id"),
       title: z.string().min(1).max(60).optional(),
       icon: z.string().max(500).nullable().optional(),
       stale_after_hours: z.number().int().min(1).max(24 * 30).nullable().optional(),
+      brief: z.string().max(2000).nullable().optional(),
+      source: sourceSchema.nullable().optional().describe("Live source; null stops it being live"),
+      kind: z.enum(CUSTOM_KINDS).optional().describe("Live widgets only: how to draw the source"),
     },
     (ctx, { widget, ...patch }) => updateWidget(ctx, widget, patch),
   );

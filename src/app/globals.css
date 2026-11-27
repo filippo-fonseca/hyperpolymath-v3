@@ -838,3 +838,22 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     animation: none;
   }
 }
+
+/* Live widgets: a soft green heartbeat on the pill. */
+@keyframes pulse-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(47 178 107 / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgb(47 178 107 / 0);
+  }
+}
+.pulse-live {
+  animation: pulse-live 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-live {
+    animation: none;
+  }
+}

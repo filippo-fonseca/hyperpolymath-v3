@@ -7,10 +7,11 @@ import { dueLabel } from "@/lib/format";
 import { createTaskAction } from "@/app/actions/tasks";
 import { createCaptureAction } from "@/app/actions/captures";
 import { useEscape, useFocusTrap, useScrollLock } from "@/components/ui/primitives";
-import { IconGear, IconHome, IconPencil, IconPlus, IconSearch, IconTree, IconWidgets } from "@/components/ui/icons";
+import { IconGear, IconHome, IconPencil, IconPlus, IconSearch, IconTree, IconWand, IconWidgets } from "@/components/ui/icons";
+import { openBuilder } from "@/components/widgets/builder/store";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { useDashboard } from "./context";
-import { KindIcon, featureLabel } from "./features";
+import { INSIGHTS, KindIcon, featureLabel } from "./features";
 import { navWidgets } from "./app-bar";
 
 type Item = { key: string; group: string; label: ReactNode; text: string; icon: ReactNode; meta?: string; run: () => void };
@@ -160,6 +161,8 @@ function Palette({
     }
 
     const more: Item[] = [
+      { key: "insights", group: "More", label: "Insights", text: "insights charts stats trends analytics streaks", icon: <KindIcon widget={{ kind: INSIGHTS, icon: null }} size={16} />, run: go(() => onOpenView(INSIGHTS)) },
+      { key: "new-widget", group: "More", label: "New widget", text: "new widget add create chart builder", icon: <IconWand size={16} />, run: go(() => openBuilder({})) },
       { key: "settings", group: "More", label: "Settings", text: "settings preferences account", icon: <IconGear size={16} />, run: go(openSettings) },
       { key: "team", group: "More", label: "Teammates", text: "teammates bots kiwi routines", icon: <KindIcon widget={{ kind: "kiwi", icon: null }} size={16} />, run: go(() => openTeammates()) },
       // Opens even without a Projects card on the dashboard.

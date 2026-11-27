@@ -1,7 +1,7 @@
 // Display formatting shared by client components. Pure: callers pass the
 // current time and timezone so server and client renders agree.
 
-import { addDays, daysBetween, zonedParts, zonedToUtc, type LocalDate, type LocalTime } from "./time";
+import { addDays, daysBetween, weekdayOf, zonedParts, zonedToUtc, type LocalDate, type LocalTime } from "./time";
 
 export function relativeTime(iso: string | null | undefined, nowMs: number): string {
   if (!iso) return "never";
@@ -150,4 +150,23 @@ export function whenIsPast(w: When, nowMs: number, today: string): boolean {
 export function whenIsSoon(w: When, nowMs: number, today: string): boolean {
   if (whenIsPast(w, nowMs, today)) return false;
   return w.time ? w.instant - nowMs <= 86_400_000 : w.date === today;
+}
+
+/**
+ * A widget's structured `at` (ISO datetime or YYYY-MM-DD) in the owner's
+ * timezone: relative when close ("in 20m", "2h ago"), else a day and time
+ * ("today 3:30pm", "Fri 9am", "Nov 28").
+ */
+export function formatAt(at: string, tz: string, nowMs: number): string {
+  const w = parseWhen(at, tz);
+  if (!w) return at;
+  const today = zonedParts(new Date(nowMs), tz).date;
+  const diffDays = daysBetween(today, w.date);
+  const dayWord =
+    diffDays === 0 ? "today" : diffDays === 1 ? "tomorrow" : diffDays === -1 ? "yesterday" : Math.abs(diffDays) < 7 ? WEEKDAYS_SHORT[weekdayOf(w.date)] : `${MONTHS[Number(w.date.slice(5, 7)) - 1]} ${Number(w.date.slice(8, 10))}`;
+  if (!w.time) return dayWord === "today" ? "Today" : dayWord === "tomorrow" ? "Tomorrow" : dayWord === "yesterday" ? "Yesterday" : dayWord;
+  const mins = (w.instant - nowMs) / 60_000;
+  if (Math.abs(mins) < 1) return "now";
+  if (Math.abs(mins) < 90) return mins > 0 ? `in ${Math.round(mins)}m` : `${Math.round(-mins)}m ago`;
+  return `${dayWord} ${timeLabel(w.time)}`;
 }

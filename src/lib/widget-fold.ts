@@ -8,10 +8,11 @@ import { parseWhen, whenIsPast } from "./format";
 
 export type FoldReason = "stale" | "done" | "past";
 
-type Foldable = { kind: string; payload: unknown; published_at: string | null; stale_after_hours: number | null };
+type Foldable = { kind: string; payload: unknown; published_at: string | null; stale_after_hours: number | null; source?: unknown };
 
-export function isStale(w: Pick<Foldable, "published_at" | "stale_after_hours">, nowMs: number): boolean {
-  if (!w.published_at || !w.stale_after_hours) return false;
+export function isStale(w: Pick<Foldable, "published_at" | "stale_after_hours"> & { source?: unknown }, nowMs: number): boolean {
+  // Live widgets are filled by the app on read, so they never go stale.
+  if (w.source || !w.published_at || !w.stale_after_hours) return false;
   return nowMs - Date.parse(w.published_at) > w.stale_after_hours * 3_600_000;
 }
 

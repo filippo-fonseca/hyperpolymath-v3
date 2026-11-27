@@ -104,3 +104,18 @@ describe("widget icons", () => {
     expect(() => normalizeWidgetIcon("javascript:alert(1)")).toThrow();
   });
 });
+
+describe("formatAt", () => {
+  const tz = "America/New_York";
+  const now = Date.parse("2026-11-27T17:00:00Z"); // noon in New York, a Friday
+  it("formats dates and times relative to the owner's day", async () => {
+    const { formatAt } = await import("./format");
+    expect(formatAt("2026-11-27", tz, now)).toBe("Today");
+    expect(formatAt("2026-11-28", tz, now)).toBe("Tomorrow");
+    expect(formatAt("2026-11-30", tz, now)).toBe("Mon");
+    expect(formatAt("2026-12-25", tz, now)).toBe("Dec 25");
+    expect(formatAt("2026-11-27T17:20:00Z", tz, now)).toBe("in 20m");
+    expect(formatAt("2026-11-27T15:00:00Z", tz, now)).toBe("today 10am");
+    expect(formatAt("2026-11-28T14:30:00Z", tz, now)).toBe("tomorrow 9:30am");
+  });
+});

@@ -1,17 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
-import type {
-  DigestPayload,
-  ListPayload,
-  StatPayload,
-  TablePayload,
-  TimelinePayload,
-} from "@/lib/widgets";
+import { motion, useReducedMotion } from "motion/react";
+import type { DigestPayload, ListItem, ListPayload, StatPayload, TablePayload, TimelinePayload, Tone } from "@/lib/widgets";
 import { IconCheck } from "@/components/ui/icons";
 import { safeHref } from "@/lib/markdown";
-import { parseWhen, whenIsPast, whenIsSoon, whenLabel } from "@/lib/format";
-import { useDashboard } from "@/components/dashboard/context";
+import { formatAt, parseWhen, whenIsPast, whenIsSoon, whenLabel } from "@/lib/format";
+import { zonedParts } from "@/lib/time";
+import { CountUp, EASE, fmtNum, tint, useChartEnv } from "@/components/charts/core";
 import { Markdown } from "./markdown";
 
 // One renderer per custom kind. `compact` is the card; otherwise the full
@@ -29,14 +25,15 @@ type Timed = { label: string; past: boolean; soon: boolean };
 
 /** Formats a bot's structured `at` in the owner's timezone, against the ticking clock. */
 function useWhen() {
-  const { data, nowMs } = useDashboard();
+  const { tz, nowMs } = useChartEnv();
   return useCallback(
     (at: string | undefined, short = false): Timed | null => {
-      const w = parseWhen(at, data.tz);
+      const w = parseWhen(at, tz);
       if (!w) return null;
-      return { label: whenLabel(w, data.today, short), past: whenIsPast(w, nowMs, data.today), soon: whenIsSoon(w, nowMs, data.today) };
+      const today = zonedParts(new Date(nowMs), tz).date;
+      return { label: whenLabel(w, today, short), past: whenIsPast(w, nowMs, today), soon: whenIsSoon(w, nowMs, today) };
     },
-    [data.tz, data.today, nowMs],
+    [tz, nowMs],
   );
 }
 
@@ -69,6 +66,20 @@ function ItemText({ text, url, compact }: { text: string; url?: string; compact:
  * the meta label sits on the right when the card is wide enough, or under the
  * text when it isn't. Needs an `@container` ancestor.
  */
+const TONE_DOT: Record<Tone, string> = { positive: "var(--success)", negative: "var(--danger)", warning: "#f0a020", neutral: "var(--gray-400)" };
+
+/** An item's small extras: its emoji, a tone dot, and a badge. */
+function Lead({ it }: { it: Pick<ListItem, "icon" | "tone"> }) {
+  if (it.icon) return <span className="w-[18px] shrink-0 text-center text-[14px] leading-[1.35]">{it.icon}</span>;
+  if (it.tone) return <span className="mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: TONE_DOT[it.tone] }} />;
+  return null;
+}
+
+function Badge({ text }: { text?: string }) {
+  if (!text) return null;
+  return <span className="ml-1.5 inline-flex translate-y-[-1px] items-center rounded-full bg-accent-soft px-1.5 py-px align-middle text-[10.5px] font-semibold uppercase tracking-[0.02em] text-accent-hover">{text}</span>;
+}
+
 function CompactRow({
   lead,
   text,
@@ -115,7 +126,6 @@ function Trailing({ meta, time }: { meta?: string; time: Timed | null }) {
 }
 
 export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean }) {
-  const when = useWhen();
   if (compact) {
     return (
       <div className="@container">
@@ -133,7 +143,7 @@ export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean 
             )}
             <ul>
               {s.items.map((it, j) => (
-                <CompactRow key={j} text={<ItemText text={it.text} url={it.url} compact />} meta={it.meta} time={when(it.at)} />
+                <ItemRow key={j} it={it} />
               ))}
             </ul>
           </section>
@@ -148,17 +158,9 @@ export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean 
         <section key={i}>
           {s.title && <h3 className={`mb-1.5 ${SECTION}`}>{s.title}</h3>}
           <ul className="divide-y divide-gray-150">
-            {s.items.map((it, j) => {
-              const t = when(it.at);
-              return (
-                <li key={j} className="flex items-start gap-3 py-2.5 text-[15px]">
-                  <span className={`min-w-0 flex-1 leading-snug ${WRAP} ${t?.past ? "text-ink-3" : ""}`}>
-                    <ItemText text={it.text} url={it.url} compact={false} />
-                  </span>
-                  <Trailing meta={it.meta} time={t} />
-                </li>
-              );
-            })}
+            {s.items.map((it, j) => (
+              <FullItemRow key={j} it={it} />
+            ))}
           </ul>
         </section>
       ))}
@@ -178,20 +180,47 @@ function CheckMark({ done }: { done: boolean }) {
   );
 }
 
-export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
+/** A list or digest item on the card. */
+function ItemRow({ it }: { it: ListItem }) {
   const when = useWhen();
+  return (
+    <CompactRow
+      lead={it.done !== undefined ? <CheckMark done={it.done} /> : <Lead it={it} />}
+      text={
+        <>
+          <ItemText text={it.text} url={it.url} compact />
+          <Badge text={it.badge} />
+        </>
+      }
+      meta={it.meta}
+      time={it.done ? null : when(it.at)}
+      muted={!!it.done}
+    />
+  );
+}
+
+/** A list or digest item in the expanded view. */
+function FullItemRow({ it }: { it: ListItem }) {
+  const when = useWhen();
+  const t = it.done ? null : when(it.at);
+  return (
+    <li className="flex items-start gap-2.5 py-2.5 text-[15px]">
+      {it.done !== undefined ? <CheckMark done={it.done} /> : <Lead it={it} />}
+      <span className={`min-w-0 flex-1 leading-snug ${WRAP} ${it.done ? "text-ink-3 line-through" : t?.past ? "text-ink-3" : ""}`}>
+        <ItemText text={it.text} url={it.url} compact={false} />
+        <Badge text={it.badge} />
+      </span>
+      <Trailing meta={it.meta} time={t} />
+    </li>
+  );
+}
+
+export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
   if (compact) {
     return (
       <ul className="@container">
         {p.items.map((it, i) => (
-          <CompactRow
-            key={i}
-            lead={it.done !== undefined ? <CheckMark done={it.done} /> : undefined}
-            text={<ItemText text={it.text} url={it.url} compact />}
-            meta={it.meta}
-            time={when(it.at)}
-            muted={!!it.done}
-          />
+          <ItemRow key={i} it={it} />
         ))}
       </ul>
     );
@@ -199,20 +228,15 @@ export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
   return (
     <ul className="divide-y divide-gray-150">
       {p.items.map((it, i) => (
-        <li key={i} className="flex items-start gap-2.5 py-2.5 text-[15px]">
-          {it.done !== undefined && <CheckMark done={it.done} />}
-          <span className={`min-w-0 flex-1 leading-snug ${WRAP} ${it.done ? "text-ink-3 line-through" : ""}`}>
-            <ItemText text={it.text} url={it.url} compact={false} />
-          </span>
-          <Trailing meta={it.meta} time={it.done ? null : when(it.at)} />
-        </li>
+        <FullItemRow key={i} it={it} />
       ))}
     </ul>
   );
 }
 
-export function Sparkline({ values, height = 36, className = "" }: { values: number[]; height?: number; className?: string }) {
+export function Sparkline({ values, height = 36, color = "#1084fe", className = "" }: { values: number[]; height?: number; color?: string; className?: string }) {
   const gid = `spark${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const reduce = useReducedMotion();
   if (values.length < 2) return null;
   const w = 100;
   const min = Math.min(...values);
@@ -223,25 +247,41 @@ export function Sparkline({ values, height = 36, className = "" }: { values: num
   const area = `${line} L${w},${height} L0,${height} Z`;
   const [lx, ly] = pts[pts.length - 1];
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className={`w-full ${className}`} style={{ height }} aria-hidden>
+    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className={`w-full overflow-visible ${className}`} style={{ height }} aria-hidden>
       <defs>
         <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#1084fe" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#1084fe" stopOpacity="0" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.16" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={area} fill={`url(#${gid})`} />
-      <path d={line} fill="none" stroke="#1084fe" strokeWidth="1.75" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={lx} cy={ly} r="2.2" fill="#1084fe" vectorEffect="non-scaling-stroke" />
+      <clipPath id={`${gid}c`}>
+        <motion.rect x={0} y={-4} height={height + 8} initial={reduce ? false : { width: 0 }} animate={{ width: w + 4 }} transition={{ duration: 1, ease: EASE }} />
+      </clipPath>
+      <g clipPath={`url(#${gid}c)`}>
+        <path d={area} fill={`url(#${gid})`} />
+        <path d={line} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+      </g>
+      <motion.circle
+        cx={lx}
+        cy={ly}
+        r="2.4"
+        fill={color}
+        vectorEffect="non-scaling-stroke"
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.95 }}
+      />
     </svg>
   );
 }
 
-function deltaTone(d?: string) {
+/** Green when the delta moves the good way, red when it doesn't. */
+function deltaTone(d: string | undefined, good: "up" | "down" = "up") {
   if (!d) return "";
-  if (/^\s*\+/.test(d)) return "text-success";
-  if (/^\s*[-−]/.test(d)) return "text-danger";
-  return "text-gray-500";
+  const up = /^\s*\+/.test(d);
+  const down = /^\s*[-−]/.test(d);
+  if (!up && !down) return "text-gray-500";
+  return up === (good === "up") ? "text-success" : "text-danger";
 }
 
 /** Long values step down in size so they stay on one line in a small card. */
@@ -251,23 +291,52 @@ function statSize(value: string, compact: boolean, large?: boolean) {
   return value.length > 8 ? "text-[22px]" : value.length > 5 ? "text-[28px]" : "text-[34px]";
 }
 
-export function StatView({ p, compact, large }: { p: StatPayload; compact: boolean; large?: boolean }) {
+const STAT_PX: Record<string, number> = { "text-[22px]": 22, "text-[28px]": 28, "text-[34px]": 34, "text-[36px]": 36, "text-[44px]": 44, "text-[52px]": 52, "text-[64px]": 64 };
+
+export function StatView({ p, compact, large, color = "#1084fe" }: { p: StatPayload; compact: boolean; large?: boolean; color?: string }) {
+  const { tz, nowMs } = useChartEnv();
+  const reduce = useReducedMotion();
+  const numeric = typeof p.value === "number";
+  const shown = `${p.prefix ?? ""}${numeric ? fmtNum(p.value as number) : p.value}${p.unit ? (p.unit.length <= 2 ? p.unit : ` ${p.unit}`) : ""}`;
+  const pct = numeric && p.target ? Math.max(0, Math.min(1, (p.value as number) / p.target)) : null;
   return (
-    <div className={`flex min-w-0 flex-col ${compact ? "h-full" : ""}`}>
+    <div className={`flex min-w-0 flex-col [container-type:inline-size] ${compact ? "h-full" : ""}`}>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
         <span
-          className={`min-w-0 font-light leading-none tracking-[-0.03em] tabular-nums [overflow-wrap:break-word] ${statSize(String(p.value), compact, large)}`}
+          className={`min-w-0 whitespace-nowrap font-light leading-none tracking-[-0.03em] tabular-nums ${statSize(shown, compact, large)}`}
+          // Never wraps: in a narrow card the number shrinks to fit instead.
+          style={{ fontSize: `min(${STAT_PX[statSize(shown, compact, large)] ?? 34}px, ${Math.floor(150 / Math.max(3, shown.length))}cqw)` }}
         >
-          {p.value}
+          {p.prefix && <span className="mr-0.5 text-[0.6em] font-normal text-ink-2">{p.prefix}</span>}
+          {numeric ? <CountUp value={p.value as number} /> : p.value}
+          {p.unit && <span className="ml-0.5 text-[0.5em] font-normal text-ink-2">{p.unit}</span>}
         </span>
-        {p.delta && <span className={`text-[13px] font-semibold ${deltaTone(p.delta)}`}>{p.delta}</span>}
+        {p.delta && <span className={`text-[13px] font-semibold ${deltaTone(p.delta, p.good)}`}>{p.delta}</span>}
       </div>
       {p.label && <div className={`mt-1.5 line-clamp-2 text-gray-500 ${WRAP} ${compact ? "text-[13px]" : "text-[15px]"}`}>{p.label}</div>}
-      {p.trend && p.trend.length > 1 && (
-        <div className={compact ? "mt-auto pt-2" : "mt-8"}>
-          <Sparkline values={p.trend} height={compact ? (large ? 90 : 26) : 140} />
+      {pct !== null && (
+        <div className={compact ? "mt-2.5" : "mt-6"}>
+          <div className="relative h-[6px] overflow-hidden rounded-full" style={{ background: tint(color, 16) }}>
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ background: color }}
+              initial={reduce ? false : { width: 0 }}
+              animate={{ width: `${pct * 100}%` }}
+              transition={{ duration: 1, ease: EASE, delay: 0.15 }}
+            />
+          </div>
+          <div className="mt-1 text-[11.5px] tabular-nums text-ink-3">
+            {Math.round(pct * 100)}% of {p.prefix ?? ""}
+            {fmtNum(p.target!, p.unit)}
+          </div>
         </div>
       )}
+      {p.trend && p.trend.length > 1 && (
+        <div className={compact ? "mt-auto pt-2" : "mt-8"}>
+          <Sparkline values={p.trend} color={color} height={compact ? (large ? 90 : 26) : 140} />
+        </div>
+      )}
+      {p.at && !compact && <div className="mt-3 text-[12.5px] text-ink-3">As of {formatAt(p.at, tz, nowMs)}</div>}
     </div>
   );
 }
@@ -290,6 +359,7 @@ export function TimelineView({ p, compact }: { p: TimelinePayload; compact: bool
                 {label}
               </span>
               <span className={`line-clamp-2 min-w-0 flex-1 ${WRAP} ${e.t?.past ? "text-ink-3" : "text-ink"}`}>
+                {e.icon && <span className="mr-1.5">{e.icon}</span>}
                 <ItemText text={e.text} url={e.url} compact />
               </span>
             </li>
@@ -304,11 +374,13 @@ export function TimelineView({ p, compact }: { p: TimelinePayload; compact: bool
         <li key={i} className="relative pb-5 pl-5">
           <span
             className={`absolute -left-[4.5px] top-[7px] h-2 w-2 rounded-full ring-4 ring-surface ${
-              i === next ? "bg-accent" : e.t?.past ? "bg-gray-200" : "bg-gray-300"
+              i === next ? "bg-accent" : e.tone ? "" : e.t?.past ? "bg-gray-200" : "bg-gray-300"
             }`}
+            style={i !== next && e.tone ? { background: TONE_DOT[e.tone] } : undefined}
           />
           <div className={`text-[12.5px] font-medium tabular-nums ${e.t ? timeTone(e.t) : "text-gray-500"}`}>{e.t?.label ?? e.time}</div>
           <div className={`mt-0.5 text-[15px] leading-snug ${WRAP} ${e.t?.past ? "text-ink-3" : ""}`}>
+            {e.icon && <span className="mr-1.5">{e.icon}</span>}
             <ItemText text={e.text} url={e.url} compact={false} />
           </div>
         </li>

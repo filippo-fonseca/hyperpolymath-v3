@@ -25,7 +25,7 @@ import { longDate, weekdayName } from "@/lib/format";
 import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
 import { AppBar, FeatureStrip } from "./app-bar";
 import { TodaySummary } from "./today-summary";
-import { isStandIn, standInWidget, viewKeyFor, widgetForView } from "./features";
+import { INSIGHTS, isStandIn, standInWidget, viewKeyFor, widgetForView } from "./features";
 import { useView } from "./use-view";
 import { CommandPalette } from "./command-palette";
 import { WidgetFrame, type CollapseReason } from "./widget-chrome";
@@ -304,6 +304,7 @@ function Home({
         onOpen={openWidget}
         onSearch={openSearch}
         onSettings={openSettings}
+        onInsights={() => openView(INSIGHTS)}
         trailing={
           !editing && (
             <button
@@ -483,6 +484,7 @@ function Home({
                   onOpen={openWidget}
                   onSearch={openSearch}
                   onSettings={openSettings}
+                  onInsights={() => openView(INSIGHTS)}
                   trailing={
                     <Menu
                       label="More"

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "motion/react";
+import { WidgetBuilder } from "@/components/widgets/builder/builder";
+import { closeBuilder, useBuilderRequest } from "@/components/widgets/builder/store";
 import type { WidgetRow } from "@/lib/dashboard-types";
 import { isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { scheduleInWords } from "@/lib/cron-words";
@@ -284,32 +287,22 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-const KINDS: { kind: string; text: string }[] = [
-  { kind: "Digest", text: "Sections of items, like an email or Slack roundup." },
-  { kind: "List", text: "A simple checklist or reading list." },
-  { kind: "Stat", text: "One number with a trend line." },
-  { kind: "Timeline", text: "Timestamped events." },
-  { kind: "Markdown", text: "Free-form notes." },
-  { kind: "Table", text: "Rows and columns." },
-];
-
+/**
+ * The widget builder, opened from edit mode ("Add widget"), an expanded
+ * widget ("Edit") or the command palette (through the builder store).
+ */
 export function AddWidgetSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data } = useDashboard();
+  const request = useBuilderRequest();
+  const widget = request?.widgetId ? (data.widgets.find((w) => w.id === request.widgetId) ?? null) : null;
+  const shown = open || !!request;
+  const close = () => {
+    closeBuilder();
+    onClose();
+  };
   return (
-    <Sheet open={open} onClose={onClose} title="Add widget" width={440}>
-      <p className="text-[14px] leading-relaxed text-ink-2">
-        Custom widgets are published by your bots. Ask Kiwi in Grok Bot, for example:
-      </p>
-      <p className="mt-3 rounded-[14px] bg-gray-100 px-4 py-3 text-[14px] leading-relaxed">
-        “Make me a digest widget with my unread email every morning.”
-      </p>
-      <div className="mt-5 divide-y divide-gray-150">
-        {KINDS.map((k) => (
-          <div key={k.kind} className="flex items-baseline justify-between gap-4 py-2.5">
-            <span className="text-[14px] font-medium">{k.kind}</span>
-            <span className="text-right text-[13px] text-ink-3">{k.text}</span>
-          </div>
-        ))}
-      </div>
-    </Sheet>
+    <AnimatePresence>
+      {shown && <WidgetBuilder key={request?.key ?? "add"} widget={widget} initial={request?.mode} onClose={close} />}
+    </AnimatePresence>
   );
 }
