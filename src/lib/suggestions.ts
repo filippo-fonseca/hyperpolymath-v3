@@ -27,11 +27,27 @@ export function dedupeKey(content: string): string {
 
 export type SuggestionOutcome = "pending" | "duplicate" | "exists" | "dismissed_before";
 
-/** "Kiwi", "Kiwi and Scout", "Kiwi, Scout and 2 others". */
+/** Who suggested, most frequent first: "Kiwi", "Kiwi and Scout", "Kiwi, Scout and Ada", "Kiwi, Scout and 2 others". */
 export function sourcesLabel(names: string[]): string {
-  const unique = [...new Set(names.filter(Boolean))];
+  const counts = new Map<string, number>();
+  for (const n of names) if (n) counts.set(n, (counts.get(n) ?? 0) + 1);
+  const unique = [...counts.keys()].sort((a, b) => counts.get(b)! - counts.get(a)!);
   if (unique.length <= 1) return unique[0] ?? "your bots";
-  if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
+  if (unique.length <= 3) return `${unique.slice(0, -1).join(", ")} and ${unique.at(-1)}`;
   const rest = unique.length - 2;
-  return `${unique[0]}, ${unique[1]} and ${rest} other${rest === 1 ? "" : "s"}`;
+  return `${unique[0]}, ${unique[1]} and ${rest} others`;
+}
+
+/**
+ * Tray order: what's due soonest (overdue and today first), then higher
+ * priority, then newest. Undated suggestions follow the dated ones.
+ */
+export function bySuggestionUrgency<T extends { due_date: string | null; priority: number; created_at: string }>(a: T, b: T): number {
+  if (a.due_date !== b.due_date) {
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date < b.due_date ? -1 : 1;
+  }
+  if (a.priority !== b.priority) return b.priority - a.priority;
+  return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeKey, sourcesLabel } from "./suggestions";
+import { bySuggestionUrgency, dedupeKey, sourcesLabel } from "./suggestions";
 
 describe("dedupeKey", () => {
   it("ignores case, punctuation and spacing", () => {
@@ -25,11 +25,33 @@ describe("dedupeKey", () => {
 });
 
 describe("sourcesLabel", () => {
-  it("names one, two or many sources", () => {
+  it("names up to three sources, most frequent first", () => {
     expect(sourcesLabel([])).toBe("your bots");
     expect(sourcesLabel(["Kiwi", "Kiwi"])).toBe("Kiwi");
-    expect(sourcesLabel(["Kiwi", "Scout"])).toBe("Kiwi and Scout");
-    expect(sourcesLabel(["Kiwi", "Scout", "Ada"])).toBe("Kiwi, Scout and 1 other");
+    expect(sourcesLabel(["Scout", "Kiwi", "Kiwi"])).toBe("Kiwi and Scout");
+    expect(sourcesLabel(["Kiwi", "Scout", "Ada"])).toBe("Kiwi, Scout and Ada");
     expect(sourcesLabel(["Kiwi", "Scout", "Ada", "Bo"])).toBe("Kiwi, Scout and 2 others");
+  });
+});
+
+describe("bySuggestionUrgency", () => {
+  const s = (id: string, due_date: string | null, priority = 0, created_at = "2026-11-27T10:00:00Z") => ({ id, due_date, priority, created_at });
+  it("puts the soonest due first, then priority, then newest, undated last", () => {
+    const list = [
+      s("undated-old", null, 0, "2026-11-26T10:00:00Z"),
+      s("undated-new", null, 0, "2026-11-27T11:00:00Z"),
+      s("sunday", "2026-11-29"),
+      s("today-low", "2026-11-27", 1),
+      s("today-high", "2026-11-27", 3),
+      s("undated-high", null, 3),
+    ];
+    expect([...list].sort(bySuggestionUrgency).map((x) => x.id)).toEqual([
+      "today-high",
+      "today-low",
+      "sunday",
+      "undated-high",
+      "undated-new",
+      "undated-old",
+    ]);
   });
 });
