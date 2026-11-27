@@ -31,7 +31,7 @@ const SECTIONS: SectionDef[] = [
   { id: "account", label: "Account", icon: IconMail, Body: AccountSection },
   { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
   { id: "assistant", label: "Assistant", icon: IconSparkle, Body: AssistantSection },
-  { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
+  { id: "grokbot", label: "Assistants", icon: IconKey, Body: GrokBotSection },
   { id: "calendar", label: "Calendar", icon: IconCalendar, Body: CalendarSection },
   { id: "reminders", label: "Reminders", icon: IconBell, Body: RemindersSection },
   { id: "data", label: "Data", icon: IconArchive, Body: DataSection },

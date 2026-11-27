@@ -13,7 +13,8 @@ export async function recordTickHeartbeat(db: DB, result: unknown) {
 }
 
 export type SetupStatus = {
-  mcp: { tokens: number; last_used_at: string | null };
+  /** Personal hpm_ tokens and OAuth-connected apps (Claude, ChatGPT...). */
+  mcp: { tokens: number; apps: number; last_used_at: string | null };
   kiwi: { connected: boolean; name: string | null; last_seen_at: string | null };
   relay: RelayStatus & { last_tick_at: string | null; failing: { count: number; last_error: string | null } };
   google: { configured: boolean; accounts: number };
@@ -30,8 +31,9 @@ export async function setupStatus(ctx: Ctx): Promise<SetupStatus> {
     const { count: n } = await q;
     return n ?? 0;
   };
-  const [tokens, kiwi, tick, failing, relay, accounts, tasks, projects, habits, captures, bots, routines] = await Promise.all([
+  const [tokens, apps, kiwi, tick, failing, relay, accounts, tasks, projects, habits, captures, bots, routines] = await Promise.all([
     db.from("mcp_tokens").select("last_used_at").eq("user_id", uid).is("revoked_at", null).order("last_used_at", { ascending: false, nullsFirst: false }),
+    db.from("oauth_grants").select("last_used_at").eq("user_id", uid).is("revoked_at", null).order("last_used_at", { ascending: false, nullsFirst: false }),
     db.from("bots").select("name, last_seen_at").eq("user_id", uid).eq("is_coordinator", true).maybeSingle(),
     adminDb().from("system_state").select("value, updated_at").eq("key", "tick").maybeSingle(),
     db.from("reminders").select("last_error, updated_at").eq("user_id", uid).eq("active", true).not("last_error", "is", null).order("updated_at", { ascending: false }),
@@ -45,8 +47,10 @@ export async function setupStatus(ctx: Ctx): Promise<SetupStatus> {
     count("routines"),
   ]);
   const tokenRows = tokens.data ?? [];
+  const appRows = apps.data ?? [];
+  const lastUsed = [tokenRows[0]?.last_used_at, appRows[0]?.last_used_at].filter((v): v is string => !!v).sort().at(-1) ?? null;
   return {
-    mcp: { tokens: tokenRows.length, last_used_at: tokenRows[0]?.last_used_at ?? null },
+    mcp: { tokens: tokenRows.length, apps: appRows.length, last_used_at: lastUsed },
     kiwi: { connected: !!kiwi.data, name: kiwi.data?.name ?? null, last_seen_at: kiwi.data?.last_seen_at ?? null },
     relay: {
       ...relay,
