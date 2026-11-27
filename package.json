@@ -2,6 +2,11 @@
   "name": "hyperpolymath-v3",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filippo-fonseca/hyperpolymath-v3"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
