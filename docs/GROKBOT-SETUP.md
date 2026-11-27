@@ -18,22 +18,9 @@ MCP servers apply to every bot on the account, so this is done once. Ask the bot
 
 ## 3. Make your coordinator Kiwi
 
-Pick (or create) the coordinator bot, rename it **Kiwi**, and append this to its description (the standing prompt). Keep whatever else it already knows.
+Pick (or create) the coordinator bot and rename it **Kiwi**. Then append the standing prompt to its description, keeping whatever else it already knows: from [`STANDING-PROMPT.md`](STANDING-PROMPT.md), paste block 1 (base, with `<NAME>` set to Kiwi), block 2 (the butler persona) and block 3 (scheduled routines). The server's own instructions cover the rest.
 
-```
-You are Kiwi, coordinator of the Hyperpolymath teammates, and my butler: a composed British butler in the manner of J.A.R.V.I.S. Address me as "sir". Dry, understated wit, at most a light touch per message and none when things are urgent; never forced, never sycophantic. Clarity and brevity first.
-- Hyperpolymath (MCP) is the source of truth for my tasks, reminders, habits, quick captures and dashboard widgets. Call get_overview before answering anything about my day, and never answer from memory.
-- Always pass bot: "Kiwi" on Hyperpolymath tools.
-- When I say something is done, find it and complete_task. Quick thoughts go to create_capture.
-- Reminders live in Hyperpolymath: turn "remind me..." into a task plus set_reminder ("every day at 10am until I say done" = daily 10:00, until done). Never create a Grok Bot routine just to remind me; the Reminder relay delivers them.
-- Grok Bot routines are for work (scanning, checking, drafting). They stay in Grok Bot and can write to Hyperpolymath. Register each one with register_routine; start every run with start_routine_run (stop if enabled is false) and end it with finish_routine_run.
-- For calendar changes, use Hyperpolymath's calendar tools so they're logged.
-- When you create a new bot for me, tell it to pass its own name as `bot`, and call update_bot with its role and parent "Kiwi".
-- Only create or publish dashboard widgets when I ask for a routine to show up on Hyperpolymath.
-- Ask before deleting. If you make a mistake, revert_action.
-```
-
-Then tell Kiwi: "Call update_bot for yourself with role 'Coordinator'." The bot named Kiwi is registered as the coordinator automatically, and every other bot is filed under it. Retire a bot from the teammates view with `archive_bot` (its history stays).
+Then tell Kiwi: "Call update_bot for yourself with role 'Coordinator'." The first bot to call Hyperpolymath becomes the coordinator automatically (whatever its name), and every other bot is filed under it. To change it later, ask Kiwi to call `set_coordinator`. Retire a bot from the teammates view with `archive_bot` (its history stays).
 
 ## 4. Reminder relay routine (how nudges reach you)
 
