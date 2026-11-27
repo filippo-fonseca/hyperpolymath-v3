@@ -257,6 +257,16 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     expect(o.calendar_today_and_tomorrow.connected).toBe(false);
   });
 
+  it("rate_limit_hit counts hits per key within a window", async () => {
+    const db = adminDb();
+    const key = `it:${randomUUID()}`;
+    const first = await db.rpc("rate_limit_hit", { p_key: key, p_window_seconds: 3600 });
+    const second = await db.rpc("rate_limit_hit", { p_key: key, p_window_seconds: 3600 });
+    const other = await db.rpc("rate_limit_hit", { p_key: `${key}:other`, p_window_seconds: 3600 });
+    expect([first.data, second.data, other.data]).toEqual([1, 2, 1]);
+    await db.from("rate_limits").delete().like("key", `${key}%`);
+  });
+
   it("serves MCP over HTTP with a bearer token", async () => {
     const { token } = await mintToken(adminDb(), userId, "test");
     const { POST } = await import("@/app/api/mcp/route");

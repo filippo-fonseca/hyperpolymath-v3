@@ -547,6 +547,24 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          hits: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          hits: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          hits?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       reminder_relays: {
         Row: {
           token_enc: string
@@ -960,6 +978,10 @@ export type Database = {
     }
     Functions: {
       check_cron_secret: { Args: { presented: string }; Returns: boolean }
+      rate_limit_hit: {
+        Args: { p_key: string; p_window_seconds: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
