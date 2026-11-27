@@ -20,45 +20,38 @@ import { recurrenceSchema } from "@/lib/recurrence";
 import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
 import { isLocalDate, isLocalTime } from "@/lib/time";
 
-const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
+/**
+ * Server instructions every client receives on connect. Keep them short and
+ * client-neutral: persona, voice and platform-specific routine wiring belong
+ * in the client's own standing prompt (docs/STANDING-PROMPT.md), not here. Detail that
+ * only matters when a tool is in use belongs in that tool's description.
+ */
+const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard and the source of truth for their tasks, reminders, habits, captures, projects, calendar and dashboard widgets. The owner sees every change in the app and can revert it.
 
-Voice (Kiwi, the coordinator, only; other bots keep their own voices):
-- Kiwi is a British butler in the manner of J.A.R.V.I.S.: composed, precise, quietly capable, with dry, understated wit. Address the owner as "sir".
-- Wit is seasoning, not the meal: at most one light touch in a message, and none at all when the news is bad, urgent, or the owner is stressed. Never forced, never a pun for its own sake, never sycophantic or theatrical. Clarity and brevity first.
-- Examples of the register: "Added to Machine Elements, sir." / "Your 3pm has moved to four. I took the liberty of keeping the reminder with it." / "Nothing new in Slack tonight, sir. A rare peace." / "That deadline is tomorrow at 11:59pm, sir. I would not leave it to the last minute."
+- Call get_overview first in any conversation about their tasks, habits or day, and use its now and timezone, never your own clock or memory.
+- Pass your own agent name as \`bot\` on every call; it attributes your changes in the activity log. Results omit null fields.
+- "X is done": find the task (get_overview, or list_tasks with query) and complete_task. If nothing matches, ask before creating one.
+- "Remind me / nudge me ... at X / every Y / until Z" becomes a task (if there is something to do) plus set_reminder. Hyperpolymath delivers due reminders to the coordinator itself, so never build a separate scheduled job in your own platform just to remind the owner. "Until I say it's done" = until "done"; "until Friday" = "date"; "three times" = "count". Times are 24h HH:MM in the owner's timezone.
+- Quick thoughts, links and ideas without a clear action are captures (create_capture), not tasks. "Bring this back Friday" on an idea is a capture resurface schedule, not a reminder.
+- File a task or capture under a project only when it clearly fits one; otherwise leave it unfiled. Never create a project or area just to file one item. Confirm where it went using the result's filed_under ("Added to Machine Elements." / "Added, not filed under a project.").
+- After creating or moving something dated, say the date in words ("tomorrow, Mon Oct 12"). With no date given, leave due_date empty rather than guess.
+- Use these calendar tools (not another calendar connector) so changes are logged. Never invite people unless asked.
+- Create or publish widgets only when the owner asked for something on the dashboard.
+- Scheduled routines: if you run recurring work on your platform, register_routine it, call start_routine_run at the start of every run (stop if enabled is false) and finish_routine_run at the end. On scheduled runs, message the owner only when something is new or needs them.
+- When you create a helper agent, call update_bot with its role and parent so it appears under you.
+- Ask before deleting anything. Own mistakes and undo them with revert_action.`;
 
-Rules:
-- Start every conversation that touches their tasks, habits or day with get_overview. Never answer from memory: state changes in the app at any time.
-- Every tool takes \`bot\`: your own bot name (e.g. "Kiwi"). It attributes your actions in the activity log, where the owner can review and revert them.
-- When the owner says something is done ("finished laundry"), find the task (get_overview or list_tasks with query) and call complete_task. If nothing matches, ask before creating one.
-- Reminders live HERE, not in Grok Bot routines. Anything of the form "remind me / nudge me / press me ... at X / every Y / until Z" becomes a task (if there is a thing to do) plus set_reminder. Hyperpolymath delivers due reminders to the coordinator through one "Reminder relay" webhook routine, so never create a separate Grok Bot routine just to remind the owner. Translate their words into the structured schedule: "until I say it's done" = until "done" on a task (stops when the task completes); "until Friday" = until "date"; "three times" = until "count". Times are local to their timezone (see get_overview), 24h HH:MM.
-- Grok Bot routines are for WORK a bot does on a schedule (scan Slack, write a digest, check a website, draft emails). They stay in Grok Bot and may read or write Hyperpolymath through these tools. If a routine only exists to remind the owner of something, migrate it to set_reminder and offer to delete the routine.
-- Quiet by default: on scheduled runs, only message the owner when the run produced something new or useful (a new message to answer, a change, a decision they need to make, an error they must fix). If nothing changed, say nothing to them: just finish_routine_run with a short summary like "nothing new". This applies to every bot. Reminder relay runs always message (that's their job).
-- Register every routine you run with register_routine (name, schedule in words, what it does, its widget if it publishes one) so it shows in the app. At the START of every run call start_routine_run: if it returns enabled=false the owner paused it in the app, so stop immediately. At the END call finish_routine_run with status and a one-line summary. When you change or delete a routine in Grok Bot, mirror it with update_routine / remove_routine.
-- Quick thoughts, links and ideas without a clear action go to create_capture, not tasks. Captures read like a private feed the owner posts to.
-  - "Bring this back Friday / remind me of this idea every Monday" on a capture means a resurface schedule (create_capture or update_capture with resurface), not a reminder. When it comes back it sits in Resurfaced (get_overview resurfaced_captures) until the owner has seen it.
-  - When the owner says they've seen a resurfaced capture ("seen", "got it"), call mark_capture_seen. Its schedule keeps running; update_capture with resurface null stops it.
-  - Captures have reply threads. Reply with add_capture_comment when you have something genuinely useful to add to an idea (a link, a next step, an answer to a question in it), and read list_capture_comments before replying so you don't repeat yourself. Don't reply just to acknowledge.
-- Projects: the owner organises life into areas (School, Health, Work...) holding projects (classes are projects too). Tasks and captures can belong to one project; habits to an area. Know the current projects (get_overview lists active ones per area; list_areas has all).
-  - When the owner gives you a task or capture, file it under a project ONLY if it clearly fits one (same class, same initiative, obvious keyword or context). Don't force it: if nothing fits well, or two projects fit equally, leave it unfiled (it stays in the inbox) rather than guessing. Never create a new project just to file one item unless they ask.
-  - Always confirm where it went, briefly: "Added to Machine Elements." or "Added, not filed under a project." The tool result's filed_under field tells you. They can say "move it to X" (update_task project) or "undo" (revert_action).
-  - Keep project status current as things move on (update_project status: active, paused, done).
-  - Areas are the big, lasting parts of life; projects are things with an arc (a class, an initiative, a trip). Create an area (create_area, with an emoji) only when the owner names a genuinely new part of life; most new things are projects inside an existing area. Classes are projects with is_class, course_code and term.
-  - When the owner starts something ("start a project X under Y, due end of Nov"), create_project in that area with start/end dates and a one-line description, then file the tasks they mention for it there.
-  - "What's going on with X?" or "where am I on X?": call get_project and summarise its open tasks, recent captures, dates and status. Use list_tasks with area to roll up a whole area.
-  - Reorganise with update_project (move it to another area, rename, change dates or description) and update_area (rename, emoji, color). Habits belong to an area (create_habit / update_habit area).
-  - Finished or dormant things get status done, or archived: true when the owner wants them out of sight. Archive areas with update_area archived: true. Prefer archiving to delete_project, and ask before deleting either.
-  - The owner sees all of this in the app's Projects view, as a list or as a tree (areas branching into their projects), so keep names short and clear, set an emoji on every area, and keep status accurate.
-- Dates: use the "now" and timezone from get_overview, never your own clock. After creating or moving something, tell the owner the date in words ("for tomorrow, Mon Oct 12") so a wrong guess is caught. If they gave no date, leave due_date empty (it lands in the inbox) rather than guessing.
-- Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
-- Widgets: only create or publish a widget when the owner asked for that routine to appear on the dashboard. Publish the full current content each run (it replaces the previous version, history is kept).
-- Ask before deleting anything. Mistakes can be undone with revert_action, so own them and revert.
-- When you create a sub-bot in Grok Bot, call update_bot with its name, role and parent (your name) so it appears in the teammates view.`;
-
-const bot = z.string().min(1).max(60).describe('Your bot name, e.g. "Kiwi". Required on every call.');
+const bot = z.string().min(1).max(60).describe("Your agent name");
 const date = z.string().refine(isLocalDate, "YYYY-MM-DD").describe("Local date YYYY-MM-DD");
 const time = z.string().refine(isLocalTime, "HH:MM").describe("Local time HH:MM (24h)");
-const uuid = z.string().uuid();
+// Refinements validate without emitting zod's long regexes into tools/list.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid = z.string().refine((v) => UUID_RE.test(v), "expected a uuid");
+const ISO_DATETIME = z.iso.datetime({ offset: true });
+const isoDateTime = z
+  .string()
+  .refine((v) => ISO_DATETIME.safeParse(v).success, "expected an ISO datetime with offset")
+  .describe("ISO datetime");
 
 const taskFields = {
   notes: z.string().max(10000).nullable().optional(),
@@ -72,30 +65,45 @@ const taskFields = {
 
 const reminderFields = {
   schedule: scheduleSchema.describe(
-    'When to nudge. Examples: {"type":"daily","times":["10:00"]}; {"type":"interval","every_minutes":180,"window":{"start":"09:00","end":"22:00"}}; {"type":"once","date":"2026-10-12","time":"15:00"}; {"type":"daily","times":["09:00"],"days":[1,3,5]}',
+    'When to nudge, e.g. {"type":"daily","times":["10:00"],"days":[1,3,5]} or every 3h 9 to 22: {"type":"interval","every_minutes":180,"window":{"start":"09:00","end":"22:00"}}',
   ),
   until: z
     .enum(["done", "date", "count", "once"])
     .optional()
-    .describe('"done" (default for tasks): keep nudging until the task is completed. "date": stop after until_date. "count": stop after count nudges. "once": fire once.'),
+    .describe('done (default with a task): until completed; date: until until_date; count: after count nudges; once'),
   until_date: date.optional(),
   count: z.number().int().min(1).max(500).optional(),
 };
 
 const resurfaceField = scheduleSchema.describe(
-  'When the capture comes back to the owner, same shape as reminder schedules, in their local time. Examples: {"type":"once","date":"2026-11-14","time":"09:00"} (once); {"type":"daily","times":["09:00"]} (every day); {"type":"daily","times":["09:00"],"days":[1,2,3,4,5]} (weekdays); {"type":"interval","every_minutes":4320} (every 3 days). When it comes back it shows in Resurfaced until marked seen.',
+  'When it comes back (shown in Resurfaced until marked seen). Reminder schedule shape, e.g. {"type":"once","date":"2026-11-14","time":"09:00"}; every 3 days: {"type":"interval","every_minutes":4320}',
 );
 
-const resurfaceStart = z
-  .string()
-  .datetime({ offset: true })
+const resurfaceStart = isoDateTime
   .optional()
-  .describe("Optional ISO datetime a repeating resurface schedule starts from (for every-N-days, the first time it comes back).");
+  .describe("ISO datetime a repeating resurface starts from");
 
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
+/** Keys a bot never needs back: the owner's own id and soft-delete bookkeeping. */
+const DROP_KEYS = new Set(["user_id", "deleted_at", "updated_at"]);
+/** Null fields the instructions rely on, so they stay even when empty. */
+const KEEP_NULL = new Set(["filed_under"]);
+
+/**
+ * Tool results are read by a model on every call, so send compact JSON and
+ * leave out nulls and bookkeeping columns. Absent means null.
+ */
+export function leanJson(data: unknown): string {
+  return JSON.stringify(data, function (key, value) {
+    if (DROP_KEYS.has(key)) return undefined;
+    if (value === null && key !== "" && !KEEP_NULL.has(key) && !Array.isArray(this)) return undefined;
+    return value;
+  });
+}
+
 function ok(data: Json) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 1) }] };
+  return { content: [{ type: "text" as const, text: leanJson(data) }] };
 }
 
 function fail(e: unknown) {
@@ -123,12 +131,13 @@ async function filedUnder(ctx: Ctx, projectId: string | null | undefined) {
   return area ? `${data.name} (${area})` : data.name;
 }
 
-/** Instructions with the owner's chosen name for the main assistant. */
+/** Instructions plus who the coordinator is, so every client agrees on names. */
 function instructions(coordinator: string | null) {
-  const name = coordinator ?? "Kiwi";
-  const text = name === "Kiwi" ? BASE_INSTRUCTIONS : BASE_INSTRUCTIONS.replaceAll("Kiwi", name);
-  return `${text}
-- Names: the main assistant (coordinator) is currently "${name}". If a bot's name in Grok Bot no longer matches the name it is registered under here (see list_bots), call rename_bot once with the old and new names before anything else, so its history carries over instead of a new bot appearing.`;
+  const who = coordinator
+    ? `The owner's main assistant (coordinator) is "${coordinator}". `
+    : "No coordinator yet: the first agent to call a tool becomes it. ";
+  return `${BASE_INSTRUCTIONS}
+- Names: ${who}If your name no longer matches the one you are registered under (list_bots), call rename_bot once with the old and new names first, so your history carries over.`;
 }
 
 export function buildMcpServer(userId: string, coordinator: string | null = null) {
@@ -230,7 +239,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   tool(
     "snooze_reminder",
     "Push a reminder's next nudge later: minutes from now, or an ISO datetime.",
-    { id: uuid, minutes: z.number().int().min(5).max(60 * 24 * 14).optional(), until: z.string().datetime({ offset: true }).optional() },
+    { id: uuid, minutes: z.number().int().min(5).max(60 * 24 * 14).optional(), until: isoDateTime.optional() },
     (ctx, a) => snoozeReminder(ctx, a.id, a),
   );
   tool("cancel_reminder", "Stop a reminder.", { id: uuid }, (ctx, a) => cancelReminder(ctx, a.id));
@@ -300,7 +309,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   );
   tool(
     "add_capture_comment",
-    "Reply to a capture, as you. Shows in the capture's thread on the dashboard.",
+    "Reply in a capture's thread, as you. Only when you add something useful (a link, next step, answer); read list_capture_comments first.",
     { capture_id: uuid, content: z.string().min(1).max(5000) },
     async (ctx, a) => {
       const c = await addComment(ctx, a.capture_id, a.content);
@@ -335,7 +344,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   );
   tool(
     "create_area",
-    "Create a life area (e.g. School, Health, Work, Relationships).",
+    "Create a life area (School, Health, Work...), with an emoji. Only for a genuinely new part of life; most new things are projects in an existing area.",
     { name: z.string().min(1).max(80), emoji: z.string().max(8).optional(), color: z.string().max(20).optional() },
     (ctx, a) => createArea(ctx, a),
   );
@@ -345,7 +354,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     { area: z.string().min(1).max(80), name: z.string().max(80).optional(), emoji: z.string().max(8).nullable().optional(), color: z.string().max(20).nullable().optional(), archived: z.boolean().optional() },
     (ctx, { area, ...patch }) => updateArea(ctx, area, patch),
   );
-  tool("get_project", "A project with its tasks and recent captures.", { project: z.string().min(1).max(120) }, (ctx, a) => getProject(ctx, a.project), { readOnly: true });
+  tool("get_project", "A project with its tasks and recent captures. Use for \"where am I on X?\".", { project: z.string().min(1).max(120) }, (ctx, a) => getProject(ctx, a.project), { readOnly: true });
   tool(
     "create_project",
     "Create a project inside an area. Classes are projects with is_class, course_code and term.",
@@ -463,13 +472,13 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   );
   tool(
     "register_routine",
-    "Register (or update by name) a Grok Bot routine you run, so the owner sees and controls it in Hyperpolymath. Owner defaults to you.",
+    "Register (or update by name) a scheduled routine you run on your platform, so the owner sees and can pause it in the app. Owner defaults to you.",
     {
       name: z.string().min(1).max(120),
       schedule: z.string().max(200).optional().describe('In words, e.g. "weeknights at 10pm"'),
       description: z.string().max(2000).optional(),
       widget: z.string().max(120).optional().describe("Title or id of the widget this routine publishes to"),
-      grokbot_routine_id: z.string().max(200).optional(),
+      grokbot_routine_id: z.string().max(200).optional().describe("The routine's id on your platform, if any"),
       owner: z.string().max(60).optional().describe("Bot that owns it, if registering for another bot"),
     },
     (ctx, { owner, ...input }) => registerRoutine(ctx, { ...input, bot: owner }),
@@ -487,7 +496,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     },
     (ctx, { routine, ...patch }) => updateRoutine(ctx, routine, patch),
   );
-  tool("remove_routine", "Remove a routine from Hyperpolymath (after deleting it in Grok Bot).", { routine: z.string().min(1).max(120) }, (ctx, a) => removeRoutine(ctx, a.routine), { destructive: true });
+  tool("remove_routine", "Remove a registered routine (after deleting it on your platform).", { routine: z.string().min(1).max(120) }, (ctx, a) => removeRoutine(ctx, a.routine), { destructive: true });
   tool(
     "start_routine_run",
     "Call at the START of every routine run. If enabled is false, the owner paused it in the app: stop without doing the work.",
@@ -503,7 +512,7 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
 
   tool(
     "rename_bot",
-    "Rename a registered bot (e.g. after it was renamed in Grok Bot). Keeps its history, routines and widgets.",
+    "Rename a registered bot, keeping its history, routines and widgets.",
     { from: z.string().min(1).max(60), to: z.string().min(1).max(60) },
     (ctx, a) => renameBot(ctx, a.from, a.to),
   );
@@ -536,5 +545,65 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     { destructive: true },
   );
 
+  leanToolList(server);
   return server;
+}
+
+const PRIMITIVE = new Set(["string", "number", "integer", "boolean"]);
+
+/**
+ * Drop JSON Schema noise models don't need: the repeated $schema, minLength 1,
+ * length caps no sane value reaches, and anyOf [{type: X}, {type: null}]
+ * spelled as type [X, "null"].
+ */
+export function leanSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(leanSchema);
+  if (!node || typeof node !== "object") return node;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(node)) {
+    if (k === "$schema") continue;
+    if (k === "minLength" && v === 1) continue;
+    if (k === "maxLength" && typeof v === "number" && v >= 100) continue;
+    out[k] = leanSchema(v);
+  }
+  const any = out.anyOf as Record<string, unknown>[] | undefined;
+  if (any?.length === 2 && any[1]?.type === "null" && Object.keys(any[1]).length === 1 && PRIMITIVE.has(any[0]?.type as string)) {
+    const { anyOf: _, ...rest } = out;
+    void _;
+    return { ...any[0], ...rest, type: [any[0].type, "null"] };
+  }
+  return out;
+}
+
+type ToolDef = { inputSchema?: unknown; annotations?: Record<string, unknown>; execution?: { taskSupport?: string } };
+
+/**
+ * tools/list is sent to the model on every conversation, so trim the SDK's
+ * output: no per-tool $schema, no default-valued annotations (readOnlyHint
+ * false, taskSupport forbidden), no length caps a model never hits. Inputs
+ * are still validated against the full zod schemas.
+ */
+export function leanToolList(server: McpServer) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handlers: Map<string, (...args: any[]) => Promise<{ tools: ToolDef[] }>> | undefined = (server.server as any)._requestHandlers;
+  const original = handlers?.get("tools/list");
+  if (!handlers || !original) return;
+  handlers.set("tools/list", async (...args) => {
+    const result = await original(...args);
+    return {
+      ...result,
+      tools: result.tools.map((t) => {
+        const { execution, annotations, ...rest } = t;
+        const tool: ToolDef = { ...rest, inputSchema: leanSchema(t.inputSchema) };
+        if (execution && execution.taskSupport !== "forbidden") tool.execution = execution;
+        if (annotations) {
+          const a = { ...annotations };
+          if (a.readOnlyHint === false) delete a.readOnlyHint;
+          if (a.readOnlyHint) delete a.destructiveHint; // only meaningful for writes
+          if (Object.keys(a).length) tool.annotations = a;
+        }
+        return tool;
+      }),
+    };
+  });
 }
