@@ -19,6 +19,7 @@ export type SectionId = "setup" | "account" | "preferences" | "assistant" | "gro
 
 export const REPO_URL = "https://github.com/filippo-fonseca/hyperpolymath-v3";
 export const DOCS = {
+  connect: `${REPO_URL}/blob/HEAD/docs/connect/README.md`,
   grokbot: `${REPO_URL}/blob/HEAD/docs/GROKBOT-SETUP.md`,
   kiwiSetup: `${REPO_URL}/blob/HEAD/docs/GROKBOT-SETUP.md#3-make-your-coordinator-kiwi`,
   relay: `${REPO_URL}/blob/HEAD/docs/GROKBOT-SETUP.md#4-reminder-relay-routine-how-nudges-reach-you`,

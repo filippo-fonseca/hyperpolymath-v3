@@ -39,9 +39,11 @@ Locally on macOS, `./scripts/pull-env.sh <project-ref> <owner-email>` writes the
    - `http://localhost:3000/api/google/callback`
 4. Put the client id and secret in the env vars above, redeploy, then **Settings → Connect Google Calendar** in the app. Connect as many accounts as you like and pick which calendars show.
 
-## 4. Grok Bot
+## 4. Connect an assistant
 
-Follow [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md): mint an MCP token in Settings, add the MCP server in Grok Bot, set up Kiwi and the Reminder relay routine.
+Claude, ChatGPT and Grok Bot sign in with Hyperpolymath over OAuth 2.1; there's nothing extra to configure (no new env vars). The OAuth tables come from `20261127000000_oauth.sql`, so make sure every migration is applied. Then follow [`connect/README.md`](connect/README.md) for your assistant. Grok Bot users also set up Kiwi and the Reminder relay with [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md).
+
+The issuer and every OAuth URL come from the host the request arrived on, so use one canonical domain for the MCP URL you give assistants. Tokens are bound to that host's `/api/mcp`, so a token issued on a preview deployment won't work on production.
 
 ## 5. Verify
 
@@ -50,6 +52,7 @@ CI (`.github/workflows/ci.yml`) runs the same gates on every push and pull reque
 ```bash
 pnpm test                                   # unit tests; integration tests run too when .env.local has the secret key
 HPM_TOKEN=hpm_... node scripts/smoke-mcp.mjs https://<app>   # end-to-end MCP check as a bot
+curl -s https://<app>/.well-known/oauth-authorization-server   # OAuth discovery answers
 curl -sI https://<app> | grep -i content-security-policy     # security headers are on
 ```
 
@@ -57,7 +60,7 @@ curl -sI https://<app> | grep -i content-security-policy     # security headers 
 
 ## 6. Quick capture from your phone
 
-Any token from **Settings → MCP tokens** also works for the capture endpoint. In the iOS Shortcuts app: *Ask for Input* → *Get Contents of URL* with:
+Any personal token from **Settings → Connections** also works for the capture endpoint. In the iOS Shortcuts app: *Ask for Input* → *Get Contents of URL* with:
 
 - URL: `https://<app>/api/capture`, method `POST`
 - Header: `Authorization: Bearer hpm_...`

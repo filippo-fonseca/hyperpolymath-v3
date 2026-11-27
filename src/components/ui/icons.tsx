@@ -281,3 +281,20 @@ export const IconResurface = (p: P) => (
     <path d="M12 8.5V12l2.5 1.5" />
   </svg>
 );
+export const IconShield = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6L12 3z" />
+    <path d="M9 12l2 2 4-4" />
+  </svg>
+);
+export const IconEye = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.75" />
+  </svg>
+);
+export const IconPlug = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M9 3v4M15 3v4M6.5 7h11v3.5a5.5 5.5 0 01-11 0V7zM12 16v5" />
+  </svg>
+);

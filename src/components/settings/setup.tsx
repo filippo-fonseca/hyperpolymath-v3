@@ -32,27 +32,27 @@ export function SetupSection({ overview, overviewFailed, reloadOverview, go }: S
       state: "done",
       detail: overview.email ? <span className="break-all">{overview.email}</span> : "Owner session active",
     },
-    s.mcp.tokens === 0
+    s.mcp.tokens + s.mcp.apps === 0
       ? {
           key: "mcp",
-          title: "Create an MCP token",
+          title: "Connect an assistant",
           state: "todo",
-          detail: "Grok Bot uses it to read and write your dashboard.",
+          detail: "Claude, ChatGPT or Grok Bot reads and writes your dashboard over MCP.",
           action: (
-            <button type="button" className={actionClass} onClick={() => go("grokbot", "settings-token-name")}>
-              Create a token
+            <button type="button" className={actionClass} onClick={() => go("grokbot", "settings-connect")}>
+              Connect one
             </button>
           ),
         }
       : s.mcp.last_used_at
-        ? { key: "mcp", title: "MCP token in use", state: "done", detail: `Last used ${ago(s.mcp.last_used_at)}` }
+        ? { key: "mcp", title: "Assistant connected", state: "done", detail: `Last active ${ago(s.mcp.last_used_at)}` }
         : {
             key: "mcp",
-            title: "Add the token in Grok Bot",
+            title: "Finish connecting your assistant",
             state: "warn",
             detail: "A token exists but hasn't been used yet.",
             action: (
-              <button type="button" className={actionClass} onClick={() => go("grokbot", "settings-connect-message")}>
+              <button type="button" className={actionClass} onClick={() => go("grokbot", "settings-connect")}>
                 How to connect
               </button>
             ),
