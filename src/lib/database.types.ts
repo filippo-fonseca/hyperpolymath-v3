@@ -785,6 +785,87 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestions: {
+        Row: {
+          bot_id: string | null
+          content: string
+          created_at: string
+          dedupe_key: string
+          deleted_at: string | null
+          due_date: string | null
+          due_time: string | null
+          id: string
+          kind: string
+          notes: string | null
+          priority: number
+          project_id: string | null
+          reason: string | null
+          resolved_at: string | null
+          result_id: string | null
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_id?: string | null
+          content: string
+          created_at?: string
+          dedupe_key: string
+          deleted_at?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          kind: string
+          notes?: string | null
+          priority?: number
+          project_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          result_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_id?: string | null
+          content?: string
+          created_at?: string
+          dedupe_key?: string
+          deleted_at?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          priority?: number
+          project_id?: string | null
+          reason?: string | null
+          resolved_at?: string | null
+          result_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggestions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_state: {
         Row: {
           key: string

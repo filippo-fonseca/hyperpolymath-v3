@@ -10,6 +10,7 @@ import { IconLink, IconPencil } from "@/components/ui/icons";
 import { useDashboard } from "@/components/dashboard/context";
 import { WidgetHeader } from "@/components/dashboard/widget-chrome";
 import { QuickAdd } from "../tasks/task-bits";
+import { SuggestedBanner } from "./suggestions";
 
 const ROW_H = 30;
 
@@ -40,7 +41,9 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
       <div className="flex h-full flex-col">
         <WidgetHeader />
         <div className="mt-1 text-[13px] text-ink-3">
-          {data.resurfaced.length ? (
+          {data.suggestions.length ? (
+            <span className="font-medium text-accent">{data.suggestions.length} suggested</span>
+          ) : data.resurfaced.length ? (
             <span className="font-medium text-accent">{data.resurfaced.length} came back</span>
           ) : (
             meta || "Inbox empty"
@@ -63,6 +66,7 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
     return (
       <div className="flex h-full flex-col">
         <WidgetHeader meta={meta} />
+        <SuggestedBanner className="mt-2" />
         <QuickAdd className="mt-2" placeholder="What's on your mind?" onSubmit={add} />
         {cards.length === 0 ? (
           <div className="flex flex-1 items-center justify-center gap-4">
@@ -80,17 +84,19 @@ export function CaptureWidget({ size }: { size: WidgetSize }) {
     );
   }
 
-  // Large shows what came back as its own section; medium keeps it to recent.
-  const backShown = resurfaced.slice(0, Math.max(0, Math.min(2, fit - 2)));
+  // Suggestions take one row at the top, then what came back (large only), then recent.
+  const rows = fit - (data.suggestions.length ? 1 : 0);
+  const backShown = resurfaced.slice(0, Math.max(0, Math.min(2, rows - 2)));
   const headings = (backShown.length ? 1 : 0) + (backShown.length && recent.length ? 1 : 0);
-  const recentShown = recent.slice(0, Math.max(0, fit - backShown.length - headings));
+  const recentShown = recent.slice(0, Math.max(0, rows - backShown.length - headings));
 
   return (
     <div className="flex h-full flex-col">
       <WidgetHeader meta={meta} />
       <QuickAdd className="mt-1.5" placeholder="What's on your mind?" onSubmit={add} />
       <div ref={listRef} className="mt-1.5 min-h-0 flex-1 overflow-hidden">
-        {data.captures.length === 0 && resurfaced.length === 0 ? (
+        <SuggestedBanner compact />
+        {data.suggestions.length > 0 && data.captures.length === 0 && resurfaced.length === 0 ? null : data.captures.length === 0 && resurfaced.length === 0 ? (
           size === "l" ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
               <KiwiReading size={124} />

@@ -12,6 +12,7 @@ import type { CalendarEvent } from "@/server/google/calendar";
 import type { listAreas } from "@/server/projects";
 import type { CaptureWithCount } from "@/server/captures";
 import type { CaptureComment } from "@/server/capture-comments";
+import type { SuggestionWithBot } from "@/server/suggestions";
 import type { TaskViews } from "./task-view";
 
 export type { CalendarEvent };
@@ -26,6 +27,8 @@ export type { CaptureComment };
 /** A plain capture row, without the reply count. */
 export type CaptureRow = T["captures"]["Row"];
 export type Bot = T["bots"]["Row"];
+/** A task or capture a bot proposed, waiting for you in Suggested, with the bot that sent it. */
+export type Suggestion = SuggestionWithBot;
 export type Habit = HabitWithStatus;
 export type WidgetRow = Awaited<ReturnType<typeof listWidgets>>[number];
 export type ActionRow = Awaited<ReturnType<typeof listActions>>[number];
@@ -51,6 +54,8 @@ export type DashboardData = {
   captures: Capture[];
   /** Captures that came back on schedule and wait in Resurfaced until marked seen, newest first. */
   resurfaced: Capture[];
+  /** Tasks and captures bots proposed on their own, waiting for you to accept or dismiss, newest first. */
+  suggestions: Suggestion[];
   bots: Bot[];
   actions: ActionRow[];
   reminders: ReminderRow[];

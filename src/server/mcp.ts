@@ -9,6 +9,7 @@ import { cancelReminder, listReminders, setReminder, snoozeReminder } from "./re
 import { createHabit, listHabits, logHabit, updateHabit } from "./habits";
 import { convertCaptureToTask, createCapture, listCaptures, markCaptureSeen, updateCapture } from "./captures";
 import { addComment, listComments } from "./capture-comments";
+import { acceptSuggestion, dismissSuggestion, listSuggestions, suggest } from "./suggestions";
 import { createWidget, listWidgets, publishWidget, removeWidget, updateWidget } from "./widgets";
 import { listActions, revertAction } from "./log";
 import { setTimezone } from "./settings";
@@ -19,6 +20,7 @@ import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
 import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
 import { isLocalDate, isLocalTime } from "@/lib/time";
+import { BATCH_LIMIT, DAILY_LIMIT_PER_SOURCE } from "@/lib/suggestions";
 
 /**
  * Server instructions every client receives on connect. Keep them short and
@@ -36,6 +38,7 @@ const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard and the s
 - File a task or capture under a project only when it clearly fits one; otherwise leave it unfiled. Never create a project or area just to file one item. Confirm where it went using the result's filed_under ("Added to Machine Elements." / "Added, not filed under a project.").
 - After creating or moving something dated, say the date in words ("tomorrow, Mon Oct 12"). With no date given, leave due_date empty rather than guess.
 - Use these calendar tools (not another calendar connector) so changes are logged. Never invite people unless asked.
+- When you notice something the owner would likely want as a task or capture and they didn't ask you to save it, call suggest (with a short reason); they review it in the app. Direct requests still go straight to create_task / create_capture.
 - Create or publish widgets only when the owner asked for something on the dashboard.
 - Scheduled routines: if you run recurring work on your platform, register_routine it, call start_routine_run at the start of every run (stop if enabled is false) and finish_routine_run at the end. On scheduled runs, message the owner only when something is new or needs them.
 - When you create a helper agent, call update_bot with its role and parent so it appears under you.
@@ -321,6 +324,62 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
     "Turn a capture into a task (archives the capture).",
     { id: uuid, title: z.string().max(500).optional(), due_date: date.optional(), priority: z.number().int().min(0).max(3).optional(), project: z.string().max(120).optional() },
     (ctx, { id, ...task }) => convertCaptureToTask(ctx, id, task),
+  );
+
+  // Suggestions --------------------------------------------------------------
+  const suggestionItem = z.object({
+    kind: z.enum(["task", "capture"]),
+    content: z.string().min(1).max(2000).describe("Task title, or the capture's text"),
+    reason: z.string().max(300).optional().describe('Why, and where you saw it: "Slack #mech-e: Prof. Lee moved the pset to Fri"'),
+    project: z.string().max(120).optional().describe("Project name or id, only if it clearly fits"),
+    due_date: date.optional(),
+    due_time: time.optional(),
+    priority: z.number().int().min(0).max(3).optional(),
+    notes: z.string().max(4000).optional(),
+  });
+  tool(
+    "suggest",
+    `Propose tasks or captures you noticed on your own that the owner did NOT ask you to save (deadlines in emails or Slack, meeting follow-ups, ideas worth keeping). They wait in the app's Suggested tray until the owner accepts or dismisses them. Batch a whole run into one call (up to ${BATCH_LIMIT}). The server skips duplicates, things already saved and recently dismissed ones, so don't check first. Each bot gets ${DAILY_LIMIT_PER_SOURCE} a day: suggest only what the owner would plausibly act on.`,
+    { items: z.array(suggestionItem).min(1).max(BATCH_LIMIT) },
+    (ctx, a) => suggest(ctx, a.items),
+  );
+  tool(
+    "list_suggestions",
+    "Suggestions waiting for the owner (default), or recently accepted or dismissed ones, newest first.",
+    { status: z.enum(["pending", "accepted", "dismissed"]).optional(), limit: z.number().int().min(1).max(100).optional() },
+    async (ctx, a) =>
+      (await listSuggestions(ctx, a)).map((s) => ({
+        id: s.id,
+        kind: s.kind,
+        content: s.content,
+        reason: s.reason,
+        due: s.due_date ? `${s.due_date}${s.due_time ? " " + s.due_time.slice(0, 5) : ""}` : null,
+        by: s.source,
+        status: s.status,
+        at: s.created_at,
+      })),
+    { readOnly: true },
+  );
+  tool(
+    "review_suggestion",
+    "Accept or dismiss a waiting suggestion, only when the owner says so (\"yes, add the second one\"). Accepting creates the task or capture; content, project, due_date and priority override what was suggested.",
+    {
+      id: uuid,
+      decision: z.enum(["accept", "dismiss"]),
+      content: z.string().min(1).max(2000).optional(),
+      project: z.string().max(120).nullable().optional(),
+      due_date: date.nullable().optional(),
+      priority: z.number().int().min(0).max(3).optional(),
+    },
+    async (ctx, { id, decision, ...edits }) => {
+      if (decision === "dismiss") {
+        const s = await dismissSuggestion(ctx, id);
+        return { dismissed: s.content };
+      }
+      const r = await acceptSuggestion(ctx, id, edits);
+      const projectId = "project_id" in r.created ? r.created.project_id : null;
+      return { accepted: r.kind, id: r.created.id, filed_under: await filedUnder(ctx, projectId) };
+    },
   );
 
   // Areas and projects -------------------------------------------------------

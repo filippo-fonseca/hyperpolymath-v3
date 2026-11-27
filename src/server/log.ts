@@ -17,11 +17,12 @@ export type EntityType =
   | "area"
   | "project"
   | "profile"
+  | "suggestion"
   | "event";
 
 const TABLE: Record<
   Exclude<EntityType, "event">,
-  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects" | "profiles" | "capture_comments"
+  "tasks" | "reminders" | "habits" | "habit_logs" | "captures" | "widgets" | "bots" | "routines" | "areas" | "projects" | "profiles" | "capture_comments" | "suggestions"
 > = {
   task: "tasks",
   reminder: "reminders",
@@ -35,6 +36,7 @@ const TABLE: Record<
   area: "areas",
   project: "projects",
   profile: "profiles",
+  suggestion: "suggestions",
 };
 
 // Tables keyed by the account id itself rather than a user_id column.
@@ -43,7 +45,7 @@ const OWNER_COLUMN: Partial<Record<EntityType, "id">> = { profile: "id" };
 const REVERT_COLUMNS: Partial<Record<EntityType, string[]>> = { profile: ["display_name", "avatar_url"] };
 
 // Tables where "create" is undone by soft delete rather than a hard delete.
-const SOFT_DELETE = new Set<EntityType>(["task", "capture", "capture_comment", "widget", "routine", "area", "project"]);
+const SOFT_DELETE = new Set<EntityType>(["task", "capture", "capture_comment", "widget", "routine", "area", "project", "suggestion"]);
 const IMMUTABLE = new Set(["id", "user_id", "created_at", "updated_at"]);
 
 export async function logAction(
@@ -195,6 +197,15 @@ async function revertRow(ctx: Ctx, action: Row<"actions">, type: Exclude<EntityT
       .eq("task_id", id)
       .eq("user_id", ctx.userId)
       .not("next_fire_at", "is", null);
+  }
+  // Undoing an accepted suggestion also removes the task or capture it became.
+  if (type === "suggestion" && before?.status === "pending" && after?.status === "accepted" && after.result_id) {
+    const made = after.kind === "task" ? "tasks" : "captures";
+    await ctx.db
+      .from(made)
+      .update({ deleted_at: ctx.now.toISOString() })
+      .eq("id", after.result_id as string)
+      .eq("user_id", ctx.userId);
   }
   return { current: cur, restored };
 }

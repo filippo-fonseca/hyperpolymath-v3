@@ -62,6 +62,8 @@ Anyone can create an account with an email and a password. Each account is priva
 
 See [`SECURITY.md`](SECURITY.md) for the full model and how to report a vulnerability.
 
+Letting any assistant (Claude, Grok Bot, ChatGPT, scripts) send you suggested tasks and captures to review: [`docs/AGENT-SUGGESTIONS.md`](docs/AGENT-SUGGESTIONS.md).
+
 ## Develop
 
 ```bash

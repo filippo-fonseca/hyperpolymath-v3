@@ -18,6 +18,7 @@ import { runTick } from "./tick";
 import { mintToken } from "./tokens";
 import { createArea, createProject, listAreas, updateProject } from "./projects";
 import { finishRun, listRoutines, registerRoutine, startRun, updateRoutine } from "./routines";
+import { acceptSuggestion, dismissSuggestion, listSuggestions, suggest } from "./suggestions";
 import { zonedToUtc } from "@/lib/time";
 
 const enabled = !!(process.env.SUPABASE_SECRET_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -267,6 +268,63 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     await db.from("rate_limits").delete().like("key", `${key}%`);
   });
 
+  it("suggestions: dedupe, accept credited to the bot, dismiss memory, revert, limits", async () => {
+    const owner = ctxAt(NOON);
+    const scout = ctxAt(NOON, await resolveBotActor(adminDb(), userId, "Scout"));
+    await createTask(owner, { title: "Renew passport" });
+
+    const first = await suggest(scout, [
+      { kind: "task", content: "Email Prof. Lee about the pset", reason: "Slack #mech-e", due_date: "2026-10-16" },
+      { kind: "task", content: "email prof lee about the PSET!" },
+      { kind: "task", content: "TODO: renew passport" },
+      { kind: "capture", content: "Heart-rate variability widget idea" },
+    ]);
+    expect(first.map((r) => r.outcome)).toEqual(["pending", "duplicate", "exists", "pending"]);
+    const again = await suggest(scout, [{ kind: "task", content: "Email prof Lee about the pset" }]);
+    expect(again[0]).toMatchObject({ outcome: "duplicate", id: first[0].id });
+
+    const waiting = await listSuggestions(owner);
+    expect(waiting).toHaveLength(2);
+    expect(waiting.every((s) => s.bot?.name === "Scout")).toBe(true);
+    expect((await getOverview(owner)).suggestions_waiting_for_owner).toBe(2);
+
+    // Accepting creates the task, credited to the bot, with the reason as notes.
+    const accepted = await acceptSuggestion(owner, first[0].id!, { due_date: "2026-10-17" });
+    const task = await getTask(owner, accepted.created.id);
+    expect(task).toMatchObject({ created_by: "Scout", due_date: "2026-10-17", notes: "Suggested by Scout: Slack #mech-e" });
+    await expect(acceptSuggestion(owner, first[0].id!)).rejects.toThrow(/already accepted/);
+
+    // Reverting the accept removes the task and puts the suggestion back.
+    const acceptAction = (await listActions(owner, { limit: 5 })).find((a) => a.tool === "accept_suggestion")!;
+    await revertAction(owner, acceptAction.id);
+    expect((await listTasks(owner, { scope: "all", query: "Prof. Lee" })).length).toBe(0);
+    expect((await listSuggestions(owner)).some((s) => s.id === first[0].id)).toBe(true);
+
+    // A dismissed suggestion isn't offered again.
+    await dismissSuggestion(owner, first[3].id!);
+    const retry = await suggest(scout, [{ kind: "capture", content: "heart rate variability widget idea" }]);
+    expect(retry[0].outcome).toBe("dismissed_before");
+
+    // Captures accepted from a suggestion show the bot as their author.
+    const cap = await suggest(scout, [{ kind: "capture", content: "Read the Frank-Starling review" }]);
+    const made = await acceptSuggestion(owner, cap[0].id!);
+    expect((made.created as { source: string }).source).toBe("Scout");
+
+    // Each source gets a daily allowance.
+    const flood = Array.from({ length: 10 }, (_, i) => ({ kind: "capture" as const, content: `Idea number ${i}` }));
+    await suggest(scout, flood);
+    await suggest(scout, flood.map((f) => ({ ...f, content: f.content + " b" })));
+    // 3 + 10 + 10 = 23 so far: two more fit, the rest of the batch is marked, then calls are refused.
+    const over = await suggest(scout, flood.map((f) => ({ ...f, content: f.content + " c" })));
+    expect(over.filter((r) => r.outcome === "pending")).toHaveLength(2);
+    expect(over.filter((r) => r.outcome === "limit_reached")).toHaveLength(8);
+    await expect(suggest(scout, [{ kind: "capture", content: "One more" }])).rejects.toThrow(/Daily suggestion limit/);
+    // An unknown project leaves the suggestion unfiled instead of failing.
+    const kiwi = ctxAt(NOON, await resolveBotActor(adminDb(), userId, "Kiwi"));
+    const unfiled = await suggest(kiwi, [{ kind: "task", content: "Buy lab goggles", project: "No such project" }]);
+    expect(unfiled[0].outcome).toBe("pending");
+  });
+
   it("serves MCP over HTTP with a bearer token", async () => {
     const { token } = await mintToken(adminDb(), userId, "test");
     const { POST } = await import("@/app/api/mcp/route");
@@ -289,7 +347,7 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     expect(init.status).toBe(200);
     const list = await (await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" })).json();
     const names = list.result.tools.map((t: { name: string }) => t.name);
-    expect(names).toEqual(expect.arrayContaining(["get_overview", "create_task", "complete_task", "set_reminder", "publish_widget", "create_event", "revert_action"]));
+    expect(names).toEqual(expect.arrayContaining(["get_overview", "create_task", "complete_task", "set_reminder", "publish_widget", "create_event", "revert_action", "suggest", "review_suggestion"]));
 
     const call = await (
       await rpc({
@@ -301,5 +359,26 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     ).json();
     expect(call.result.isError).toBeFalsy();
     expect(JSON.parse(call.result.content[0].text).created_by).toBe("Kiwi");
+
+    const suggested = await (
+      await rpc({
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tools/call",
+        params: { name: "suggest", arguments: { bot: "Kiwi", items: [{ kind: "task", content: "Reply to the lab manager", reason: "Gmail" }] } },
+      })
+    ).json();
+    expect(suggested.result.isError).toBeFalsy();
+    expect(JSON.parse(suggested.result.content[0].text)[0].outcome).toBe("pending");
+
+    // Agents without MCP use /api/suggest with the same token.
+    const { POST: suggestPost } = await import("@/app/api/suggest/route");
+    const http = (body: unknown, auth = `Bearer ${token}`) =>
+      suggestPost(new Request("http://localhost/api/suggest", { method: "POST", headers: { "content-type": "application/json", authorization: auth }, body: JSON.stringify(body) }));
+    expect((await http({ kind: "task", content: "x" }, "Bearer nope")).status).toBe(401);
+    expect((await http({ kind: "chore", content: "x" })).status).toBe(400);
+    const res = await http({ source: "chatgpt", kind: "capture", content: "Look into Kalman filters for the ECG project" });
+    expect(res.status).toBe(201);
+    expect((await res.json()).results[0].outcome).toBe("pending");
   });
 });
