@@ -9,7 +9,7 @@ import { KiwiLoader } from "@/components/ui/kiwi-loader";
 import { useDashboard } from "@/components/dashboard/context";
 import { CopyButton, DOCS, DocLink, Section, type SectionProps } from "./shared";
 
-type Token = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
+type Token = { id: string; name: string; prefix: string; scope: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 
 export function GrokBotSection(props: SectionProps) {
   return (
@@ -21,6 +21,9 @@ export function GrokBotSection(props: SectionProps) {
 }
 
 /* ---------------- MCP ---------------- */
+
+/** Phone and Mac keys live in their own section; this list is for bots. */
+const bots = (tokens: Token[]) => tokens.filter((t) => t.scope !== "app");
 
 function connectMessage(url: string, token: string | null) {
   return `Add a custom MCP server named "Hyperpolymath". URL: ${url}. Header: Authorization: Bearer ${token ?? "<paste your token>"}. Store the token as a secret, then call get_overview to confirm it works.`;
@@ -39,7 +42,7 @@ function McpSection({ reloadOverview }: SectionProps) {
     const t = window.setTimeout(() => setOrigin(window.location.origin), 0);
     let live = true;
     void run(listTokensAction()).then((t) => {
-      if (live) setTokens(t ?? []);
+      if (live) setTokens(t ? bots(t) : []);
     });
     return () => {
       live = false;
@@ -49,7 +52,7 @@ function McpSection({ reloadOverview }: SectionProps) {
 
   const reload = async () => {
     const t = await run(listTokensAction());
-    if (t) setTokens(t);
+    if (t) setTokens(bots(t));
     reloadOverview();
   };
   const url = `${origin}/api/mcp`;

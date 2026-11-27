@@ -24,6 +24,12 @@ export const IconPlus = (p: P) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+export const IconDevice = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="7" y="2.75" width="10" height="18.5" rx="2.75" />
+    <path d="M10.75 18h2.5" />
+  </svg>
+);
 export const IconMinus = (p: P) => (
   <svg {...base(p)}>
     <path d="M6 12h12" />

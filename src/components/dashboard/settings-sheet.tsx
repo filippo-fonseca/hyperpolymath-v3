@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { settingsOverviewAction, type SettingsOverview } from "@/app/actions/status";
 import { Sheet, useMediaQuery } from "@/components/ui/primitives";
-import { IconCalendar, IconChevronLeft, IconArchive, IconBell, IconChevronRight, IconGlobe, IconInfo, IconKey, IconMail, IconSparkle } from "@/components/ui/icons";
+import { IconCalendar, IconChevronLeft, IconArchive, IconBell, IconChevronRight, IconDevice, IconGlobe, IconInfo, IconKey, IconMail, IconSparkle } from "@/components/ui/icons";
 import type { SectionId, SectionProps } from "@/components/settings/shared";
 import { SetupSection } from "@/components/settings/setup";
 import { AccountSection } from "@/components/settings/account";
 import { PreferencesSection } from "@/components/settings/preferences";
 import { GrokBotSection } from "@/components/settings/grokbot";
+import { DevicesSection } from "@/components/settings/devices";
 import { AssistantSection } from "@/components/settings/assistant";
 import { CalendarSection } from "@/components/settings/calendar";
 import { RemindersSection } from "@/components/settings/reminders";
@@ -32,6 +33,7 @@ const SECTIONS: SectionDef[] = [
   { id: "preferences", label: "Preferences", icon: IconGlobe, Body: PreferencesSection },
   { id: "assistant", label: "Assistant", icon: IconSparkle, Body: AssistantSection },
   { id: "grokbot", label: "Grok Bot", icon: IconKey, Body: GrokBotSection },
+  { id: "devices", label: "Phone and Mac", icon: IconDevice, Body: DevicesSection },
   { id: "calendar", label: "Calendar", icon: IconCalendar, Body: CalendarSection },
   { id: "reminders", label: "Reminders", icon: IconBell, Body: RemindersSection },
   { id: "data", label: "Data", icon: IconArchive, Body: DataSection },
