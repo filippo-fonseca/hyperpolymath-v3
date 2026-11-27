@@ -45,29 +45,41 @@ public struct KeychainCredentialStore: CredentialStore {
         self.accessGroup = accessGroup
     }
 
-    private func query(group: String?) -> [String: Any] {
+    /// Places to look, best first: the shared group, the app's own default,
+    /// and on macOS the legacy file keychain for unsigned local builds.
+    private var locations: [(group: String?, modern: Bool)] {
+        var out: [(group: String?, modern: Bool)] = []
+        if let accessGroup { out.append((group: accessGroup, modern: true)) }
+        out.append((group: nil, modern: true))
+        #if os(macOS)
+        out.append((group: nil, modern: false))
+        #endif
+        return out
+    }
+
+    private func query(group: String?, modern: Bool) -> [String: Any] {
         var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
         #if os(macOS)
-        q[kSecUseDataProtectionKeychain as String] = true
+        if modern { q[kSecUseDataProtectionKeychain as String] = true }
         #endif
         if let group { q[kSecAttrAccessGroup as String] = group }
         return q
     }
 
     public func load() -> ServerConfig? {
-        for group in [accessGroup, nil] {
-            var q = query(group: group)
+        for loc in locations {
+            var q = query(group: loc.group, modern: loc.modern)
             q[kSecReturnData as String] = true
             q[kSecMatchLimit as String] = kSecMatchLimitOne
             var out: CFTypeRef?
-            if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data {
-                return try? JSONDecoder().decode(ServerConfig.self, from: data)
+            if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data,
+               let config = try? JSONDecoder().decode(ServerConfig.self, from: data) {
+                return config
             }
-            if group == nil { break }
         }
         return nil
     }
@@ -75,25 +87,21 @@ public struct KeychainCredentialStore: CredentialStore {
     public func save(_ config: ServerConfig) throws {
         let data = try JSONEncoder().encode(config)
         clear()
-        var status = add(data, group: accessGroup)
-        // Unsigned or simulator builds without the app group entitlement:
-        // keep the key for the app itself; widgets fall back to the cache.
-        if status == errSecMissingEntitlement, accessGroup != nil { status = add(data, group: nil) }
-        guard status == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Couldn't save the key to the keychain (\(status))."])
+        var status: OSStatus = errSecParam
+        // Builds without the app group entitlement (or unsigned Mac builds)
+        // fall through to the next location; widgets then use the cache.
+        for loc in locations {
+            var q = query(group: loc.group, modern: loc.modern)
+            q[kSecValueData as String] = data
+            q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            status = SecItemAdd(q as CFDictionary, nil)
+            if status == errSecSuccess { return }
         }
-    }
-
-    private func add(_ data: Data, group: String?) -> OSStatus {
-        var q = query(group: group)
-        q[kSecValueData as String] = data
-        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        return SecItemAdd(q as CFDictionary, nil)
+        throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Couldn't save the key to the keychain (\(status))."])
     }
 
     public func clear() {
-        SecItemDelete(query(group: accessGroup) as CFDictionary)
-        SecItemDelete(query(group: nil) as CFDictionary)
+        for loc in locations { SecItemDelete(query(group: loc.group, modern: loc.modern) as CFDictionary) }
     }
 }
 #endif

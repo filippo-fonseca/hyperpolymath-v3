@@ -36,7 +36,7 @@ public final class AppStore {
     }
 
     /// Called after every change that widgets should reflect.
-    public var onSnapshotChange: (() -> Void)?
+    public var onSnapshotChange: (@MainActor () -> Void)?
 
     private let credentials: CredentialStore
     private let cache: SnapshotCache
@@ -129,8 +129,11 @@ public final class AppStore {
 
     // MARK: Writes
 
-    public func toggle(_ task: TaskItem) async {
-        guard let client, !inFlight.contains(task.id) else { return }
+    /// Complete or reopen a task. Returns false when the server refused and
+    /// the change was rolled back, so lists outside the summary can follow.
+    @discardableResult
+    public func toggle(_ task: TaskItem) async -> Bool {
+        guard let client, !inFlight.contains(task.id) else { return false }
         inFlight.insert(task.id)
         defer { inFlight.remove(task.id) }
         let completing = !task.isDone
@@ -139,9 +142,11 @@ public final class AppStore {
         do {
             let result = completing ? try await client.completeTask(id: task.id) : try await client.reopenTask(id: task.id)
             edit { $0.settle(task: result) }
+            return true
         } catch {
             edit { s in if completing { s.markOpen(taskID: task.id) } else { s.markDone(taskID: task.id) } }
             report(error, doing: completing ? "complete that task" : "reopen that task")
+            return false
         }
     }
 
