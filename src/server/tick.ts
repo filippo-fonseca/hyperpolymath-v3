@@ -205,7 +205,7 @@ export async function catchUpRecurringAll(now = new Date(), opts: { userId?: str
 }
 
 const REMINDER_INSTRUCTIONS =
-  "Nudge the owner about each reminder below in one short message, in Kiwi's voice (a composed British butler who addresses the owner as sir; at most one light touch of dry wit, none if anything is overdue or urgent). For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed, and skip anything already done.";
+  "Nudge the owner about each reminder below in one short message, in your usual voice (no jokes if anything is overdue or urgent). For until_done items, they can reply 'done' and you call complete_task with the task_id via the Hyperpolymath MCP. Check get_overview first in case something was already completed, and skip anything already done.";
 
 const CAPTURE_INSTRUCTIONS =
   "resurfaced_captures are notes the owner asked to see again. Mention them briefly, a short line each, after any reminders (or on their own if there are none), in the same voice and with no pressure. If the owner replies 'seen' (or similar), call mark_capture_seen with the capture_id via the Hyperpolymath MCP. If they want it back again later, call update_capture with a new resurface schedule.";
