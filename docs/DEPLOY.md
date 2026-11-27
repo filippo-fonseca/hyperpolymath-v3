@@ -41,7 +41,7 @@ Locally on macOS, `./scripts/pull-env.sh <project-ref> <owner-email>` writes the
 
 ## 4. Connect an assistant
 
-Claude, ChatGPT and Grok Bot sign in with Hyperpolymath over OAuth 2.1; there's nothing extra to configure (no new env vars). The OAuth tables come from `20261127000000_oauth.sql`, so make sure every migration is applied. Then follow [`connect/README.md`](connect/README.md) for your assistant. Grok Bot users also set up Kiwi and the Reminder relay with [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md).
+Claude, ChatGPT and Grok Bot sign in with Hyperpolymath over OAuth 2.1; there's nothing extra to configure (no new env vars). The OAuth tables come from `20261127020000_oauth.sql`, so make sure every migration is applied. Then follow [`connect/README.md`](connect/README.md) for your assistant. Grok Bot users also set up Kiwi and the Reminder relay with [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md).
 
 The issuer and every OAuth URL come from the host the request arrived on, so use one canonical domain for the MCP URL you give assistants. Tokens are bound to that host's `/api/mcp`, so a token issued on a preview deployment won't work on production.
 
