@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 REF="${1:-${SUPABASE_PROJECT_REF:-}}"
 if [[ -z "$REF" ]]; then read -rp "Supabase project ref: " REF; fi
 EMAIL="${2:-${OWNER_EMAIL:-}}"
-if [[ -z "$EMAIL" ]]; then read -rp "Owner email (the only account allowed to sign in): " EMAIL; fi
+if [[ -z "$EMAIL" ]]; then read -rp "Owner email (the account that may use the KIWI_WEBHOOK_* fallback relay): " EMAIL; fi
 
 umask 077
 # The CLI masks new-style secret keys, so ask the Management API to reveal them,

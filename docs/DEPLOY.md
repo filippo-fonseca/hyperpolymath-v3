@@ -16,6 +16,8 @@ Stack: Next.js on Vercel, Supabase (Postgres, Auth, Realtime, pg_cron, Vault). T
 
 ## 2. Environment variables
 
+Every variable is listed with comments in [`.env.example`](../.env.example). Copy it to `.env.local` for local work.
+
 | Variable | Where | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel + local | Public |
@@ -26,7 +28,7 @@ Stack: Next.js on Vercel, Supabase (Postgres, Auth, Realtime, pg_cron, Vault). T
 | `GOOGLE_TOKEN_KEY` | Vercel + local | **Secret.** `openssl rand -base64 32`. Encrypts Google tokens and reminder relay keys; changing it disconnects both |
 | `KIWI_WEBHOOK_URL`, `KIWI_WEBHOOK_TOKEN` | Vercel | **Secret.** Optional fallback relay for `OWNER_EMAIL` only. Everyone else (and you, if you like) sets their own relay in **Settings → Reminders** |
 
-Locally, `./scripts/pull-env.sh <project-ref> <owner-email>` writes the Supabase ones into `.env.local`. On Vercel: `vercel env add <NAME> production` (paste the value when prompted), then redeploy.
+Locally on macOS, `./scripts/pull-env.sh <project-ref> <owner-email>` writes the Supabase ones into `.env.local` (it reads the Supabase CLI login from the keychain). Elsewhere, copy them from **Project settings, API keys**. On Vercel: `vercel env add <NAME> production` (paste the value when prompted), then redeploy.
 
 ## 3. Google Calendar
 
@@ -43,10 +45,15 @@ Follow [`GROKBOT-SETUP.md`](GROKBOT-SETUP.md): mint an MCP token in Settings, ad
 
 ## 5. Verify
 
+CI (`.github/workflows/ci.yml`) runs the same gates on every push and pull request. Before your first deploy, also check:
+
 ```bash
 pnpm test                                   # unit tests; integration tests run too when .env.local has the secret key
 HPM_TOKEN=hpm_... node scripts/smoke-mcp.mjs https://<app>   # end-to-end MCP check as a bot
+curl -sI https://<app> | grep -i content-security-policy     # security headers are on
 ```
+
+`/api/mcp` allows 240 requests a minute per account and `/api/capture` 30; both answer `429` with `Retry-After` past that. The limits live in `src/server/rate-limit.ts` and need the `rate_limits` migration (without it the limits are skipped rather than blocking anyone).
 
 ## 6. Quick capture from your phone
 
