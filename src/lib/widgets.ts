@@ -38,10 +38,22 @@ export function asWidgetSize(s: string | null | undefined): WidgetSize {
   return (WIDGET_SIZES as readonly string[]).includes(s ?? "") ? (s as WidgetSize) : "m";
 }
 
+// A structured time: a date ("2026-11-30") or a date and time, with or without
+// an offset ("2026-11-30T23:59", "2026-11-30T23:59:00-05:00"). The app shows
+// it in the owner's timezone ("Mon 11:59pm", "Tomorrow"), so bots never have
+// to format or convert times themselves. Without an offset it is the owner's
+// local wall time.
+export const WHEN_RE = /^\d{4}-\d{2}-\d{2}(T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+const when = z
+  .string()
+  .regex(WHEN_RE, "use an ISO date or date-time")
+  .refine((v) => !Number.isNaN(Date.parse(v.length === 10 ? `${v}T00:00:00Z` : v.replace(/(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?)$/, "$1Z"))), "not a real date");
+
 const item = z.object({
   text: z.string().max(500),
   url: httpUrl.optional(),
-  meta: z.string().max(120).optional().describe("small trailing label, e.g. a time, count or channel"),
+  meta: z.string().max(120).optional().describe("small trailing label, e.g. a count or channel"),
+  at: when.optional().describe("when it happens or is due; the app formats it"),
   done: z.boolean().optional(),
 });
 
@@ -61,7 +73,11 @@ export const payloadSchemas = {
   }),
   timeline: z.object({
     events: z
-      .array(z.object({ time: z.string().max(40), text: z.string().max(300), url: httpUrl.optional() }))
+      .array(
+        z
+          .object({ time: z.string().max(40).optional(), at: when.optional(), text: z.string().max(300), url: httpUrl.optional() })
+          .refine((e) => e.time || e.at, "give each event an at (preferred) or a time label"),
+      )
       .max(50),
   }),
   markdown: z.object({ markdown: z.string().max(8000) }),
@@ -83,12 +99,13 @@ export function isCustomKind(k: string): k is CustomKind {
 }
 
 export const PAYLOAD_DOCS = `Payload shapes by kind:
-- digest: { summary?, sections: [{ title, items: [{ text, url?, meta? }] }] }
-- list: { items: [{ text, url?, meta?, done? }] }
+- digest: { summary?, sections: [{ title, items: [{ text, url?, meta?, at? }] }] }
+- list: { items: [{ text, url?, meta?, at?, done? }] }
 - stat: { value, label?, delta?, trend?: number[] }
-- timeline: { events: [{ time, text, url? }] }
+- timeline: { events: [{ at, text, url? }] }
 - markdown: { markdown }
-- table: { columns: string[], rows: (string|number|null)[][] }`;
+- table: { columns: string[], rows: (string|number|null)[][] }
+at is an ISO date or date-time ("2026-11-30", "2026-11-30T23:59-05:00"); the app formats it in the owner's timezone, so keep times out of text and meta.`;
 
 /**
  * Normalize a widget icon: an emoji (or a couple of characters), an https

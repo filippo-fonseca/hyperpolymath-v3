@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import type { ActionRow, Bot } from "@/lib/dashboard-types";
 import type { WidgetSize } from "@/lib/widgets";
 import { localDate } from "@/lib/time";
@@ -9,7 +10,7 @@ import { KiwiBlob } from "@/components/ui/kiwi-blob";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { KiwiTeam } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
-import { WidgetHeader } from "@/components/dashboard/widget-chrome";
+import { WidgetHeader, useFitList } from "@/components/dashboard/widget-chrome";
 import { ActorAvatar, actorName, botStatus, coordinatorOf, StatusDot } from "./actors";
 
 const ROW_H = 30;
@@ -21,6 +22,18 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
   const kiwi = coordinatorOf(data.bots);
   const status = botStatus(kiwi, nowMs);
   const [listRef, fit] = useFitCount<HTMLDivElement>(ROW_H, size === "l" ? 6 : 2);
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const [list, setList] = useState<HTMLDivElement | null>(null);
+  // A short feed gets a short card: the rows it has, not the size's whole box.
+  const feed = (size === "m" || size === "l") && data.actions.length > 0;
+  useFitList(root, list, feed ? data.actions.length * ROW_H : null);
+  const setListEl = useCallback(
+    (el: HTMLDivElement | null) => {
+      listRef(el);
+      setList(el);
+    },
+    [listRef],
+  );
   const todays = data.actions.filter((a) => localDate(new Date(a.created_at), data.tz) === data.today);
   const name = kiwi?.name ?? "Kiwi";
   const team = data.bots.filter((b) => b.id !== kiwi?.id);
@@ -122,7 +135,7 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={setRoot} className="flex h-full flex-col">
       <WidgetHeader meta={meta} />
       <div className="mt-1 flex items-center gap-3">
         {identity}
@@ -134,7 +147,7 @@ export function KiwiWidget({ size }: { size: WidgetSize }) {
           {team.length > 0 && <Pill>{team.length === 1 ? "1 teammate" : `${team.length} teammates`}</Pill>}
         </div>
       )}
-      <div ref={listRef} className="mt-3 min-h-0 flex-1 overflow-hidden">
+      <div ref={setListEl} className="mt-3 min-h-0 flex-1 overflow-hidden">
         {empty ?? <ActionRows actions={data.actions.slice(0, fit)} bots={data.bots} nowMs={nowMs} named={size === "l"} />}
       </div>
     </div>

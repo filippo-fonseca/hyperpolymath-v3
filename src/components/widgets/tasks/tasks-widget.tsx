@@ -7,7 +7,7 @@ import type { WidgetSize } from "@/lib/widgets";
 import { dayHeading } from "@/lib/today";
 import { IconPlus } from "@/components/ui/icons";
 import { KiwiSleeping } from "@/components/illustrations";
-import { HeaderAction, WidgetHeader } from "@/components/dashboard/widget-chrome";
+import { HeaderAction, WidgetHeader, useWidgetFrame } from "@/components/dashboard/widget-chrome";
 import { ROW_HEIGHTS, TaskSheet, TodayRow, useRowMeta, type RowVariant } from "./today-row";
 import { AddTaskButton, TaskComposer } from "./task-composer";
 import { RescheduleButton, TodayEmpty, useQuickAddKey, useTodayData } from "./today-list";
@@ -24,6 +24,8 @@ type Item =
 const HEADING_H = 32;
 const ADD_H = 40;
 const MORE_H = 32;
+/** The header row and the gap under it. */
+const HEADER_H = 28 + 4;
 
 const heightOf = (i: Item) => (i.kind === "heading" ? HEADING_H : i.kind === "add" ? ADD_H : i.h);
 const sum = (items: Item[]) => items.reduce((n, i) => n + heightOf(i), 0);
@@ -106,6 +108,15 @@ export function TasksWidget({ size }: { size: WidgetSize }) {
       { kind: "heading" as const, key: day.date, title: day.date === d.upcoming[0].date ? `${dayHeading(day.date)} · Tomorrow` : dayHeading(day.date) },
       ...day.tasks.map((t) => taskItem(t, { hideDate: true }, "dense")),
     ]);
+
+  // A light day gets a short card: just its rows (the add row included), not
+  // the size's whole box. Adding, empty and the two-column wide card keep the box.
+  const frameFit = useWidgetFrame()?.fit;
+  const listPx = (size === "m" || size === "l") && !adding && tasksIn(todayItems) > 0 ? sum(todayItems) : null;
+  useEffect(() => {
+    if (!frameFit) return;
+    frameFit(listPx == null ? null : HEADER_H + listPx + (small ? 32 : 36));
+  }, [frameFit, listPx, small]);
 
   const meta = (
     <>

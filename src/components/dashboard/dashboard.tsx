@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   DndContext,
@@ -21,7 +21,6 @@ import { saveLayoutAction } from "@/app/actions/widgets";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { IconCopy, IconDots, IconGear } from "@/components/ui/icons";
 import { Menu } from "@/components/ui/menu";
-import { useMediaQuery } from "@/components/ui/primitives";
 import { longDate, weekdayName } from "@/lib/format";
 import { DashboardProvider, useDashboard, type TeammatesFocus } from "./context";
 import { AppBar, FeatureStrip } from "./app-bar";
@@ -29,14 +28,24 @@ import { TodaySummary } from "./today-summary";
 import { isStandIn, standInWidget, viewKeyFor, widgetForView } from "./features";
 import { useView } from "./use-view";
 import { CommandPalette } from "./command-palette";
-import { WidgetFrame } from "./widget-chrome";
-import { CardSurface, WidgetCard } from "./widget-card";
-import { ExpandedView } from "./expanded";
+import { WidgetFrame, type CollapseReason } from "./widget-chrome";
+import { CardSurface, WidgetCard, type CardRect } from "./widget-card";
+import { ExpandedView, type CloseTarget } from "./expanded";
 import { WidgetSheet, AddWidgetSheet } from "./widget-sheet";
 import { SettingsSheet } from "./settings-sheet";
 import { RealtimeRefresh } from "./realtime";
 import { AddProjectsOffer } from "./add-projects-offer";
-import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
+import {
+  asWidgetSize,
+  cardHeight,
+  groupPages,
+  moveToPage,
+  normalizeLayout,
+  reorder,
+  rowSpan,
+  type GridMetrics,
+} from "./layout-utils";
+import { foldReason } from "@/lib/widget-fold";
 import { WidgetBody, WidgetExpanded, isWideView } from "@/components/widgets/registry";
 import { TeammatesView } from "@/components/teammates/teammates-view";
 
@@ -151,19 +160,29 @@ function Home({
   const [page, setPage] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  // Rows custom widgets need for their content (they never grow past their size).
-  const [fitRows, setFitRows] = useState<Record<string, number | null>>({});
-  const desktop = useMediaQuery("(min-width: 1024px)");
+  // Content heights (px) that content-sized widgets report; they never grow past their size's box.
+  const [natural, setNatural] = useState<Record<string, number | null>>({});
+  const [metrics, setMetrics] = useState<GridMetrics | null>(null);
+  const [folds, setFolds] = useFolds();
+  // The card a full view grew out of, and the card kept invisible while its view is open or folding back.
+  const [origin, setOrigin] = useState<CardRect | null>(null);
+  const [hiddenId, setHiddenId] = useState<string | null>(null);
   const setFit = useCallback(
-    (id: string, rows: number | null) => setFitRows((m) => (m[id] === rows ? m : { ...m, [id]: rows })),
+    (id: string, px: number | null) => setNatural((m) => (m[id] === px ? m : { ...m, [id]: px })),
     [],
   );
-  const maxRows = (w: LocalWidget) => (w.size === "l" ? 4 : w.size === "w" ? (desktop ? 3 : 4) : 2);
-  const rowsFor = (w: LocalWidget) => {
-    const need = isCustomKind(w.kind) ? fitRows[w.id] : null;
-    return need && need < maxRows(w) ? need : null;
+  // One stable reporter per widget, so widgets can depend on it without re-subscribing every render.
+  const [fitters] = useState(() => new Map<string, (px: number | null) => void>());
+  const fitFor = (id: string) => {
+    let f = fitters.get(id);
+    if (!f) {
+      f = (px) => setFit(id, px);
+      fitters.set(id, f);
+    }
+    return f;
   };
   const scroller = useRef<HTMLDivElement>(null);
+  const gridRef = useGridMetrics(setMetrics);
   const toast = useToast();
   const openSearch = useCallback(() => setSearchOpen(true), []);
 
@@ -176,7 +195,32 @@ function Home({
   const pages = useMemo(() => groupPages(widgets), [widgets]);
   const pageCount = Math.max(1, pages.length);
   const expanded = widgetForView(widgets, view) ?? standInWidget(view);
-  const openWidget = useCallback((w: WidgetRow) => openView(viewKeyFor(w)), [openView]);
+  if (expanded && hiddenId !== expanded.id) setHiddenId(expanded.id);
+  const openWidget = useCallback(
+    (w: WidgetRow, from: CardRect | null = null) => {
+      if (!view) setOrigin(from);
+      openView(viewKeyFor(w));
+    },
+    [openView, view],
+  );
+  const closeTarget: CloseTarget = () => {
+    if (!hiddenId || isStandIn({ id: hiddenId })) return null;
+    const el = document.querySelector(`[data-card-id="${CSS.escape(hiddenId)}"] [data-card-surface]`);
+    const r = el?.getBoundingClientRect();
+    if (!r || r.width === 0) return null;
+    // Only fold into a card you can see: not one scrolled away or on another page.
+    const onScreen = r.left >= -1 && r.right <= window.innerWidth + 1 && r.bottom > 0 && r.top < window.innerHeight;
+    return onScreen ? { top: r.top, left: r.left, width: r.width, height: r.height } : null;
+  };
+  const collapsedOf = (w: LocalWidget): CollapseReason | null => {
+    if (!isCustomKind(w.kind) || !w.published_at) return null;
+    const auto = foldReason(w, nowMs, data.tz, data.today);
+    const o = folds[w.id];
+    if (o && o.at === w.published_at) return o.open ? null : (auto ?? "manual");
+    return auto;
+  };
+  const toggleFold = (w: LocalWidget, folded: boolean) =>
+    setFolds((f) => ({ ...f, [w.id]: { open: folded, at: w.published_at } }));
   const sheetWidget = widgets.find((w) => w.id === sheetId) ?? null;
   const dragWidget = widgets.find((w) => w.id === dragId) ?? null;
 
@@ -300,37 +344,46 @@ function Home({
               className="widget-page w-full shrink-0 snap-center snap-always px-4 pb-4 pt-3 sm:px-6"
             >
               <SortableContext items={items.map((w) => w.id)} strategy={rectSortingStrategy}>
-                <div className="widget-grid">
-                  {items.map((w, i) => (
-                    <WidgetCard
-                      key={w.id}
-                      id={w.id}
-                      size={w.size}
-                      index={i}
-                      editing={editing}
-                      expanded={expanded?.id === w.id}
-                      removable={isCustomKind(w.kind)}
-                      rows={rowsFor(w)}
-                      span={rowsFor(w) ?? maxRows(w)}
-                      onOpen={() => openWidget(w)}
-                      onEdit={() => setSheetId(w.id)}
-                      onLongPress={() => setEditing(true)}
-                    >
-                      <WidgetFrame
-                        value={{
-                          widget: w,
-                          size: w.size,
-                          open: () => openWidget(w),
-                          resize: (size) => resize(w.id, size),
-                          settings: () => setSheetId(w.id),
-                          editLayout: () => setEditing(true),
-                          fit: isCustomKind(w.kind) ? (rows) => setFit(w.id, rows) : undefined,
-                        }}
+                <div className="widget-grid" ref={p === 0 ? gridRef : undefined}>
+                  {items.map((w, i) => {
+                    const custom = isCustomKind(w.kind);
+                    const folded = collapsedOf(w);
+                    const height = metrics ? cardHeight(w.size, metrics, natural[w.id] ?? null, !!folded) : null;
+                    return (
+                      <WidgetCard
+                        key={w.id}
+                        id={w.id}
+                        size={w.size}
+                        index={i}
+                        editing={editing}
+                        hidden={hiddenId === w.id}
+                        removable={custom}
+                        height={height}
+                        span={height != null && metrics ? rowSpan(height, metrics.gap) : 1}
+                        ready={!!metrics}
+                        sunk={!!folded}
+                        onOpen={(rect) => (folded ? toggleFold(w, true) : openWidget(w, rect))}
+                        onEdit={() => setSheetId(w.id)}
+                        onLongPress={() => setEditing(true)}
                       >
-                        <WidgetBody widget={w} size={w.size} />
-                      </WidgetFrame>
-                    </WidgetCard>
-                  ))}
+                        <WidgetFrame
+                          value={{
+                            widget: w,
+                            size: w.size,
+                            open: () => openWidget(w),
+                            resize: (size) => resize(w.id, size),
+                            settings: () => setSheetId(w.id),
+                            editLayout: () => setEditing(true),
+                            fit: fitFor(w.id),
+                            collapsed: folded,
+                            toggleCollapse: custom && w.published_at ? () => toggleFold(w, !!folded) : undefined,
+                          }}
+                        >
+                          <WidgetBody widget={w} size={w.size} />
+                        </WidgetFrame>
+                      </WidgetCard>
+                    );
+                  })}
                 </div>
               </SortableContext>
             </section>
@@ -338,7 +391,13 @@ function Home({
         </div>
         <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}>
           {dragWidget && (
-            <div className="h-full w-full" style={{ transform: "scale(1.04)" }}>
+            <div
+              className="w-full"
+              style={{
+                transform: "scale(1.04) rotate(-1deg)",
+                height: metrics ? cardHeight(dragWidget.size, metrics, natural[dragWidget.id] ?? null, !!collapsedOf(dragWidget)) : "100%",
+              }}
+            >
               <CardSurface size={dragWidget.size} lifted className="pointer-events-none">
                 <WidgetBody widget={dragWidget} size={dragWidget.size} />
               </CardSurface>
@@ -399,11 +458,18 @@ function Home({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
+      <AnimatePresence
+        custom={closeTarget}
+        onExitComplete={() => {
+          setHiddenId(null);
+          setOrigin(null);
+        }}
+      >
         {expanded && (
           <ExpandedView
-            key={expanded.id}
-            id={expanded.id}
+            key="expanded"
+            viewKey={expanded.id}
+            from={origin}
             onClose={closeView}
             escapeActive={!sheetId && !overlayOpen}
             wide={isWideView(expanded)}
@@ -479,4 +545,57 @@ function Home({
       />
     </div>
   );
+}
+
+type Folds = Record<string, { open: boolean; at: string | null }>;
+const FOLDS_KEY = "hp:folds";
+
+/**
+ * Cards you folded or unfolded by hand, per widget. An override holds only
+ * for the version you saw: the next publish goes back to the automatic rule.
+ * Kept in this browser (a display preference, not data).
+ */
+function useFolds() {
+  const [folds, setFolds] = useState<Folds>({});
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(FOLDS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once after hydration
+      if (raw) setFolds(JSON.parse(raw) as Folds);
+    } catch {
+      // Private mode or a bad value: fall back to the automatic rule.
+    }
+  }, []);
+  const update = useCallback((fn: (f: Folds) => Folds) => {
+    setFolds((f) => {
+      const next = fn(f);
+      try {
+        window.localStorage.setItem(FOLDS_KEY, JSON.stringify(next));
+      } catch {
+        // Not persisted; it still applies until reload.
+      }
+      return next;
+    });
+  }, []);
+  return [folds, update] as const;
+}
+
+/** Measures the first page's grid (every page shares its width) for card heights. */
+function useGridMetrics(onChange: React.Dispatch<React.SetStateAction<GridMetrics | null>>) {
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (!el) return;
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const cols = Number(cs.getPropertyValue("--cols")) || 4;
+      const gap = parseFloat(cs.columnGap) || 16;
+      const width = el.clientWidth;
+      if (width > 0) onChange((m) => (m && m.width === width && m.cols === cols && m.gap === gap ? m : { width, cols, gap }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el, onChange]);
+  return setEl;
 }

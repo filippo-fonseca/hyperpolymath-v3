@@ -1,16 +1,17 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import type {
   DigestPayload,
   ListPayload,
   StatPayload,
   TablePayload,
   TimelinePayload,
-  WidgetSize,
 } from "@/lib/widgets";
 import { IconCheck } from "@/components/ui/icons";
 import { safeHref } from "@/lib/markdown";
+import { parseWhen, whenIsPast, whenIsSoon, whenLabel } from "@/lib/format";
+import { useDashboard } from "@/components/dashboard/context";
 import { Markdown } from "./markdown";
 
 // One renderer per custom kind. `compact` is the card; otherwise the full
@@ -20,6 +21,31 @@ import { Markdown } from "./markdown";
 // everything wraps, long words included.
 
 const WRAP = "[overflow-wrap:anywhere]";
+
+/** Section headings inside a card or view: small, quiet, but clearly a level above the rows. */
+const SECTION = "text-[11px] font-semibold uppercase tracking-[0.07em] text-gray-500";
+
+type Timed = { label: string; past: boolean; soon: boolean };
+
+/** Formats a bot's structured `at` in the owner's timezone, against the ticking clock. */
+function useWhen() {
+  const { data, nowMs } = useDashboard();
+  return useCallback(
+    (at: string | undefined, short = false): Timed | null => {
+      const w = parseWhen(at, data.tz);
+      if (!w) return null;
+      return { label: whenLabel(w, data.today, short), past: whenIsPast(w, nowMs, data.today), soon: whenIsSoon(w, nowMs, data.today) };
+    },
+    [data.tz, data.today, nowMs],
+  );
+}
+
+function timeTone(t: Timed | null) {
+  if (!t) return "text-gray-500";
+  if (t.soon) return "font-medium text-accent";
+  if (t.past) return "text-gray-400";
+  return "text-gray-600";
+}
 
 function ItemText({ text, url, compact }: { text: string; url?: string; compact: boolean }) {
   const href = safeHref(url);
@@ -43,24 +69,53 @@ function ItemText({ text, url, compact }: { text: string; url?: string; compact:
  * the meta label sits on the right when the card is wide enough, or under the
  * text when it isn't. Needs an `@container` ancestor.
  */
-function CompactRow({ lead, text, meta, muted = false }: { lead?: ReactNode; text: ReactNode; meta?: string; muted?: boolean }) {
+function CompactRow({
+  lead,
+  text,
+  meta,
+  time,
+  muted = false,
+}: {
+  lead?: ReactNode;
+  text: ReactNode;
+  meta?: string;
+  time?: Timed | null;
+  muted?: boolean;
+}) {
+  // A structured time takes the trailing slot; the bot's meta label moves under the text.
+  const trailing = time?.label ?? meta;
+  const under = time ? meta : undefined;
+  const faded = muted || (time?.past ?? false);
   return (
     <li data-clamp className="flex min-w-0 items-start gap-2.5 py-[5px] text-[14px] leading-[1.35]">
       {lead}
       <div className="min-w-0 flex-1">
-        <div className={`line-clamp-2 ${WRAP} ${muted ? "text-ink-3 line-through" : ""}`}>{text}</div>
-        {meta && <div className={`truncate text-[12px] text-gray-500 @[380px]:hidden`}>{meta}</div>}
+        <div className={`line-clamp-2 ${WRAP} ${muted ? "text-ink-3 line-through" : faded ? "text-ink-3" : "text-ink"}`}>{text}</div>
+        {trailing && <div className={`truncate text-[12px] @[380px]:hidden ${timeTone(time ?? null)}`}>{[trailing, under].filter(Boolean).join(" · ")}</div>}
+        {under && <div className="hidden truncate text-[12px] text-gray-500 @[380px]:block">{under}</div>}
       </div>
-      {meta && (
-        <span className="hidden max-w-[38%] shrink-0 truncate pt-px text-[12px] text-gray-500 @[380px]:block" title={meta}>
-          {meta}
+      {trailing && (
+        <span className={`hidden max-w-[38%] shrink-0 truncate pt-px text-[12px] tabular-nums @[380px]:block ${timeTone(time ?? null)}`} title={trailing}>
+          {trailing}
         </span>
       )}
     </li>
   );
 }
 
+/** A full-view row's trailing column: the formatted time over the bot's meta. */
+function Trailing({ meta, time }: { meta?: string; time: Timed | null }) {
+  if (!meta && !time) return null;
+  return (
+    <span className="flex max-w-[40%] shrink-0 flex-col items-end text-right leading-snug">
+      {time && <span className={`text-[13px] tabular-nums ${timeTone(time)}`}>{time.label}</span>}
+      {meta && <span className="text-[12.5px] text-gray-500">{meta}</span>}
+    </span>
+  );
+}
+
 export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean }) {
+  const when = useWhen();
   if (compact) {
     return (
       <div className="@container">
@@ -72,13 +127,13 @@ export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean 
         {p.sections.map((s, i) => (
           <section key={i}>
             {(p.sections.length > 1 || s.title) && (
-              <h3 data-clamp="heading" className="truncate pb-0.5 pt-2 text-[12px] font-semibold text-gray-500">
+              <h3 data-clamp="heading" className={`truncate pb-0.5 pt-2.5 ${SECTION}`}>
                 {s.title}
               </h3>
             )}
             <ul>
               {s.items.map((it, j) => (
-                <CompactRow key={j} text={<ItemText text={it.text} url={it.url} compact />} meta={it.meta} />
+                <CompactRow key={j} text={<ItemText text={it.text} url={it.url} compact />} meta={it.meta} time={when(it.at)} />
               ))}
             </ul>
           </section>
@@ -91,16 +146,19 @@ export function DigestView({ p, compact }: { p: DigestPayload; compact: boolean 
       {p.summary && <p className={`text-[16px] leading-relaxed text-ink-2 ${WRAP}`}>{p.summary}</p>}
       {p.sections.map((s, i) => (
         <section key={i}>
-          <h3 className="mb-1 text-[13px] font-semibold text-gray-500">{s.title}</h3>
+          {s.title && <h3 className={`mb-1.5 ${SECTION}`}>{s.title}</h3>}
           <ul className="divide-y divide-gray-150">
-            {s.items.map((it, j) => (
-              <li key={j} className="flex items-baseline gap-3 py-2.5 text-[15px]">
-                <span className={`min-w-0 flex-1 leading-snug ${WRAP}`}>
-                  <ItemText text={it.text} url={it.url} compact={false} />
-                </span>
-                {it.meta && <span className="max-w-[40%] shrink-0 text-right text-[13px] text-gray-500">{it.meta}</span>}
-              </li>
-            ))}
+            {s.items.map((it, j) => {
+              const t = when(it.at);
+              return (
+                <li key={j} className="flex items-start gap-3 py-2.5 text-[15px]">
+                  <span className={`min-w-0 flex-1 leading-snug ${WRAP} ${t?.past ? "text-ink-3" : ""}`}>
+                    <ItemText text={it.text} url={it.url} compact={false} />
+                  </span>
+                  <Trailing meta={it.meta} time={t} />
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}
@@ -121,6 +179,7 @@ function CheckMark({ done }: { done: boolean }) {
 }
 
 export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
+  const when = useWhen();
   if (compact) {
     return (
       <ul className="@container">
@@ -130,6 +189,7 @@ export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
             lead={it.done !== undefined ? <CheckMark done={it.done} /> : undefined}
             text={<ItemText text={it.text} url={it.url} compact />}
             meta={it.meta}
+            time={when(it.at)}
             muted={!!it.done}
           />
         ))}
@@ -144,7 +204,7 @@ export function ListView({ p, compact }: { p: ListPayload; compact: boolean }) {
           <span className={`min-w-0 flex-1 leading-snug ${WRAP} ${it.done ? "text-ink-3 line-through" : ""}`}>
             <ItemText text={it.text} url={it.url} compact={false} />
           </span>
-          {it.meta && <span className="max-w-[40%] shrink-0 text-right text-[12.5px] text-gray-500">{it.meta}</span>}
+          <Trailing meta={it.meta} time={it.done ? null : when(it.at)} />
         </li>
       ))}
     </ul>
@@ -213,29 +273,42 @@ export function StatView({ p, compact, large }: { p: StatPayload; compact: boole
 }
 
 export function TimelineView({ p, compact }: { p: TimelinePayload; compact: boolean }) {
+  const when = useWhen();
+  const events = p.events.map((e) => ({ ...e, t: when(e.at, compact) }));
+  // The first event still ahead gets the accent dot: "you are here".
+  const next = events.findIndex((e) => e.t && !e.t.past);
   if (compact) {
     return (
-      <ul>
-        {p.events.map((e, i) => (
-          <li key={i} data-clamp className="flex min-w-0 items-start gap-3 py-[5px] text-[14px] leading-[1.35]">
-            <span className="w-14 shrink-0 truncate pt-px text-[12.5px] tabular-nums text-gray-500" title={e.time}>
-              {e.time}
-            </span>
-            <span className={`line-clamp-2 min-w-0 flex-1 ${WRAP}`}>
-              <ItemText text={e.text} url={e.url} compact />
-            </span>
-          </li>
-        ))}
+      // One column of labels sized to the longest, so the text column lines up.
+      <ul className="grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-3">
+        {events.map((e, i) => {
+          const label = e.t?.label ?? e.time ?? "";
+          return (
+            <li key={i} data-clamp className="col-span-full grid grid-cols-subgrid items-start py-[5px] text-[14px] leading-[1.35]">
+              <span className={`max-w-[11rem] truncate whitespace-nowrap pt-px text-[12.5px] tabular-nums ${e.t ? timeTone(e.t) : "text-gray-500"}`} title={label}>
+                {i === next && <span className="mb-px mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle" />}
+                {label}
+              </span>
+              <span className={`line-clamp-2 min-w-0 flex-1 ${WRAP} ${e.t?.past ? "text-ink-3" : "text-ink"}`}>
+                <ItemText text={e.text} url={e.url} compact />
+              </span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
   return (
     <ol className="relative ml-1 border-l border-gray-200">
-      {p.events.map((e, i) => (
+      {events.map((e, i) => (
         <li key={i} className="relative pb-5 pl-5">
-          <span className="absolute -left-[4.5px] top-[7px] h-2 w-2 rounded-full bg-gray-300 ring-4 ring-surface" />
-          <div className="text-[12.5px] font-medium tabular-nums text-gray-500">{e.time}</div>
-          <div className={`mt-0.5 text-[15px] leading-snug ${WRAP}`}>
+          <span
+            className={`absolute -left-[4.5px] top-[7px] h-2 w-2 rounded-full ring-4 ring-surface ${
+              i === next ? "bg-accent" : e.t?.past ? "bg-gray-200" : "bg-gray-300"
+            }`}
+          />
+          <div className={`text-[12.5px] font-medium tabular-nums ${e.t ? timeTone(e.t) : "text-gray-500"}`}>{e.t?.label ?? e.time}</div>
+          <div className={`mt-0.5 text-[15px] leading-snug ${WRAP} ${e.t?.past ? "text-ink-3" : ""}`}>
             <ItemText text={e.text} url={e.url} compact={false} />
           </div>
         </li>
@@ -281,66 +354,97 @@ export function planColumns(p: TablePayload, count: number) {
   return { cols, primary, second, template };
 }
 
-export function TableView({ p, compact, size }: { p: TablePayload; compact: boolean; size?: WidgetSize }) {
-  if (!compact) {
-    return (
-      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <table className="w-full border-separate border-spacing-0 text-left text-[14px]">
-          <thead>
-            <tr>
-              {p.columns.map((c, i) => (
-                <th key={i} className="whitespace-nowrap pb-1.5 pr-4 text-[12px] font-semibold text-gray-500">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {p.rows.map((r, i) => (
-              <tr key={i} className="[&>td]:border-t [&>td]:border-gray-150">
-                {p.columns.map((_, j) => (
-                  <td key={j} className={`py-2 pr-4 align-top ${j === 0 ? "min-w-[180px] font-medium" : ""} ${isNumberish(r[j] ?? null) ? "tabular-nums" : ""}`}>
-                    {r[j] ?? ""}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
+/** Which edges of a scroller have more content past them, for the fade hints. */
+function useOverflowEdges(el: HTMLElement | null) {
+  const [edges, setEdges] = useState({ left: false, right: false, bottom: false });
+  useEffect(() => {
+    if (!el) return;
+    const update = () => {
+      const next = {
+        left: el.scrollLeft > 1,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+        bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 1,
+      };
+      setEdges((e) => (e.left === next.left && e.right === next.right && e.bottom === next.bottom ? e : next));
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [el]);
+  return edges;
+}
 
-  const { cols, primary, second, template } = planColumns(p, size === "s" ? 2 : size === "w" ? 6 : 3);
-  const align = (j: number) => (cols[j].numeric && j !== primary ? "text-right tabular-nums" : "");
-  const narrow = (j: number) => (j !== primary && j !== second ? "@max-[400px]:hidden" : "");
+function fadeMask(e: { left: boolean; right: boolean; bottom: boolean }) {
+  const h = `linear-gradient(to right, ${e.left ? "transparent, #000 28px" : "#000, #000"}, ${e.right ? "#000 calc(100% - 28px), transparent" : "#000"})`;
+  const v = `linear-gradient(to bottom, #000, ${e.bottom ? "#000 calc(100% - 24px), transparent" : "#000"})`;
+  return { maskImage: `${h}, ${v}`, WebkitMaskImage: `${h}, ${v}`, maskComposite: "intersect", WebkitMaskComposite: "source-in" } as const;
+}
+
+/**
+ * Every column, never clipped: the table scrolls inside the card, both ways,
+ * with its header pinned and a fade on any edge that has more past it. The
+ * wordiest column wraps to two lines; the rest stay on one.
+ */
+export function TableView({ p, compact }: { p: TablePayload; compact: boolean }) {
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  const edges = useOverflowEdges(scroller);
+  const { cols, primary } = planColumns(p, p.columns.length);
+  const stickyFirst = primary === 0;
+  const pad = compact ? "py-[6px]" : "py-2.5";
+  const head = compact ? "text-[11px]" : "text-[11.5px]";
+  const cell = (j: number) =>
+    j === primary
+      ? `${compact ? "min-w-[14rem] max-w-[22rem]" : "min-w-[16rem] max-w-[30rem]"} font-medium text-ink`
+      : `whitespace-nowrap ${cols[j].numeric ? "text-right tabular-nums" : ""} text-ink-2`;
   return (
-    <div className="@container">
-      <div className="grid gap-x-3 text-[13px]" style={{ gridTemplateColumns: template }}>
-        <div data-clamp="heading" className="col-span-full grid grid-cols-subgrid pb-1">
-          {cols.map((c, j) => (
-            <div key={j} className={`truncate text-[12px] font-semibold text-gray-500 ${align(j)} ${narrow(j)}`} title={c.title}>
-              {c.title}
-            </div>
+    <div
+      ref={setScroller}
+      data-no-press
+      data-table-scroll
+      className={`no-scrollbar overscroll-x-contain ${compact ? "h-full overflow-auto" : "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"}`}
+      style={compact ? fadeMask(edges) : undefined}
+    >
+      <table className={`w-full border-separate border-spacing-0 text-left ${compact ? "text-[13px]" : "text-[14px]"}`}>
+        <thead>
+          <tr>
+            {p.columns.map((c, j) => (
+              <th
+                key={j}
+                scope="col"
+                className={`whitespace-nowrap pb-1.5 pr-4 font-semibold uppercase tracking-[0.07em] text-gray-500 last:pr-0 ${compact ? "sticky top-0 z-[1] bg-surface" : ""} ${head} ${
+                  cols[j]?.numeric && j !== primary ? "text-right" : ""
+                } ${j === 0 && stickyFirst && compact ? "left-0 z-[2]" : ""}`}
+              >
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {p.rows.map((r, i) => (
+            <tr key={i} className="[&>td]:border-t [&>td]:border-gray-150">
+              {p.columns.map((_, j) => {
+                const v = r[j] ?? "";
+                return (
+                  <td
+                    key={j}
+                    title={compact ? String(v) : undefined}
+                    className={`${pad} pr-4 align-top leading-[1.35] last:pr-0 ${cell(j)} ${j === 0 && stickyFirst && compact ? "sticky left-0 bg-surface" : ""}`}
+                  >
+                    {j === primary && compact ? <span className={`line-clamp-2 ${WRAP}`}>{v}</span> : v}
+                  </td>
+                );
+              })}
+            </tr>
           ))}
-        </div>
-        {p.rows.map((r, i) => (
-          <div key={i} data-clamp className="col-span-full grid grid-cols-subgrid border-t border-gray-150 py-[5px] leading-[1.35]">
-            {cols.map((_, j) => {
-              const v = r[j] ?? "";
-              return (
-                <div
-                  key={j}
-                  title={String(v)}
-                  className={`min-w-0 ${j === primary ? `line-clamp-2 font-medium ${WRAP}` : `line-clamp-2 text-ink-2 ${WRAP}`} ${align(j)} ${narrow(j)}`}
-                >
-                  {v}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }

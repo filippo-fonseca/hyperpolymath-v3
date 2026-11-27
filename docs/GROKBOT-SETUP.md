@@ -42,7 +42,7 @@ Any routine can publish to the dashboard, but only when you ask. Example:
 
 The bot calls `create_widget` once (kind `digest`, with a staleness window), then `publish_widget` at the end of every run. History is kept, and you can scroll back through past runs in the expanded widget. Routines without widgets just run in Grok Bot as usual.
 
-Widget kinds: `digest` (sections of items), `list`, `stat` (value, delta, sparkline), `timeline`, `markdown`, `table`. The exact payload shapes are in the `create_widget` tool description.
+Widget kinds: `digest` (sections of items), `list`, `stat` (value, delta, sparkline), `timeline`, `markdown`, `table`. The exact payload shapes are in the `create_widget` tool description. Items and timeline events take an `at` (an ISO date or date-time, like `2026-11-30T23:59-05:00`): the app shows it in your timezone ("Mon 11:59pm", "Tomorrow"), highlights what is coming up in the next day, and fades what has passed, so bots never format or convert times in the text themselves.
 
 ## 6. Watching and undoing
 

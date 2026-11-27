@@ -8,19 +8,15 @@ import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { KiwiWaiting } from "@/components/illustrations";
 import { Button, stop } from "@/components/ui/primitives";
-import { IconGear } from "@/components/ui/icons";
+import { IconChevronDown, IconGear } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
-import { WidgetHeader, useWidgetFrame } from "@/components/dashboard/widget-chrome";
+import { HeaderAction, WidgetHeader, useWidgetFrame } from "@/components/dashboard/widget-chrome";
+import { FOLD_LABELS, isStale } from "@/lib/widget-fold";
 import { useClamp } from "./clamp";
 import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
 import { WidgetIcon } from "@/components/ui/widget-icon";
 import { DigestView, ListView, MarkdownView, StatView, TableView, TimelineView } from "./renderers";
-
-function isStale(w: WidgetRow, nowMs: number) {
-  if (!w.published_at || !w.stale_after_hours) return false;
-  return nowMs - Date.parse(w.published_at) > w.stale_after_hours * 3_600_000;
-}
 
 function Content({ kind, payload, compact, size }: { kind: CustomKind; payload: unknown; compact: boolean; size?: WidgetSize }) {
   const parsed = payloadSchemas[kind].safeParse(payload);
@@ -38,7 +34,7 @@ function Content({ kind, payload, compact, size }: { kind: CustomKind; payload: 
     case "markdown":
       return <MarkdownView markdown={(p as { markdown: string }).markdown} compact={compact} />;
     case "table":
-      return <TableView p={p as never} compact={compact} size={size} />;
+      return <TableView p={p as never} compact={compact} />;
   }
 }
 
@@ -46,15 +42,13 @@ function ownerName(w: WidgetRow) {
   return w.owner?.name ?? "a bot";
 }
 
-/** Rows the card needs for its content: at least two, so the grid stays tidy. */
-function rowsFor(card: HTMLElement, natural: number) {
-  const grid = card.parentElement;
-  const span = Number(card.dataset.rows) || 0;
-  if (!grid || !span) return null;
-  const gap = parseFloat(getComputedStyle(grid).rowGap) || 0;
-  const row = (card.offsetHeight - (span - 1) * gap) / span;
-  if (!(row > 0)) return null;
-  return Math.max(2, Math.ceil((natural + gap) / (row + gap) - 0.02));
+/** Small round fold/unfold control; the chevron turns with the state. */
+function FoldButton({ folded, onToggle }: { folded: boolean; onToggle: () => void }) {
+  return (
+    <HeaderAction label={folded ? "Expand card" : "Collapse card"} onClick={onToggle}>
+      <IconChevronDown size={15} className={`transition-transform duration-300 ${folded ? "-rotate-90" : ""}`} />
+    </HeaderAction>
+  );
 }
 
 /** Bot-published widget on the grid. */
@@ -64,47 +58,86 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [body, setBody] = useState<HTMLDivElement | null>(null);
   const [inner, setInner] = useState<HTMLDivElement | null>(null);
-  const clamp = useClamp(body, inner, widget.payload);
+  const table = widget.kind === "table";
+  const clamp = useClamp(table ? null : body, table ? null : inner, widget.payload);
   const fit = frame?.fit;
+  const folded = frame?.collapsed ?? null;
+  // A small stat is a tile: it keeps its square. Nothing published yet keeps the box for Kiwi.
+  const fitsContent = !!widget.published_at && !(size === "s" && widget.kind === "stat");
 
   // Tell the grid how tall the content really is, so short content gets a
-  // shorter card instead of a blank band (large and wide only shrink).
+  // shorter card instead of a blank band (never taller than the size's box).
   useLayoutEffect(() => {
-    if (!fit || !root || !body || !inner) return;
-    const card = root.closest<HTMLElement>("[data-rows]");
-    if (!card) return;
+    if (!fit || !root) return;
+    const surface = root.parentElement;
+    if (!surface) return;
     const report = () => {
-      const pad = card.firstElementChild ? card.offsetHeight - root.offsetHeight : 0;
-      const natural = root.offsetHeight - body.clientHeight + inner.offsetHeight + Math.max(0, pad);
-      fit(rowsFor(card, natural));
+      if (!folded && !fitsContent) return fit(null);
+      const cs = getComputedStyle(surface);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      if (folded) return fit(root.offsetHeight + padY);
+      if (!body || !inner) return fit(null);
+      const content = table ? inner.scrollHeight : inner.offsetHeight;
+      fit(Math.ceil(root.offsetHeight - body.clientHeight + content + padY));
     };
     report();
     const ro = new ResizeObserver(report);
-    ro.observe(inner);
+    ro.observe(root);
+    if (inner) ro.observe(inner);
+    if (table && inner?.firstElementChild) ro.observe(inner.firstElementChild);
     return () => ro.disconnect();
-  }, [fit, root, body, inner, size]);
+  }, [fit, root, body, inner, size, folded, fitsContent, table, widget.payload]);
 
   if (!isCustomKind(widget.kind)) return null;
   const stale = isStale(widget, nowMs);
   const owner = widgetOwner(widget, data.bots);
   const when = widget.published_at ? relativeTime(widget.published_at, nowMs) : null;
+  const toggle = frame?.toggleCollapse;
+
+  if (folded) {
+    const note = folded === "stale" ? `Stale · ${when}` : FOLD_LABELS[folded];
+    return (
+      <div ref={setRoot} className="flex min-w-0 flex-col">
+        <div className="flex h-7 min-w-0 items-center gap-2">
+          <WidgetIcon icon={widget.icon} size={15} className="opacity-70" />
+          <span className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.01em] text-ink-2">{widget.title}</span>
+          {size !== "s" && (
+            <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] font-medium text-gray-500">
+              {owner && <BotAvatar bot={owner} size={16} className="opacity-70" />}
+              {note}
+            </span>
+          )}
+          {toggle && (
+            <span className={size === "s" ? "ml-auto" : "-mr-1.5"}>
+              <FoldButton folded onToggle={toggle} />
+            </span>
+          )}
+        </div>
+        {size === "s" && <div className="mt-0.5 truncate text-[12px] font-medium text-gray-500">{note}</div>}
+      </div>
+    );
+  }
 
   return (
-    <div ref={setRoot} className={`flex h-full min-w-0 flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
+    <div ref={setRoot} className="flex h-full min-w-0 flex-col">
       <WidgetHeader
         icon={<WidgetIcon icon={widget.icon} size={15} />}
+        actions={toggle && <FoldButton folded={false} onToggle={toggle} />}
         meta={
-          owner ? (
-            <OwnerPill bot={owner} meta={size === "s" ? null : when} compact={size === "s"} />
-          ) : (
-            when && <span className="text-[11.5px] font-normal text-ink-3">{when}</span>
-          )
+          <>
+            {stale && size !== "s" && <span className="rounded-full bg-gray-150 px-2 py-px text-[11px] font-semibold text-gray-600">Stale</span>}
+            {owner ? (
+              <OwnerPill bot={owner} meta={size === "s" ? null : when} compact={size === "s"} />
+            ) : (
+              when && <span className="text-[11.5px] font-normal text-ink-3">{when}</span>
+            )}
+          </>
         }
       />
       {size === "s" && owner && when && <div className="-mt-0.5 text-[11.5px] text-ink-3">{stale ? `Stale · ${when}` : `Updated ${when}`}</div>}
       <div ref={setBody} className="relative mt-1.5 min-h-0 min-w-0 flex-1 overflow-hidden">
         {widget.published_at ? (
-          <div ref={setInner} className={size === "s" && widget.kind === "stat" ? "h-full" : ""}>
+          <div ref={setInner} className={(size === "s" && widget.kind === "stat") || table ? "h-full" : ""}>
             <Content kind={widget.kind} payload={widget.payload} compact size={size} />
           </div>
         ) : (

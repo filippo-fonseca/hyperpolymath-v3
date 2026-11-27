@@ -1,7 +1,7 @@
 // Display formatting shared by client components. Pure: callers pass the
 // current time and timezone so server and client renders agree.
 
-import { addDays, daysBetween } from "./time";
+import { addDays, daysBetween, zonedParts, zonedToUtc, type LocalDate, type LocalTime } from "./time";
 
 export function relativeTime(iso: string | null | undefined, nowMs: number): string {
   if (!iso) return "never";
@@ -100,4 +100,54 @@ export const PRIORITY_LABELS = ["None", "Low", "Medium", "High"] as const;
 
 export function pluralize(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * A structured time a bot published (`at`): a date, or a date and time with
+ * or without an offset. Read in the owner's timezone; no offset means their
+ * wall clock.
+ */
+export type When = { instant: number; date: LocalDate; time: LocalTime | null };
+
+export function parseWhen(at: string | null | undefined, tz: string): When | null {
+  if (!at) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(at.trim());
+  if (!m) return null;
+  const [, date, hh, mm, offset] = m;
+  if (Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return null;
+  if (!hh) return { instant: zonedToUtc(date, "00:00", tz).getTime(), date, time: null };
+  const instant = offset ? Date.parse(at.trim()) : zonedToUtc(date, `${hh}:${mm}`, tz).getTime();
+  if (Number.isNaN(instant)) return null;
+  const local = zonedParts(new Date(instant), tz);
+  return { instant, date: local.date, time: local.time };
+}
+
+/**
+ * "Today", "Tomorrow 9am", "Fri 4:30pm", "Mon, Dec 14", "Jan 9, 2027 11:20am".
+ * `short` drops the weekday from far-off dates ("Dec 14 5pm"), for tight columns.
+ */
+export function whenLabel(w: When, today: string, short = false): string {
+  const n = daysBetween(today, w.date);
+  let day: string;
+  if (n === 0) day = "Today";
+  else if (n === 1) day = "Tomorrow";
+  else if (n === -1) day = "Yesterday";
+  else if (n > 1 && n < 7) day = WEEKDAYS_SHORT[parts(w.date).wd];
+  else {
+    const { y, m, d, wd } = parts(w.date);
+    const md = `${MONTHS[m - 1]} ${d}`;
+    day = y !== parts(today).y ? `${md}, ${y}` : short ? md : `${WEEKDAYS_SHORT[wd]}, ${md}`;
+  }
+  return w.time ? `${day} ${timeLabel(w.time)}` : day;
+}
+
+/** Past: a date before today, or a time already gone. */
+export function whenIsPast(w: When, nowMs: number, today: string): boolean {
+  return w.time ? w.instant < nowMs : w.date < today;
+}
+
+/** Within the next 24 hours (or today, for a bare date). */
+export function whenIsSoon(w: When, nowMs: number, today: string): boolean {
+  if (whenIsPast(w, nowMs, today)) return false;
+  return w.time ? w.instant - nowMs <= 86_400_000 : w.date === today;
 }

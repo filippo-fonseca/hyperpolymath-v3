@@ -95,7 +95,7 @@ Scheduled runs only message you when they found something new or need you: a mes
 
 ## Widgets from routines
 
-Ask for it explicitly: *"...and show it on Hyperpolymath."* The bot creates one widget (a digest, list, stat, timeline, table or markdown) and republishes it at the end of every run. Old versions are kept, so expanding the widget shows past runs. If a run is missed the widget greys out after its staleness window.
+Ask for it explicitly: *"...and show it on Hyperpolymath."* The bot creates one widget (a digest, list, stat, timeline, table or markdown) and republishes it at the end of every run. Old versions are kept, so expanding the widget shows past runs. If a run is missed, the widget folds to a single strip after its staleness window and sinks to the end of its page. A list with everything checked off, or a widget whose dates are all behind you, folds the same way. Tap a folded card to open it back up.
 
 Widgets can have an icon: an emoji, an https image, or the domain of the site the routine covers ("slack.com" uses Slack's favicon). Bots set it with `create_widget` / `update_widget`; you can change it in the widget's settings.
 
