@@ -184,7 +184,9 @@ function FormView({
       <div className="flex flex-col items-center text-center">
         <KiwiWithKey size={104} title="Kiwi holding a key" />
         <h2 className="mt-3 text-[19px] font-semibold tracking-[-0.01em]">{copy.title}</h2>
-        <p className="mt-1 text-[14px] leading-relaxed text-ink-2">{copy.sub}</p>
+        <p className="mt-1 text-[14px] leading-relaxed text-ink-2">
+          {next.startsWith("/oauth/authorize") && mode !== "forgot" ? "Then you can connect your assistant to Hyperpolymath." : copy.sub}
+        </p>
       </div>
 
       {mode !== "forgot" && (
