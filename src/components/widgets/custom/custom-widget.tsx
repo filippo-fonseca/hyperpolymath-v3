@@ -2,48 +2,40 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { Snapshot, WidgetRow } from "@/lib/dashboard-types";
-import { isCustomKind, payloadSchemas, type CustomKind, type WidgetSize } from "@/lib/widgets";
+import { inferKind, isCustomKind, type WidgetSize } from "@/lib/widgets";
 import { relativeTime } from "@/lib/format";
 import { widgetHistoryAction } from "@/app/actions/widgets";
 import { BotAvatar } from "@/components/ui/bot-avatar";
 import { KiwiWaiting } from "@/components/illustrations";
 import { Button, stop } from "@/components/ui/primitives";
-import { IconGear } from "@/components/ui/icons";
+import { IconGear, IconPencil } from "@/components/ui/icons";
 import { ExpandedHeader } from "@/components/dashboard/expanded";
 import { useDashboard } from "@/components/dashboard/context";
 import { WidgetHeader, useWidgetFrame } from "@/components/dashboard/widget-chrome";
 import { useClamp } from "./clamp";
 import { OwnerPill, widgetOwner } from "@/components/teammates/owner-pill";
 import { WidgetIcon } from "@/components/ui/widget-icon";
-import { DigestView, ListView, MarkdownView, StatView, TableView, TimelineView } from "./renderers";
+import { ChartEnv } from "@/components/charts/core";
+import { openBuilder } from "@/components/widgets/builder/store";
+import { WidgetContent, fillsCard } from "./content";
 
 function isStale(w: WidgetRow, nowMs: number) {
-  if (!w.published_at || !w.stale_after_hours) return false;
+  if (w.source || !w.published_at || !w.stale_after_hours) return false;
   return nowMs - Date.parse(w.published_at) > w.stale_after_hours * 3_600_000;
-}
-
-function Content({ kind, payload, compact, size }: { kind: CustomKind; payload: unknown; compact: boolean; size?: WidgetSize }) {
-  const parsed = payloadSchemas[kind].safeParse(payload);
-  if (!parsed.success) return <p className="text-[13px] text-ink-3">This widget&apos;s content couldn&apos;t be read.</p>;
-  const p = parsed.data;
-  switch (kind) {
-    case "digest":
-      return <DigestView p={p as never} compact={compact} />;
-    case "list":
-      return <ListView p={p as never} compact={compact} />;
-    case "stat":
-      return <StatView p={p as never} compact={compact} large={size === "l" || size === "w"} />;
-    case "timeline":
-      return <TimelineView p={p as never} compact={compact} />;
-    case "markdown":
-      return <MarkdownView markdown={(p as { markdown: string }).markdown} compact={compact} />;
-    case "table":
-      return <TableView p={p as never} compact={compact} size={size} />;
-  }
 }
 
 function ownerName(w: WidgetRow) {
   return w.owner?.name ?? "a bot";
+}
+
+/** Small "Live" pill: the app fills this widget from your own data. */
+function LivePill() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-1.5 py-px text-[10.5px] font-semibold uppercase tracking-[0.04em] text-success">
+      <span className="pulse-live h-1.5 w-1.5 rounded-full bg-success" />
+      Live
+    </span>
+  );
 }
 
 /** Rows the card needs for its content: at least two, so the grid stays tidy. */
@@ -88,24 +80,29 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
   const stale = isStale(widget, nowMs);
   const owner = widgetOwner(widget, data.bots);
   const when = widget.published_at ? relativeTime(widget.published_at, nowMs) : null;
+  const fill = fillsCard(widget.kind, size, widget.payload);
 
   return (
     <div ref={setRoot} className={`flex h-full min-w-0 flex-col transition-opacity duration-300 ${stale ? "opacity-55 grayscale-[0.4]" : ""}`}>
       <WidgetHeader
         icon={<WidgetIcon icon={widget.icon} size={15} />}
         meta={
-          owner ? (
+          widget.source ? (
+            <LivePill />
+          ) : owner ? (
             <OwnerPill bot={owner} meta={size === "s" ? null : when} compact={size === "s"} />
           ) : (
             when && <span className="text-[11.5px] font-normal text-ink-3">{when}</span>
           )
         }
       />
-      {size === "s" && owner && when && <div className="-mt-0.5 text-[11.5px] text-ink-3">{stale ? `Stale · ${when}` : `Updated ${when}`}</div>}
+      {size === "s" && owner && when && !widget.source && <div className="-mt-0.5 text-[11.5px] text-ink-3">{stale ? `Stale · ${when}` : `Updated ${when}`}</div>}
       <div ref={setBody} className="relative mt-1.5 min-h-0 min-w-0 flex-1 overflow-hidden">
         {widget.published_at ? (
-          <div ref={setInner} className={size === "s" && widget.kind === "stat" ? "h-full" : ""}>
-            <Content kind={widget.kind} payload={widget.payload} compact size={size} />
+          <div ref={setInner} className={fill ? "h-full" : ""}>
+            <ChartEnv tz={data.tz} nowMs={nowMs}>
+              <WidgetContent kind={widget.kind} payload={widget.payload} compact size={size} />
+            </ChartEnv>
           </div>
         ) : (
           <div
@@ -116,7 +113,10 @@ export function CustomWidget({ widget, size }: { widget: WidgetRow; size: Widget
             ) : (
               <KiwiWaiting size={size === "m" ? 76 : 132} className="shrink-0" />
             )}
-            <p className={`text-[13px] leading-snug text-ink-3 ${size === "s" ? "mt-2" : ""}`}>Waiting for {ownerName(widget)} to publish</p>
+            <div className={size === "s" ? "mt-2" : "min-w-0"}>
+              <p className="text-[13px] leading-snug text-ink-3">Waiting for {ownerName(widget)} to publish</p>
+              {widget.brief && size !== "s" && <p className="mt-1 line-clamp-2 text-[12px] italic leading-snug text-ink-3">“{widget.brief}”</p>}
+            </div>
           </div>
         )}
         {clamp.more > 0 && (
@@ -165,16 +165,21 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
         eyebrow={
           <span className="flex flex-wrap items-center gap-2">
             <WidgetIcon icon={widget.icon} size={18} />
-            {owner ? <OwnerPill bot={owner} /> : <span>No owner</span>}
-            {widget.published_at && <span className="font-medium text-ink-3">· updated {relativeTime(widget.published_at, nowMs)}</span>}
+            {widget.source ? <LivePill /> : owner ? <OwnerPill bot={owner} /> : <span>Made by you</span>}
+            {widget.published_at && !widget.source && <span className="font-medium text-ink-3">· updated {relativeTime(widget.published_at, nowMs)}</span>}
             {stale && <span className="rounded-full bg-gray-150 px-2 py-px text-[11.5px] text-gray-600">Stale</span>}
           </span>
         }
         title={widget.title}
         aside={
-          <Button size="sm" variant="soft" onClick={() => openWidgetSettings(widget.id)}>
-            <IconGear size={15} /> Settings
-          </Button>
+          <span className="flex gap-1.5">
+            <Button size="sm" variant="soft" onClick={() => openBuilder({ widgetId: widget.id })}>
+              <IconPencil size={15} /> Edit
+            </Button>
+            <Button size="sm" variant="soft" onClick={() => openWidgetSettings(widget.id)}>
+              <IconGear size={15} /> Settings
+            </Button>
+          </span>
         }
       />
       {viewing && (
@@ -185,8 +190,16 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
           </button>
         </div>
       )}
+      {widget.brief && !widget.source && (
+        <div className="mb-6 rounded-[16px] bg-gray-100 px-4 py-3">
+          <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gray-500">Your brief{owner ? ` for ${owner.name}` : ""}</div>
+          <p className="mt-1 whitespace-pre-wrap text-[14.5px] leading-relaxed text-ink-2">{widget.brief}</p>
+        </div>
+      )}
       {widget.published_at || viewing ? (
-        <Content kind={widget.kind} payload={payload} compact={false} />
+        <ChartEnv tz={data.tz} nowMs={nowMs}>
+          <WidgetContent kind={viewing ? inferKind(viewing.payload, widget.kind) : widget.kind} payload={payload} compact={false} />
+        </ChartEnv>
       ) : (
         <div className="flex flex-col items-center pb-8 text-center">
           <KiwiWaiting size={148} />
@@ -194,7 +207,7 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
         </div>
       )}
 
-      <section className="mt-12">
+      {!widget.source && <section className="mt-12">
         <h3 className="mb-2 text-[13px] font-semibold text-gray-500">History</h3>
         {history === null ? (
           <div className="skeleton h-10 rounded-[12px]" />
@@ -226,7 +239,7 @@ export function CustomWidgetView({ widget }: { widget: WidgetRow }) {
             })}
           </ul>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

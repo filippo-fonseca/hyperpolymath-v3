@@ -248,6 +248,12 @@ export function validatePayload(kind: CustomKind, payload: unknown): { ok: true;
   return { ok: false, error: issues.join("; ") };
 }
 
+/** The kind a payload fits, preferring `kind` (old snapshots don't record theirs). */
+export function inferKind(payload: unknown, kind: CustomKind): CustomKind {
+  if (payloadSchemas[kind].safeParse(payload).success) return kind;
+  return CUSTOM_KINDS.find((k) => payloadSchemas[k].safeParse(payload).success) ?? kind;
+}
+
 // The catalog: what each kind is for, when to use it, and a working example.
 // The builder's gallery and the widget_kinds MCP tool both read this, so the
 // app and the bots always agree on what a kind looks like.
