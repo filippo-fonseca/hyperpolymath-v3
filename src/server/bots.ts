@@ -13,13 +13,13 @@ function pick<T>(arr: T[], seed: string): T {
 
 /**
  * Resolve a bot by name for MCP attribution, registering it on first sight.
- * A bot named Kiwi becomes the coordinator (if there isn't one yet); every
- * other new bot is filed under the coordinator. Archived bots come back when
+ * The first bot to connect becomes the coordinator when there isn't one yet
+ * (any client, any name); every other new bot is filed under it. Archived bots come back when
  * they act again.
  */
 export async function resolveBotActor(db: DB, userId: string, rawName: string): Promise<Actor> {
   const name = rawName.trim().slice(0, 60);
-  if (!name) throw new AppError("`bot` is required: pass your bot name, e.g. \"Kiwi\".");
+  if (!name) throw new AppError("`bot` is required: pass your own agent name.");
   const { data: existing } = await db
     .from("bots")
     .select("id, name")
@@ -35,7 +35,7 @@ export async function resolveBotActor(db: DB, userId: string, rawName: string): 
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("is_coordinator", true);
-  const coordinator = !count && /^kiwi$/i.test(name);
+  const coordinator = !count;
   const { data: kiwi } = coordinator
     ? { data: null }
     : await db.from("bots").select("id").eq("user_id", userId).eq("is_coordinator", true).limit(1).maybeSingle();
