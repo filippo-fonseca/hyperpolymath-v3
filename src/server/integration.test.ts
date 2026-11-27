@@ -304,7 +304,15 @@ describe.skipIf(!enabled)("service layer (live DB)", () => {
     const flood = Array.from({ length: 10 }, (_, i) => ({ kind: "capture" as const, content: `Idea number ${i}` }));
     await suggest(scout, flood);
     await suggest(scout, flood.map((f) => ({ ...f, content: f.content + " b" })));
-    await expect(suggest(scout, flood.map((f) => ({ ...f, content: f.content + " c" })))).rejects.toThrow(/Daily suggestion limit/);
+    // 3 + 10 + 10 = 23 so far: two more fit, the rest of the batch is marked, then calls are refused.
+    const over = await suggest(scout, flood.map((f) => ({ ...f, content: f.content + " c" })));
+    expect(over.filter((r) => r.outcome === "pending")).toHaveLength(2);
+    expect(over.filter((r) => r.outcome === "limit_reached")).toHaveLength(8);
+    await expect(suggest(scout, [{ kind: "capture", content: "One more" }])).rejects.toThrow(/Daily suggestion limit/);
+    // An unknown project leaves the suggestion unfiled instead of failing.
+    const kiwi = ctxAt(NOON, await resolveBotActor(adminDb(), userId, "Kiwi"));
+    const unfiled = await suggest(kiwi, [{ kind: "task", content: "Buy lab goggles", project: "No such project" }]);
+    expect(unfiled[0].outcome).toBe("pending");
   });
 
   it("serves MCP over HTTP with a bearer token", async () => {

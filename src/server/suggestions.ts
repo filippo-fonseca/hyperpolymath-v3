@@ -121,15 +121,14 @@ export async function suggest(ctx: Ctx, items: SuggestionInput[]): Promise<Sugge
       .gte("created_at", since),
     pendingSuggestionCount(ctx),
   ]);
-  if ((today ?? 0) + items.length > DAILY_LIMIT_PER_SOURCE) {
+  // Refuse outright only when nothing fits; a batch that runs into a limit
+  // saves what fits and marks the rest, so duplicates never use up the allowance.
+  let allowance = Math.min(DAILY_LIMIT_PER_SOURCE - (today ?? 0), PENDING_LIMIT - pending);
+  if (allowance <= 0) {
     throw new AppError(
-      `Daily suggestion limit reached for ${source} (${DAILY_LIMIT_PER_SOURCE} a day). Keep only what matters most and try again tomorrow.`,
-      "conflict",
-    );
-  }
-  if (pending + items.length > PENDING_LIMIT) {
-    throw new AppError(
-      `The owner already has ${pending} suggestions waiting. Hold off until they review some.`,
+      (today ?? 0) >= DAILY_LIMIT_PER_SOURCE
+        ? `Daily suggestion limit reached for ${source} (${DAILY_LIMIT_PER_SOURCE} a day). Keep only what matters most and try again tomorrow.`
+        : `The owner already has ${pending} suggestions waiting. Hold off until they review some.`,
       "conflict",
     );
   }
@@ -171,6 +170,12 @@ export async function suggest(ctx: Ctx, items: SuggestionInput[]): Promise<Sugge
       results.push({ content: short, outcome: "exists", id: null });
       continue;
     }
+    if (allowance <= 0) {
+      results.push({ content: short, outcome: "limit_reached", id: null });
+      continue;
+    }
+    // A project the bot guessed wrong shouldn't sink the suggestion: leave it unfiled.
+    const projectId = await projectIdFor(ctx, item.project).catch(() => null);
 
     const row = must(
       await ctx.db
@@ -181,7 +186,7 @@ export async function suggest(ctx: Ctx, items: SuggestionInput[]): Promise<Sugge
           content,
           notes: item.kind === "task" ? (item.notes?.trim() || null) : null,
           reason: item.reason?.trim().slice(0, 500) || null,
-          project_id: (await projectIdFor(ctx, item.project)) ?? null,
+          project_id: projectId ?? null,
           due_date: item.kind === "task" ? (item.due_date ?? null) : null,
           due_time: item.kind === "task" && item.due_date ? (item.due_time ?? null) : null,
           priority: item.kind === "task" ? Math.max(0, Math.min(3, Math.round(item.priority ?? 0))) : 0,
@@ -201,6 +206,7 @@ export async function suggest(ctx: Ctx, items: SuggestionInput[]): Promise<Sugge
       after: row,
       summary: `Suggested ${item.kind === "task" ? "a task" : "a capture"}: "${short}"`,
     });
+    allowance--;
     results.push({ content: short, outcome: "pending", id: row.id });
   }
   return results;

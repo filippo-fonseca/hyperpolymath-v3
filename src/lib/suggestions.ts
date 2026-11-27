@@ -25,7 +25,7 @@ export function dedupeKey(content: string): string {
     .slice(0, 300);
 }
 
-export type SuggestionOutcome = "pending" | "duplicate" | "exists" | "dismissed_before";
+export type SuggestionOutcome = "pending" | "duplicate" | "exists" | "dismissed_before" | "limit_reached";
 
 /** Who suggested, most frequent first: "Kiwi", "Kiwi and Scout", "Kiwi, Scout and Ada", "Kiwi, Scout and 2 others". */
 export function sourcesLabel(names: string[]): string {
