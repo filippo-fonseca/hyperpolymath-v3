@@ -452,6 +452,178 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_clients: {
+        Row: {
+          client_id: string
+          client_uri: string | null
+          created_at: string
+          fetched_at: string | null
+          id: string
+          kind: string
+          logo_uri: string | null
+          name: string
+          redirect_uris: string[]
+        }
+        Insert: {
+          client_id: string
+          client_uri?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          id?: string
+          kind: string
+          logo_uri?: string | null
+          name: string
+          redirect_uris: string[]
+        }
+        Update: {
+          client_id?: string
+          client_uri?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          id?: string
+          kind?: string
+          logo_uri?: string | null
+          name?: string
+          redirect_uris?: string[]
+        }
+        Relationships: []
+      }
+      oauth_codes: {
+        Row: {
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          expires_at: string
+          grant_id: string | null
+          redirect_uri: string
+          resource: string
+          scope: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          expires_at: string
+          grant_id?: string | null
+          redirect_uri: string
+          resource: string
+          scope: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          code_challenge?: string
+          code_hash?: string
+          expires_at?: string
+          grant_id?: string | null
+          redirect_uri?: string
+          resource?: string
+          scope?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_codes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oauth_codes_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_grants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      oauth_grants: {
+        Row: {
+          client_id: string
+          client_name: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          resource: string
+          revoked_at: string | null
+          scope: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          client_name: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          resource: string
+          revoked_at?: string | null
+          scope: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          resource?: string
+          revoked_at?: string | null
+          scope?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_grants_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_clients"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      oauth_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          grant_id: string
+          id: string
+          kind: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          grant_id: string
+          id?: string
+          kind: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          grant_id?: string
+          id?: string
+          kind?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_tokens_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "oauth_grants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -960,6 +1132,7 @@ export type Database = {
     }
     Functions: {
       check_cron_secret: { Args: { presented: string }; Returns: boolean }
+      oauth_gc: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
