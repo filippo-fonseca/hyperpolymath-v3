@@ -77,9 +77,10 @@ export class MemoryLimiter {
     return entry && entry.start === start ? entry : { start, n: 0 };
   }
 
-  /** How things stand for `key` without counting anything. */
+  /** How things stand for `key` without counting anything: `ok` says whether one more is allowed. */
   peek(key: string): Verdict {
-    return verdict(this.current(key).n, this.rule, this.now());
+    const { n } = this.current(key);
+    return { ...verdict(n, this.rule, this.now()), ok: n < this.rule.limit };
   }
 
   /** Is `key` already over the limit? */

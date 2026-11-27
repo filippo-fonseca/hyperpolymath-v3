@@ -33,12 +33,13 @@ describe("MemoryLimiter", () => {
     let now = T0;
     const m = new MemoryLimiter(rule, 100, () => now);
     expect(m.blocked("a")).toBe(false);
+    expect(m.peek("a")).toMatchObject({ ok: true, remaining: 3 });
     m.hit("a");
     m.hit("a");
     expect(m.blocked("a")).toBe(false);
     expect(m.hit("a").ok).toBe(true);
     expect(m.blocked("a")).toBe(true);
-    expect(m.peek("a")).toMatchObject({ ok: true, remaining: 0 });
+    expect(m.peek("a")).toMatchObject({ ok: false, remaining: 0 });
     expect(m.hit("a").ok).toBe(false);
     expect(m.blocked("b")).toBe(false); // keys are independent
 
