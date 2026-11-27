@@ -5,12 +5,13 @@ import { motion, useReducedMotion } from "motion/react";
 import { encode } from "uqr";
 
 /**
- * A QR code drawn as soft rounded dots with rounded finder eyes, revealed by
+ * A QR code drawn as soft rounded dots with crisp finder eyes, revealed by
  * a growing circle. Rendered from the matrix (no innerHTML), so it themes
  * with currentColor.
  */
 export function QrCode({ value, size = 220, label }: { value: string; size?: number; label: string }) {
-  const clip = useId();
+  // useId has characters (colons, guillemets) that break url(#id) in some browsers.
+  const clip = `qr${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const reduce = useReducedMotion();
   const { data, n } = useMemo(() => {
     const qr = encode(value, { ecc: "M", border: 0 });
@@ -46,8 +47,9 @@ export function QrCode({ value, size = 220, label }: { value: string; size?: num
         ))}
         {eyes.map(([x, y]) => (
           <g key={`${x}-${y}`}>
-            <rect x={x + 0.5} y={y + 0.5} width={6} height={6} rx={1.9} fill="none" stroke="currentColor" strokeWidth={1} />
-            <rect x={x + 2} y={y + 2} width={3} height={3} rx={0.95} />
+            {/* Square finder eyes: rounded ones look softer but some scanners miss them. */}
+            <path fillRule="evenodd" d={`M${x} ${y}h7v7h-7zM${x + 1} ${y + 1}v5h5v-5z`} />
+            <rect x={x + 2} y={y + 2} width={3} height={3} />
           </g>
         ))}
       </g>
