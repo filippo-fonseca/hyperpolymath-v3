@@ -281,3 +281,24 @@ export const IconResurface = (p: P) => (
     <path d="M12 8.5V12l2.5 1.5" />
   </svg>
 );
+export const IconMic = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+  </svg>
+);
+export const IconBolt = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M13 3 5 13.5h6L10.5 21 19 10h-6.2L13 3Z" />
+  </svg>
+);
+export const IconChart = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />
+  </svg>
+);
+export const IconWand = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m4 20 11-11M14 4v2M18 6l-1.4 1.4M20 10h-2M12.5 7.5l2 2" />
+  </svg>
+);
