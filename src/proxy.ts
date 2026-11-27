@@ -61,7 +61,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets, app icons, the manifest, MCP, cron and token capture.
-    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|brand/|api/mcp|api/cron|api/capture|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
+    // Everything except static assets, app icons, the manifest, and the token-auth APIs (MCP, cron, capture, app API).
+    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|brand/|api/mcp|api/cron|api/capture|api/v1|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
   ],
 };
