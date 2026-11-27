@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconMinus } from "@/components/ui/icons";
 import type { WidgetSize } from "@/lib/widgets";
 
 const LONG_PRESS_MS = 500;
+const SPRING = { type: "spring", duration: 0.45, bounce: 0.12 } as const;
 
 export function cardPadding(size: WidgetSize) {
   return size === "s" ? "p-4" : "p-[18px]";
@@ -29,8 +30,9 @@ export function CardSurface({
 }) {
   return (
     <div
-      className={`group/card relative h-full w-full overflow-hidden bg-surface transition-shadow duration-200 ${cardPadding(size)} ${
-        lifted ? "shadow-lift" : "shadow-widget [@media(hover:hover)]:hover:shadow-widget-hover"
+      data-card-surface
+      className={`group/card relative h-full w-full overflow-hidden bg-surface transition-shadow duration-300 ${cardPadding(size)} ${
+        lifted ? "shadow-lift" : "shadow-widget [@media(hover:hover)]:group-hover/cell:shadow-widget-hover"
       } ${className}`}
       style={{ borderRadius: 22, ...style }}
     >
@@ -39,15 +41,20 @@ export function CardSurface({
   );
 }
 
+/** Where a card sits on screen, for the full view to grow out of. */
+export type CardRect = { top: number; left: number; width: number; height: number };
+
 export function WidgetCard({
   id,
   size,
   index,
   editing,
-  expanded,
+  hidden,
   removable,
-  rows,
+  height,
   span,
+  ready,
+  sunk,
   onOpen,
   onEdit,
   onLongPress,
@@ -57,13 +64,18 @@ export function WidgetCard({
   size: WidgetSize;
   index: number;
   editing: boolean;
-  expanded: boolean;
+  /** Its full view is open (or closing back into it), so the card itself is invisible. */
+  hidden: boolean;
   removable: boolean;
-  /** Rows the content needs, when that's fewer than the size's own (custom widgets). */
-  rows?: number | null;
-  /** Rows the card spans right now, for widgets measuring themselves. */
+  /** The card's height in px (null until the grid has been measured). */
+  height: number | null;
+  /** Grid rows the cell spans: the height plus the gap below. */
   span: number;
-  onOpen: () => void;
+  /** The grid is measured: cards can show (they rise in the first time). */
+  ready: boolean;
+  /** Collapsed cards sink to the end of their page (not while rearranging). */
+  sunk: boolean;
+  onOpen: (rect: CardRect) => void;
   onEdit: () => void;
   onLongPress: () => void;
   children: ReactNode;
@@ -72,7 +84,21 @@ export function WidgetCard({
     id,
     disabled: !editing,
   });
+  const reduce = useReducedMotion();
   const press = useRef<{ timer: number; x: number; y: number; fired: boolean } | null>(null);
+  const surface = useRef<HTMLDivElement>(null);
+  // Height lives in a motion value: set outright until the card has shown,
+  // then every change (content grew, card folded) springs to its new size.
+  const h = useMotionValue<number | string>(height ?? "auto");
+  useLayoutEffect(() => {
+    if (height == null) return;
+    if (!ready || reduce || typeof h.get() !== "number") {
+      h.set(height);
+      return;
+    }
+    const a = animate(h, height, SPRING);
+    return () => a.stop();
+  }, [h, height, ready, reduce]);
 
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current.timer);
@@ -95,38 +121,56 @@ export function WidgetCard({
     const p = press.current;
     if (p && !p.fired && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) clearPress();
   };
+  const open = () => {
+    const r = surface.current?.getBoundingClientRect();
+    onOpen(r ? { top: r.top, left: r.left, width: r.width, height: r.height } : { top: 0, left: 0, width: 0, height: 0 });
+  };
 
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition: transition ?? undefined,
     zIndex: isDragging ? 0 : undefined,
-    ...(rows ? { gridRow: `span ${rows}` } : {}),
+    gridRow: `span ${span}`,
+    order: sunk && !editing ? 1 : undefined,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      data-rows={span}
-      className={`relative min-w-0 size-${size} ${editing ? "touch-manipulation" : ""}`}
+      data-card-id={id}
+      className={`group/cell relative min-w-0 size-${size} ${editing ? "touch-manipulation" : ""}`}
       {...(editing ? attributes : {})}
       {...(editing ? listeners : {})}
     >
       {isDragging ? (
-        <div className="h-full w-full rounded-[22px] border-[1.5px] border-dashed border-gray-300 bg-gray-50" />
-      ) : (
         <div
-          className={`h-full w-full ${editing ? "wiggle" : ""}`}
-          style={editing ? { animationDelay: `${-((index * 97) % 280)}ms` } : undefined}
+          className="w-full rounded-[22px] border-[1.5px] border-dashed border-gray-300 bg-gray-50"
+          style={{ height: height ?? "100%" }}
+        />
+      ) : (
+        <motion.div
+          // Reflows (a neighbour collapsing, a resize) glide instead of jumping;
+          // rearranging hands positions to dnd-kit, so layout animation stays off then.
+          layout={editing || reduce ? false : "position"}
+          initial={reduce ? false : { opacity: 0, y: 14, scale: 0.985 }}
+          animate={ready ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 14, scale: 0.985 }}
+          transition={{ ...SPRING, delay: ready ? Math.min(index, 10) * 0.035 : 0, layout: SPRING }}
+          className="w-full"
         >
-          {expanded ? (
-            <div className="h-full w-full" />
-          ) : (
+          <motion.div
+            ref={surface}
+            className={`w-full ${editing ? "wiggle" : ""}`}
+            style={{
+              height: h,
+              visibility: hidden ? "hidden" : undefined,
+              ...(editing ? { animationDelay: `${-((index * 97) % 280)}ms` } : {}),
+            }}
+          >
             <motion.div
-              layoutId={`widget-${id}`}
-              transition={{ type: "spring", duration: 0.38, bounce: 0 }}
-              className="h-full w-full"
-              style={{ borderRadius: 22 }}
+              className="h-full w-full rounded-[22px] outline-none"
+              whileTap={editing || reduce ? undefined : { scale: 0.985 }}
+              transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               role={editing ? undefined : "button"}
               tabIndex={editing ? undefined : 0}
               onPointerDown={onPointerDown}
@@ -144,12 +188,12 @@ export function WidgetCard({
                   return;
                 }
                 if (editing) onEdit();
-                else onOpen();
+                else open();
               }}
               onKeyDown={(e) => {
                 if (!editing && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
                   e.preventDefault();
-                  onOpen();
+                  open();
                 }
               }}
             >
@@ -157,7 +201,7 @@ export function WidgetCard({
                 {children}
               </CardSurface>
             </motion.div>
-          )}
+          </motion.div>
           {editing && removable && (
             <button
               type="button"
@@ -172,7 +216,7 @@ export function WidgetCard({
               <IconMinus size={13} strokeWidth={2.6} />
             </button>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );

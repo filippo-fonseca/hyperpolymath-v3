@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asWidgetSize, groupPages, moveToPage, normalizeLayout, reorder } from "./layout-utils";
+import { MIN_CARD_H, ROW_UNIT, asWidgetSize, cardHeight, cellSize, groupPages, moveToPage, nominalHeight, normalizeLayout, reorder, rowSpan } from "./layout-utils";
 import { defaultSizeFor } from "@/lib/widgets";
 
 const w = (id: string, page: number, position: number) => ({ id, page, position, size: "m" as const });
@@ -37,5 +37,27 @@ describe("sizes", () => {
     expect(defaultSizeFor("tasks")).toBe("l");
     expect(defaultSizeFor("stat")).toBe("s");
     expect(defaultSizeFor("digest")).toBe("m");
+  });
+});
+
+describe("card heights", () => {
+  // Desktop: 8 columns, 24px gap, 1120px wide, so a cell is 119px.
+  const m = { width: 1120, cols: 8, gap: 24 };
+  it("gives each size its box", () => {
+    expect(cellSize(m)).toBe(119);
+    expect(nominalHeight("s", m)).toBe(262);
+    expect(nominalHeight("l", m)).toBe(548);
+    expect(nominalHeight("w", m)).toBe(405);
+    expect(nominalHeight("w", { ...m, cols: 4 })).toBe(nominalHeight("l", { ...m, cols: 4 }));
+  });
+  it("sizes to content between a floor and the box", () => {
+    expect(cardHeight("m", m, null)).toBe(262);
+    expect(cardHeight("m", m, 150)).toBe(150);
+    expect(cardHeight("m", m, 900)).toBe(262);
+    expect(cardHeight("m", m, 40)).toBe(MIN_CARD_H);
+    expect(cardHeight("m", m, 56, true)).toBe(56);
+  });
+  it("spans enough fine rows for the height and the gap", () => {
+    expect(rowSpan(150, 24)).toBe(Math.ceil(174 / ROW_UNIT));
   });
 });

@@ -34,7 +34,7 @@ export function DashboardSkeleton() {
             </div>
           </div>
           <div className="widget-page mt-3 px-4 pt-3 sm:mt-5 sm:px-6">
-            <div className="widget-grid">
+            <div className="widget-grid is-static">
               {["l", "l", "m", "m", "m", "m"].map((s, i) => (
                 <div key={i} className={`size-${s} skeleton rounded-[22px]`} />
               ))}
