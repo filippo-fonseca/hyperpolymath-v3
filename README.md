@@ -10,7 +10,7 @@ Anyone can create an account with an email and a password (8 characters or more)
 
 Each account is private. Every row in the database carries the `user_id` of the account it belongs to, and Postgres row-level security lets a signed-in account read only its own rows. The browser never writes: all changes go through the server, which scopes every query by the signed-in account. `public.profiles` lists every account (kept in sync with `auth.users` by a trigger).
 
-Bots get in with MCP tokens you create in Settings, and each token only reaches the account that made it. Reminders go to your own Grok Bot through the relay webhook you set in **Settings → Reminders**, so they never land in someone else's bot.
+Assistants (Claude, ChatGPT, Grok Bot, or any MCP client) connect by signing in with Hyperpolymath over OAuth, or with personal tokens you create in Settings. Either way they only reach the account that approved them. Setup for each client: [`docs/connect/`](docs/connect/README.md). Reminders go to your own Grok Bot through the relay webhook you set in **Settings → Reminders**, so they never land in someone else's bot.
 
 Setting up your own deployment: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 

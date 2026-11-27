@@ -4,17 +4,13 @@ Hyperpolymath is operated by Grok Bot teammates over MCP. Once you're set up, re
 
 One bot is the coordinator ("Kiwi"); it can create and manage sub-bots, and every bot reads and writes the same database through the same server. Setup takes about five minutes.
 
-## 1. Mint a token
+## 1. Add the MCP server in Grok Bot
 
-Open the dashboard, then **Settings → MCP tokens → Create token**. Name it "Grok Bot". Copy the `hpm_...` value; it is shown once. (Revoke and re-mint here any time.)
+Follow [`connect/grok-bot.md`](connect/grok-bot.md): add `https://<your-app>/api/mcp` as a custom connector and sign in with Hyperpolymath (recommended), or create a personal token under **Settings → Connections** and send it as a header.
 
-## 2. Add the MCP server in Grok Bot
+## 2. Confirm it works
 
-In any bot's chat, send:
-
-> Add a custom MCP server named "Hyperpolymath". URL: `https://<your-app>/api/mcp`. Header: `Authorization: Bearer <paste token>`. Store the token as a secret.
-
-MCP servers apply to every bot on the account, so this is done once. Ask the bot to call `get_overview` to confirm it works.
+MCP servers apply to every bot on the account, so this is done once. Ask any bot to call `get_overview`; it should answer with today's date and your timezone.
 
 ## 3. Make your coordinator Kiwi
 
