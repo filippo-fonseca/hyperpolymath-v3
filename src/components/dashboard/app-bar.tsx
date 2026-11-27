@@ -3,7 +3,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import type { WidgetRow } from "@/lib/dashboard-types";
 import { Logotype, Monogram } from "@/components/ui/brand";
-import { IconChevronLeft, IconGear, IconHome, IconSearch } from "@/components/ui/icons";
+import { IconChart, IconChevronLeft, IconGear, IconHome, IconSearch } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/primitives";
 import { FEATURE_ORDER, KindIcon, featureLabel } from "./features";
 
@@ -35,6 +35,7 @@ export function AppBar({
   onOpen,
   onSearch,
   onSettings,
+  onInsights,
   trailing,
 }: {
   widgets: WidgetRow[];
@@ -45,6 +46,8 @@ export function AppBar({
   onOpen: (w: WidgetRow) => void;
   onSearch: () => void;
   onSettings: () => void;
+  /** Opens the Insights page; hidden while it is the open view. */
+  onInsights?: () => void;
   trailing?: ReactNode;
 }) {
   const mod = useModKey();
@@ -97,6 +100,11 @@ export function AppBar({
               {mod}K
             </kbd>
           </button>
+          {onInsights && current?.kind !== "insights" && (
+            <IconButton label="Insights" onClick={onInsights}>
+              <IconChart size={19} />
+            </IconButton>
+          )}
           {trailing}
           <IconButton label="Settings" onClick={onSettings}>
             <IconGear size={19} />
