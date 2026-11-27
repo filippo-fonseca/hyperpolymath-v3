@@ -11,6 +11,7 @@ import { KiwiReading } from "@/components/illustrations";
 import { useDashboard } from "@/components/dashboard/context";
 import { CaptureComposer } from "./capture-composer";
 import { CapturePost } from "./capture-post";
+import { SuggestedSection } from "./suggestions";
 
 /** Captures as a feed you post to yourself, with what came back pinned on top. */
 export function CaptureView() {
@@ -45,6 +46,7 @@ export function CaptureView() {
     <div className="mx-auto max-w-[640px]">
       <ExpandedHeader eyebrow={`${pluralize(data.captures.length, "capture")} in your inbox`} title="Capture" />
       <CaptureComposer autoFocus />
+      {!searching && <SuggestedSection />}
 
       <div className="mt-4 flex items-center gap-2">
         <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-gray-100 px-3.5 text-ink-3 focus-within:bg-white focus-within:shadow-ring">
