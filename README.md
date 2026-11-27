@@ -14,6 +14,8 @@ Bots get in with MCP tokens you create in Settings, and each token only reaches 
 
 Setting up your own deployment: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
+Letting any assistant (Claude, Grok Bot, ChatGPT, scripts) send you suggested tasks and captures to review: [`docs/AGENT-SUGGESTIONS.md`](docs/AGENT-SUGGESTIONS.md).
+
 ## Develop
 
 ```bash
