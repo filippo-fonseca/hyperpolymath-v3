@@ -17,7 +17,8 @@ import { finishRun, listRoutines, registerRoutine, removeRoutine, startRun, upda
 import { createEvent, deleteEvent, listCalendars, listEvents, updateEvent } from "./google/calendar";
 import { scheduleSchema } from "@/lib/schedule";
 import { recurrenceSchema } from "@/lib/recurrence";
-import { CUSTOM_KINDS, PAYLOAD_DOCS, WIDGET_SIZES } from "@/lib/widgets";
+import { CUSTOM_KINDS, KIND_INFO, WIDGET_SIZES, kindSchemas } from "@/lib/widgets";
+import { SOURCE_IDS, SOURCE_INFO, sourceSchema } from "@/lib/widget-sources";
 import { isLocalDate, isLocalTime } from "@/lib/time";
 
 const BASE_INSTRUCTIONS = `Hyperpolymath is the owner's life dashboard. This server is the single source of truth for their tasks, reminders, habits, quick captures and dashboard widgets.
@@ -51,7 +52,7 @@ Rules:
   - The owner sees all of this in the app's Projects view, as a list or as a tree (areas branching into their projects), so keep names short and clear, set an emoji on every area, and keep status accurate.
 - Dates: use the "now" and timezone from get_overview, never your own clock. After creating or moving something, tell the owner the date in words ("for tomorrow, Mon Oct 12") so a wrong guess is caught. If they gave no date, leave due_date empty (it lands in the inbox) rather than guessing.
 - Calendar: use the calendar tools here (not a separate Google Calendar connector) so changes are logged and revertible. Event ids come from list_events. Never invite other people unless asked.
-- Widgets: only create or publish a widget when the owner asked for that routine to appear on the dashboard. Publish the full current content each run (it replaces the previous version, history is kept).
+- Widgets: create or publish only when the owner asked. When get_overview lists widget_requests owned by you, call widget_kinds, pick the kind that best fits the brief (publish_widget can switch kind), publish, and keep following the brief on later runs. Never publish to live widgets (source set); the app fills them. Publish the full current content each run (history is kept).
 - Ask before deleting anything. Mistakes can be undone with revert_action, so own them and revert.
 - When you create a sub-bot in Grok Bot, call update_bot with its name, role and parent (your name) so it appears in the teammates view.`;
 
@@ -393,34 +394,72 @@ export function buildMcpServer(userId: string, coordinator: string | null = null
   tool("delete_event", "Remove an event from Google Calendar. Ask first.", { id: z.string().min(3) }, (ctx, a) => deleteEvent(ctx, a.id), { destructive: true });
 
   // Widgets ------------------------------------------------------------------
-  tool("list_widgets", "Widgets on the dashboard, with owner bot and last publish time.", {}, (ctx) => listWidgets(ctx), { readOnly: true });
+  tool("list_widgets", "Widgets on the dashboard, with owner bot, brief (what the owner asked for) and last publish time.", {}, async (ctx) =>
+    (await listWidgets(ctx, { resolve: false })).map((w) => ({
+      id: w.id,
+      title: w.title,
+      kind: w.kind,
+      size: w.size,
+      owner: w.owner?.name ?? null,
+      brief: w.brief,
+      live: w.source ?? undefined,
+      published_at: w.published_at,
+      stale_after_hours: w.stale_after_hours,
+    })),
+    { readOnly: true },
+  );
+  tool(
+    "widget_kinds",
+    "Widget kinds with their JSON schema and a working example, plus live data sources. Call before create_widget or publish_widget. Pass kind for just one.",
+    { kind: z.enum(CUSTOM_KINDS).optional() },
+    async (_ctx, a) => ({
+      kinds: kindSchemas(a.kind),
+      ...(a.kind
+        ? {}
+        : {
+            sources: Object.fromEntries(SOURCE_IDS.map((id) => [id, { label: SOURCE_INFO[id].label, about: SOURCE_INFO[id].blurb, kinds: SOURCE_INFO[id].kinds }])),
+            notes:
+              "Every payload also takes accent (blue, green, red, orange, yellow, purple, pink, teal, gray) and footnote. Give times as at (ISO datetime with offset, or YYYY-MM-DD) so the app formats them in the owner's timezone. A live widget passes source ({id, days}) instead of a payload and the app keeps it current. blocks combines up to 6 other kinds in one card.",
+          }),
+    }),
+    { readOnly: true },
+  );
   tool(
     "create_widget",
-    `Add a custom widget owned by you. Only when the owner asked for this on the dashboard. ${PAYLOAD_DOCS}`,
+    `Add a custom widget owned by you, only when the owner asked for it. Pass payload (shape depends on kind: call widget_kinds), or source for a live widget the app fills from its own data. Kinds: ${CUSTOM_KINDS.map((k) => `${k} (${KIND_INFO[k].label.toLowerCase()})`).join(", ")}.`,
     {
       kind: z.enum(CUSTOM_KINDS),
       title: z.string().min(1).max(60),
       size: z.enum(WIDGET_SIZES).optional().describe("s = 1x1, m = 2x1, l = 2x2, w = full row. Leave out for a sensible default per kind"),
       stale_after_hours: z.number().int().min(1).max(24 * 30).optional().describe("Dim the widget if not republished within this many hours"),
       icon: z.string().max(500).optional().describe("An emoji, an https image URL, or the domain of the site it covers (e.g. slack.com) to use its favicon"),
-      payload: z.record(z.string(), z.unknown()).optional(),
+      payload: z.record(z.string(), z.unknown()).optional().describe("Content; shape per kind from widget_kinds"),
+      source: sourceSchema.optional().describe("Instead of payload: a live data source from widget_kinds"),
+      brief: z.string().max(2000).optional().describe("What the owner asked for, in their words, so later runs stay on brief"),
     },
     (ctx, a) => createWidget(ctx, a),
   );
   tool(
     "publish_widget",
-    `Replace a custom widget's content (by title or id). ${PAYLOAD_DOCS}`,
-    { widget: z.string().describe("Widget title or id"), payload: z.record(z.string(), z.unknown()) },
-    (ctx, a) => publishWidget(ctx, a.widget, a.payload),
+    "Replace a custom widget's content (by title or id). Pass kind to redraw it as a better-suited kind; the payload must match that kind (see widget_kinds).",
+    {
+      widget: z.string().describe("Widget title or id"),
+      payload: z.record(z.string(), z.unknown()),
+      kind: z.enum(CUSTOM_KINDS).optional(),
+    },
+    (ctx, a) => publishWidget(ctx, a.widget, a.payload, a.kind),
   );
   tool(
     "update_widget",
-    "Change a widget's title, icon (emoji, https image URL, or a domain for its favicon; null clears) or staleness window.",
+    "Change a widget's title, icon (emoji, https image URL, or a domain for its favicon; null clears), staleness window, brief, or a live widget's source and kind.",
     {
       widget: z.string().describe("Widget title or id"),
       title: z.string().min(1).max(60).optional(),
       icon: z.string().max(500).nullable().optional(),
       stale_after_hours: z.number().int().min(1).max(24 * 30).nullable().optional(),
+      brief: z.string().max(2000).nullable().optional(),
+      source: sourceSchema.nullable().optional().describe("Live source; null stops it being live"),
+      kind: z.enum(CUSTOM_KINDS).optional().describe("Live widgets only: how to draw the source"),
     },
     (ctx, { widget, ...patch }) => updateWidget(ctx, widget, patch),
   );

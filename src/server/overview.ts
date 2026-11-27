@@ -22,7 +22,7 @@ export async function getOverview(ctx: Ctx) {
     listCaptures(ctx, { limit: 8 }),
     resurfacedCaptures(ctx),
     listReminders(ctx),
-    listWidgets(ctx),
+    listWidgets(ctx, { resolve: false }),
     upcomingForOverview(ctx),
     listAreas(ctx),
   ]);
@@ -80,7 +80,12 @@ export async function getOverview(ctx: Ctx) {
       title: w.title,
       kind: w.kind,
       owner: w.owner?.name ?? null,
-      published_at: w.published_at,
+      published_at: w.source ? "live" : w.published_at,
     })),
+    // Widgets the owner described and handed to a bot: the owner bot publishes
+    // to match the brief (widget_kinds has the shapes), choosing the best kind.
+    widget_requests: widgets
+      .filter((w) => w.brief && !w.source)
+      .map((w) => ({ widget: w.title, kind: w.kind, owner: w.owner?.name ?? null, brief: w.brief, published_at: w.published_at })),
   };
 }

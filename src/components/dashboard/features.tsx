@@ -55,6 +55,8 @@ export function standInWidget(key: string | null): WidgetRow | null {
     owner: null,
     published_at: null,
     stale_after_hours: null,
+    source: null,
+    brief: null,
     created_at: "",
     updated_at: "",
     deleted_at: null,

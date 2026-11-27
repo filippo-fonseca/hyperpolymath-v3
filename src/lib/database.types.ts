@@ -894,6 +894,7 @@ export type Database = {
       }
       widgets: {
         Row: {
+          brief: string | null
           created_at: string
           deleted_at: string | null
           icon: string | null
@@ -905,12 +906,14 @@ export type Database = {
           position: number
           published_at: string | null
           size: string
+          source: Json | null
           stale_after_hours: number | null
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          brief?: string | null
           created_at?: string
           deleted_at?: string | null
           icon?: string | null
@@ -922,12 +925,14 @@ export type Database = {
           position?: number
           published_at?: string | null
           size?: string
+          source?: Json | null
           stale_after_hours?: number | null
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          brief?: string | null
           created_at?: string
           deleted_at?: string | null
           icon?: string | null
@@ -939,6 +944,7 @@ export type Database = {
           position?: number
           published_at?: string | null
           size?: string
+          source?: Json | null
           stale_after_hours?: number | null
           title?: string
           updated_at?: string
