@@ -29,7 +29,7 @@ export async function getOverview(ctx: Ctx) {
     listAreas(ctx),
     pendingSuggestionCount(ctx),
   ]);
-  return shapeOverview({ today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas }, ctx);
+  return shapeOverview({ today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas, suggestionsPending }, ctx);
 }
 
 export type OverviewInput = {
@@ -42,6 +42,7 @@ export type OverviewInput = {
   widgets: Awaited<ReturnType<typeof listWidgets>>;
   calendar: Awaited<ReturnType<typeof upcomingForOverview>>;
   areas: Awaited<ReturnType<typeof listAreas>>;
+  suggestionsPending?: number;
 };
 
 /** First 200 characters, marking the cut so a bot knows to fetch the rest. */
@@ -49,7 +50,7 @@ const clip = (s: string) => (s.length > 200 ? s.slice(0, 199) + "…" : s);
 
 /** Pure shaping step, so the payload size can be tested without a database. */
 export function shapeOverview(
-  { today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas }: OverviewInput,
+  { today, inbox, habits, captures, resurfaced, reminders, widgets, calendar, areas, suggestionsPending = 0 }: OverviewInput,
   ctx: Pick<Ctx, "now" | "tz">,
 ) {
   const projectName = new Map(

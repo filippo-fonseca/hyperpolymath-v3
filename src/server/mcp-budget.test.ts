@@ -15,7 +15,8 @@ import { overviewFixture } from "@/test/overview-fixture";
  */
 const BUDGET = {
   instructionsChars: 3_000,
-  toolsListChars: 34_000,
+  // 36k: raised from 34k for the three suggestion tools (#11).
+  toolsListChars: 36_000,
   overviewChars: 8_000,
 };
 
