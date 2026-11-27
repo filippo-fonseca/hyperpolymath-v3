@@ -427,6 +427,7 @@ export type Database = {
           name: string
           prefix: string
           revoked_at: string | null
+          scope: string
           token_hash: string
           user_id: string
         }
@@ -437,6 +438,7 @@ export type Database = {
           name: string
           prefix: string
           revoked_at?: string | null
+          scope?: string
           token_hash: string
           user_id: string
         }
@@ -447,6 +449,7 @@ export type Database = {
           name?: string
           prefix?: string
           revoked_at?: string | null
+          scope?: string
           token_hash?: string
           user_id?: string
         }

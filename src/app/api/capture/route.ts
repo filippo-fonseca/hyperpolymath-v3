@@ -1,6 +1,7 @@
 import { adminDb, AppError, makeCtx } from "@/server/ctx";
 import { createCapture } from "@/server/captures";
 import { verifyToken } from "@/server/tokens";
+import { scopesFor } from "@/lib/token-scope";
 
 // Quick capture from anywhere (iOS Shortcut, Raycast, curl):
 //   POST /api/capture  Authorization: Bearer hpm_...  {"content": "...", "source": "shortcut"}
@@ -9,7 +10,7 @@ import { verifyToken } from "@/server/tokens";
 export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
   const token = auth?.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : null;
-  const userId = token ? await verifyToken(adminDb(), token) : null;
+  const userId = token ? await verifyToken(adminDb(), token, scopesFor("capture")) : null;
   if (!userId) return Response.json({ error: "Missing or invalid token" }, { status: 401 });
 
   let content = "";
