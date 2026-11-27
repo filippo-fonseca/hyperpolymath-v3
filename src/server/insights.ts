@@ -1,6 +1,6 @@
 import "server-only";
 import { must, type Ctx } from "./ctx";
-import { buildInsights, type InsightsRaw } from "@/lib/insights";
+import { buildInsightsData, type InsightsData, type InsightsRaw } from "@/lib/insights";
 import { addDays, localDate, zonedToUtc } from "@/lib/time";
 
 // Loads the rows analytics read, bounded to a window, scoped to the owner.
@@ -54,18 +54,9 @@ export async function loadInsightsRaw(ctx: Ctx, days: number): Promise<InsightsR
   };
 }
 
-export const INSIGHT_RANGES = [7, 30, 90] as const;
-export type InsightRange = (typeof INSIGHT_RANGES)[number];
-
 /** The Insights page: every range at once, so switching is instant and animates. */
-export async function getInsights(ctx: Ctx) {
+export async function getInsights(ctx: Ctx): Promise<InsightsData> {
   // Twice the longest range (for the previous-period comparison), and at
   // least half a year for the consistency heatmap.
-  const raw = await loadInsightsRaw(ctx, 182);
-  return {
-    today: raw.today,
-    tz: raw.tz,
-    ranges: Object.fromEntries(INSIGHT_RANGES.map((r) => [r, buildInsights(raw, r)])) as Record<InsightRange, ReturnType<typeof buildInsights>>,
-    year: buildInsights(raw, 182),
-  };
+  return buildInsightsData(await loadInsightsRaw(ctx, 182));
 }

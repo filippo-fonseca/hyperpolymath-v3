@@ -324,6 +324,20 @@ export function buildInsights(raw: InsightsRaw, range: number): Insights {
   };
 }
 
+export const INSIGHT_RANGES = [7, 30, 90] as const;
+export type InsightRange = (typeof INSIGHT_RANGES)[number];
+export type InsightsData = { today: LocalDate; tz: string; ranges: Record<InsightRange, Insights>; year: Insights };
+
+/** Every range the Insights page offers plus half a year for the heatmap. `raw` must cover 182 days. */
+export function buildInsightsData(raw: InsightsRaw): InsightsData {
+  return {
+    today: raw.today,
+    tz: raw.tz,
+    ranges: { 7: buildInsights(raw, 7), 30: buildInsights(raw, 30), 90: buildInsights(raw, 90) },
+    year: buildInsights(raw, 182),
+  };
+}
+
 /** A short, plain-English read of a window: the line at the top of Insights. */
 export function headline(i: Insights): string {
   const { done, habitRate } = i.kpis;

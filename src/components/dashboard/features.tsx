@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { WidgetRow } from "@/lib/dashboard-types";
 import { FIXED_KINDS, isCustomKind, type FixedKind } from "@/lib/widgets";
 import { WidgetIcon } from "@/components/ui/widget-icon";
-import { IconActivity, IconCalendar, IconCheckCircle, IconFolder, IconPencil, IconTarget, IconWidgets } from "@/components/ui/icons";
+import { IconActivity, IconCalendar, IconChart, IconCheckCircle, IconFolder, IconPencil, IconTarget, IconWidgets } from "@/components/ui/icons";
 
 // The built-in features: what each one is called in navigation, its slug in
 // the URL (?view=tasks) and its glyph. Custom widgets use their id as the slug.
@@ -34,18 +34,22 @@ export function widgetForView<W extends Pick<WidgetRow, "id" | "kind">>(widgets:
   return widgets.find((w) => viewKeyFor(w) === key) ?? null;
 }
 
+/** Insights is a page, not a widget: it opens at ?view=insights through a stand-in row. */
+export const INSIGHTS = "insights";
+const INSIGHTS_TINT = "#8a63f2";
+
 /**
  * A built-in view still opens from its URL when its widget isn't on the
  * dashboard (?view=projects&mode=tree with no Projects card), through a
  * stand-in row that is never saved. Built-in views don't read the row.
  */
 export function standInWidget(key: string | null): WidgetRow | null {
-  const kind = FEATURE_ORDER.find((k) => FEATURES[k].slug === key);
+  const kind = key === INSIGHTS ? INSIGHTS : FEATURE_ORDER.find((k) => FEATURES[k].slug === key);
   if (!kind) return null;
   return {
     id: `${STAND_IN}${kind}`,
     kind,
-    title: FEATURES[kind].label,
+    title: kind === INSIGHTS ? "Insights" : FEATURES[kind].label,
     size: "m",
     page: 0,
     position: 0,
@@ -65,6 +69,7 @@ export function standInWidget(key: string | null): WidgetRow | null {
 }
 
 const STAND_IN = "view:";
+
 export const isStandIn = (w: Pick<WidgetRow, "id">) => w.id.startsWith(STAND_IN);
 
 export function featureLabel(w: Pick<WidgetRow, "kind" | "title">): string {
@@ -92,6 +97,13 @@ export function KindIcon({
         aria-hidden
       >
         {f.icon(size)}
+      </span>
+    );
+  }
+  if (widget.kind === INSIGHTS) {
+    return (
+      <span className={`inline-flex shrink-0 items-center justify-center ${className}`} style={{ width: size, height: size, color: tinted ? INSIGHTS_TINT : undefined }} aria-hidden>
+        <IconChart size={size} />
       </span>
     );
   }

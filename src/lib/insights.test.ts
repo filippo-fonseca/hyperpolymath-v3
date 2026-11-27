@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestStreak, buildInsights, dayRange, habitRateDaily, headline, type InsightsRaw } from "./insights";
+import { bestStreak, buildInsights, buildInsightsData, dayRange, habitRateDaily, headline, type InsightsRaw } from "./insights";
 import { resolveSource, SOURCE_IDS, SOURCE_INFO } from "./widget-sources";
 import { payloadSchemas } from "./widgets";
 
@@ -78,5 +78,16 @@ describe("insights", () => {
         }
       }
     }
+  });
+});
+
+describe("buildInsightsData", () => {
+  it("computes every range and half a year for the heatmap", () => {
+    const raw = { tz: "UTC", today: "2026-11-27", tasks: [], habits: [], habitLogs: [], captures: [], actions: [], runs: [], bots: [], projects: [], areas: [] };
+    const d = buildInsightsData(raw);
+    expect(Object.keys(d.ranges)).toEqual(["7", "30", "90"]);
+    expect(d.ranges[7].days).toHaveLength(7);
+    expect(d.year.days).toHaveLength(182);
+    expect(d.year.days.at(-1)).toBe("2026-11-27");
   });
 });

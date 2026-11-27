@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createWidget, listWidgets, publishWidget, removeWidget, saveLayout, updateWidget, widgetHistory } from "@/server/widgets";
-import { loadInsightsRaw } from "@/server/insights";
+import { getInsights, loadInsightsRaw } from "@/server/insights";
 import { CUSTOM_KINDS, isCustomKind, WIDGET_SIZES, type CustomKind, type WidgetSize } from "@/lib/widgets";
 import { daysNeeded, resolveSource, sourceSchema, SOURCE_INFO } from "@/lib/widget-sources";
 import { AppError } from "@/server/ctx";
@@ -94,4 +94,9 @@ export async function previewSourceAction(source: unknown, k: CustomKind) {
     const raw = await loadInsightsRaw(ctx, daysNeeded([src]));
     return resolveSource(raw, src, drawAs) as Record<string, unknown>;
   });
+}
+
+/** Everything the Insights view draws, for every range at once. */
+export async function insightsAction() {
+  return readAsUser((ctx) => getInsights(ctx));
 }

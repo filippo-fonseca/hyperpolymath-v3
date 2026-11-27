@@ -17,6 +17,7 @@ import { CalendarWidget } from "./calendar/calendar-widget";
 import { CalendarView } from "./calendar/calendar-view";
 import { ProjectsWidget } from "./projects/projects-widget";
 import { ProjectsView } from "./projects/projects-view";
+import { InsightsPanel } from "@/components/insights/insights-panel";
 
 // Maps a widget's kind to its compact body and its expanded view.
 
@@ -61,6 +62,8 @@ export function WidgetExpanded({ widget }: { widget: WidgetRow }) {
       return <CalendarView />;
     case "projects":
       return <ProjectsView />;
+    case "insights":
+      return <InsightsPanel />;
     default:
       return isCustomKind(widget.kind) ? (
         <CustomWidgetView widget={widget} />
