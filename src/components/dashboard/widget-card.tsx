@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -100,8 +100,11 @@ export function WidgetCard({
     return () => a.stop();
   }, [h, height, ready, reduce]);
 
+  // Pressing the card itself (not a checkbox or button inside it) sinks it a touch.
+  const [pressed, setPressed] = useState(false);
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current.timer);
+    setPressed(false);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -116,6 +119,7 @@ export function WidgetCard({
       onLongPress();
     }, LONG_PRESS_MS);
     press.current = state;
+    setPressed(true);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const p = press.current;
@@ -169,7 +173,7 @@ export function WidgetCard({
           >
             <motion.div
               className="h-full w-full rounded-[22px] outline-none"
-              whileTap={editing || reduce ? undefined : { scale: 0.985 }}
+              animate={{ scale: pressed && !editing && !reduce ? 0.985 : 1 }}
               transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               role={editing ? undefined : "button"}
               tabIndex={editing ? undefined : 0}
